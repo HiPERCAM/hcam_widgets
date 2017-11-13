@@ -31,7 +31,7 @@ setup(
     author="Stuart Littlefair",
     author_email='s.littlefair@shef.ac.uk',
     url='https://github.com/StuartLittlefair/hcam_widgets',
-    download_url='https://github.com/StuartLittlefair/hcam_widgets/archive/0.1.tar.gz',
+    download_url='https://github.com/StuartLittlefair/hcam_widgets/archive/0.2.tar.gz',
     packages=[
         'hcam_widgets',
     ],
