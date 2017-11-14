@@ -30,8 +30,8 @@ setup(
     long_description=readme + '\n\n' + history,
     author="Stuart Littlefair",
     author_email='s.littlefair@shef.ac.uk',
-    url='https://github.com/StuartLittlefair/hcam_widgets',
-    download_url='https://github.com/StuartLittlefair/hcam_widgets/archive/0.2.tar.gz',
+    url='https://github.com/HiPERCAM/hcam_widgets',
+    download_url='https://github.com/HiPERCAM/hcam_widgets/archive/0.2.1.tar.gz',
     packages=[
         'hcam_widgets',
     ],
