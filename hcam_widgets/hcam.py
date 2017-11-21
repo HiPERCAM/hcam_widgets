@@ -184,7 +184,7 @@ class InstPars(tk.LabelFrame):
         # Exp delay
         tk.Label(lhs, text='Exposure delay (s)').grid(row=7, column=0,
                                                       sticky=tk.W)
-        self.expose = w.Expose(lhs, 0.1, 0.0001, 1677.7207,
+        self.expose = w.Expose(lhs, 0.1, 0.00001, 1677.7207,
                                self.check, width=7)
         self.expose.grid(row=7, column=1, columnspan=2, pady=2, sticky=tk.W)
 
