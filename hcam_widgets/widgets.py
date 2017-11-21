@@ -779,13 +779,16 @@ class FloatEntry(tk.Entry):
                    a blank field is allowed, even if it is technically
                    invalid (the latter case requires some other checking)
         kw      -- optional keyword arguments that can be used for
-                   an Entry.
+                   an Entry. If 'nplaces' argument is set, precision
+                   of FloatEntry will be limited to nplaces decimal places.
         """
         # important to set the value of _variable before tracing it
         # to avoid immediate run of _callback.
+        np = kw.pop('nplaces', 8)
         tk.Entry.__init__(self, master, **kw)
         self._variable = tk.StringVar()
-        self._value = str(float(fval))
+        self.nplaces = np
+        self._value = str(round(float(fval), self.nplaces))
         self._variable.set(self._value)
         self._variable.trace("w", self._callback)
         self.config(textvariable=self._variable)
@@ -821,7 +824,7 @@ class FloatEntry(tk.Entry):
         """
         Sets the current value equal to num
         """
-        self._value = str(float(num))
+        self._value = str(round(float(num), self.nplaces))
         self._variable.set(self._value)
 
     def add(self, num):
@@ -1136,7 +1139,7 @@ class Choice(tk.OptionMenu):
 class Expose(RangedFloat):
     """
     Special entry field for exposure times designed to return
-    an integer number of 0.1ms increments.
+    an integer number of 0.01ms increments.
     """
     def __init__(self, master, fval, fmin, fmax, checker, **kw):
         """
@@ -1146,22 +1149,23 @@ class Expose(RangedFloat):
         fmax    -- maximum value, seconds
         checker -- command that is run on any change to the entry
 
-        fval, fmin and fmax must be multiples of 0.0001
+        fval, fmin and fmax must be multiples of 0.00001
         """
-        if abs(round(10000*fval)-10000*fval) > 1.e-12:
+        if abs(round(100000*fval)-100000*fval) > 1.e-12:
             raise DriverError(
-                'utils.widgets.Expose.__init__: fval must be a multiple of 0.0001')
-        if abs(round(10000*fmin)-10000*fmin) > 1.e-12:
+                'utils.widgets.Expose.__init__: fval must be a multiple of 0.00001')
+        if abs(round(100000*fmin)-100000*fmin) > 1.e-12:
             raise DriverError(
-                'utils.widgets.Expose.__init__: fmin must be a multiple of 0.0001')
-        if abs(round(10000*fmax)-10000*fmax) > 1.e-12:
+                'utils.widgets.Expose.__init__: fmin must be a multiple of 0.00001')
+        if abs(round(100000*fmax)-100000*fmax) > 1.e-12:
             raise DriverError(
-                'utils.widgets.Expose.__init__: fmax must be a multiple of 0.0001')
+                'utils.widgets.Expose.__init__: fmax must be a multiple of 0.00001')
+        kw['nplaces'] = 5
         RangedFloat.__init__(self, master, fval, fmin, fmax, checker, True, **kw)
 
     def validate(self, value):
         """
-        This prevents setting any value more precise than 0.0001
+        This prevents setting any value more precise than 0.00001
         """
         try:
             # trap blank fields here
@@ -1169,7 +1173,7 @@ class Expose(RangedFloat):
                 v = float(value)
                 if (v != 0 and v < self.fmin) or v > self.fmax:
                     return None
-                if abs(round(10000*v)-10000*v) > 1.e-12:
+                if abs(round(100000*v)-100000*v) > 1.e-12:
                     return None
             return value
         except ValueError:
@@ -1177,10 +1181,10 @@ class Expose(RangedFloat):
 
     def ivalue(self):
         """
-        Returns integer value in units of 0.1ms, if possible, None if not.
+        Returns integer value in units of 0.01ms, if possible, None if not.
         """
         try:
-            return int(round(10000*float(self._value)))
+            return int(round(100000*float(self._value)))
         except:
             return None
 
@@ -1188,9 +1192,9 @@ class Expose(RangedFloat):
         """
         Updates minimum value
         """
-        if round(10000*fmin) != 10000*fmin:
+        if round(100000*fmin) != 100000*fmin:
             raise DriverError('utils.widgets.Expose.set_min: ' +
-                              'fmin must be a multiple of 0.0001')
+                              'fmin must be a multiple of 0.00001')
         self.fmin = fmin
         self.set(self.fmin)
 

@@ -1040,12 +1040,14 @@ class CountsFrame(tk.LabelFrame):
                               ('u', 'g', 'r', 'i', 'z'), 3,
                               self.checkUpdate, initial=1)
         self.mag = w.RangedFloat(lframe, 18., 0., 30.,
-                                 self.checkUpdate, True, width=5)
+                                 self.checkUpdate, True, width=5,
+                                 nplaces=2)
         self.seeing = w.RangedFloat(lframe, 1.0, 0.2, 20.,
                                     self.checkUpdate, True, True,
-                                    width=5)
+                                    width=5, nplaces=1)
         self.airmass = w.RangedFloat(lframe, 1.5, 1.0, 5.0,
-                                     self.checkUpdate, True, width=5)
+                                     self.checkUpdate, True, width=5,
+                                     nplaces=2)
         self.moon = w.Radio(lframe, ('d', 'g', 'b'),  3, self.checkUpdate)
 
         # results
