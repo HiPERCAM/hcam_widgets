@@ -47,7 +47,7 @@ def addStyle(w):
 
     # Menu font
     g.MENU_FONT = font.nametofont("TkMenuFont")
-    g.MENU_FONT.configure(size=fsize, family=family)
+    g.MENU_FONT.configure(family=family)
     w.option_add('*Menu.Font', g.MENU_FONT)
 
     # Entry font
