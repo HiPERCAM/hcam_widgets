@@ -167,7 +167,7 @@ class InstPars(tk.LabelFrame):
         # dummy mode enabled (expert mode only)
         self.dummyLab = tk.Label(lhs, text='Dummy Output')
         self.dummyLab.grid(row=4, column=0, sticky=tk.W)
-        self.dummy = w.OnOff(lhs, False, self.check)
+        self.dummy = w.OnOff(lhs, True, self.check)
         self.dummy.grid(row=4, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # Faster Clock speed enabled
@@ -904,16 +904,18 @@ class RunPars(tk.LabelFrame):
         g = get_root(self).globals
         user = json.loads(json_string)['user']
 
-        def getUser(user, param):
-            return user.get(param, '')
+        def setField(widget, field):
+            val = user.get(field)
+            if val is not None:
+                widget.set(val)
 
-        self.target.set(getUser(user, 'target'))
-        self.progid.set(getUser(user, 'ID'))
-        self.pi.set(getUser(user, 'PI'))
-        self.observers.set(getUser(user, 'Observers'))
-        self.comment.set(getUser(user, 'comment'))
-        g.observe.rtype.set(getUser(user, 'flags'))
-        self.filter.set(getUser(user, 'filters'))
+        setField(self.target, 'target')
+        setField(self.progid, 'ID')
+        setField(self.pi, 'PI')
+        setField(self.observers, 'Observers')
+        setField(self.comment, 'comment')
+        setField(self.filter, 'filters')
+        setField(g.observe.rtype, 'flags')
 
     def dumpJSON(self):
         """
