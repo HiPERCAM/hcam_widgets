@@ -190,7 +190,7 @@ class InstPars(tk.LabelFrame):
 
         # num exp
         tk.Label(lhs, text='Num. exposures  ').grid(row=8, column=0,  sticky=tk.W)
-        self.number = w.PosInt(lhs, 1, None, False, width=7)
+        self.number = w.PosInt(lhs, 0, None, False, width=7)
         self.number.grid(row=8, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # nb, ng, nr etc
