@@ -25,7 +25,7 @@ scripts = [fname for fname in glob.glob(os.path.join('scripts', '*'))
 
 setup(
     name='hcam_widgets',
-    version='0.3.0',
+    version='0.4.0',
     description="Common Tkinter widgets for HiPerCAM",
     long_description=readme + '\n\n' + history,
     author="Stuart Littlefair",
