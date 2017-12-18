@@ -21,7 +21,7 @@ from . import DriverError, tcs
 from .tkutils import get_root
 from .logs import Logger, GuiHandler
 from .astro import calc_riseset
-from .misc import (execCommand, checkSimbad, isRunActive,
+from .misc import (execCommand, checkSimbad, isRunActive, stopNodding,
                    getRunNumber, postJSON, getFrameNumber)
 
 if not six.PY3:
@@ -1716,8 +1716,6 @@ class Stop(ActButton):
             try:
                 self.stopping = True
                 if execCommand(g, 'abort'):
-                    # Report that run has stopped
-                    g.clog.info('Run stopped')
                     self.stopped_ok = True
                 else:
                     g.clog.warn('Failed to stop run')
@@ -1751,6 +1749,9 @@ class Stop(ActButton):
             # do this first, so timer doesn't also try to enable idle mode
             g.info.timer.stop()
 
+            # Report that run has stopped
+            g.clog.info('Run stopped')
+
             # enable idle mode now run has stopped
             g.clog.info('Setting chips to idle')
             idle = {'appdata': {'app': 'Idle'}}
@@ -1761,6 +1762,16 @@ class Stop(ActButton):
             except Exception as err:
                 g.clog.warn('Failed to enable idle mode')
                 g.clog.warn(str(err))
+
+            g.clog.info('Stopping offsets (if running')
+            try:
+                success = stopNodding(g)
+                if not success:
+                    raise Exception('stopNodding returned False')
+            except Exception as err:
+                g.clog.warn('Failed to stop GTC offset script')
+                g.clog.warn(str(err))
+
             return True
 
         elif self.stopping:
@@ -2417,6 +2428,7 @@ class TelChooser(tk.Menu):
         g = get_root(self).globals
         g.cpars['telins_name'] = self.val.get()
         g.count.update()
+        g.ipars.check()
 
 
 class ExpertMenu(tk.Menu):
@@ -2509,6 +2521,15 @@ class Timer(tk.Label):
                             raise Exception('postJSON returned false')
                     except Exception as err:
                         g.clog.warn('Failed to enable idle mode')
+                        g.clog.warn(str(err))
+
+                    g.clog.info('Stopping offsets (if running')
+                    try:
+                        success = stopNodding(g)
+                        if not success:
+                            raise Exception('stopNodding returned False')
+                    except Exception as err:
+                        g.clog.warn('Failed to stop GTC offset script')
                         g.clog.warn(str(err))
 
                     self.stop()

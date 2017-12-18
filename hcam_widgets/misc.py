@@ -112,6 +112,37 @@ def overlap(xl1, yl1, nx1, ny1, xl2, yl2, nx2, ny2):
             yl2 < yl1+ny1 and yl2+ny2 > yl1)
 
 
+def startNodding(g, data):
+    nodPattern = data.get('appdata', {}).get('nodpattern', {})
+    if g.cpars['telins_name'] == 'GTC' and nodPattern:
+        try:
+            url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'start')
+            opener = urllib.request.build_opener()
+            req = urllib.request.Request(url)
+            response = opener.open(req, timeout=5).read().decode()
+            g.rlog.info('Nod Server Response: ' + response)
+        except Exception as err:
+            g.clog.warn('Failed to stop nod server')
+            g.clog.warn(str(err))
+            return False
+    return True
+
+
+def stopNodding(g):
+    if g.cpars['telins_name'] == 'GTC':
+        try:
+            url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'stop')
+            opener = urllib.request.build_opener()
+            req = urllib.request.Request(url)
+            response = opener.open(req, timeout=5).read().decode()
+            g.rlog.info('Nod Server Response: ' + response)
+        except Exception as err:
+            g.clog.warn('Failed to stop nod server')
+            g.clog.warn(str(err))
+            return False
+    return True
+
+
 def saveJSON(g, data, backup=False):
     """
     Saves the current setup to disk.
@@ -163,7 +194,7 @@ def postJSON(g, data):
     json_data = json.dumps(data).encode('utf-8')
 
     # Send the xml to the server
-    url = g.cpars['hipercam_server'] + g.SERVER_POST_PATH
+    url = urllib.parse.urljoin(g.cpars['hipercam_server'], g.SERVER_POST_PATH)
     g.clog.debug('Server URL = ' + url)
 
     opener = urllib.request.build_opener()
@@ -171,10 +202,21 @@ def postJSON(g, data):
     req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
     response = opener.open(req, timeout=5)
     csr = ReadServer(response.read(), status_msg=False)
-    g.rlog.warn(csr.resp())
     if not csr.ok:
         g.clog.warn('Server response was not OK')
         return False
+
+    # now try to setup nodding server if appropriate
+    if g.cpars['telins_name'] == 'GTC':
+        url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'setup')
+        g.clog.debug('Offset Server URL = ' + url)
+        opener = urllib.request.build_opener()
+        req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
+        response = opener.open(req, timeout=5).read().decode()
+        g.rlog.info('Nod Server Response: ' + response)
+        if not json.loads(response)['status'] == 'OK':
+            g.clog.warn('Offset Server response was not OK')
+            return False
 
     g.clog.debug('Leaving postJSON')
     return True

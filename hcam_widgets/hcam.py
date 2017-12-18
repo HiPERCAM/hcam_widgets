@@ -3,12 +3,16 @@ from __future__ import print_function, unicode_literals, absolute_import, divisi
 import math
 import json
 import six
+from os.path import expanduser
+
+# non-standard imports
+import numpy as np
 
 # internal imports
 from . import widgets as w
 from . import DriverError
 from .tkutils import get_root
-from .misc import (createJSON, saveJSON, postJSON,
+from .misc import (createJSON, saveJSON, postJSON, startNodding,
                    execCommand, isRunActive, jsonFromFits)
 
 if not six.PY3:
@@ -150,48 +154,55 @@ class InstPars(tk.LabelFrame):
         self.clear = w.OnOff(lhs, False, self.check)
         self.clear.grid(row=1, column=1, columnspan=2, sticky=tk.W)
 
+        # nod telescope
+        self.nodLab = tk.Label(lhs, text='Nodding')
+        self.nodLab.grid(row=2, column=0, sticky=tk.W)
+        self.nod = w.OnOff(lhs, False, self.setupNodding)
+        self.nod.grid(row=2, column=1, columnspan=2, sticky=tk.W)
+        self.nodPattern = {}
+
         # Overscan in x enabled
         self.oscanLab = tk.Label(lhs, text='Overscan')
-        self.oscanLab.grid(row=2, column=0, sticky=tk.W)
+        self.oscanLab.grid(row=3, column=0, sticky=tk.W)
         self.oscan = w.OnOff(lhs, False, self.check)
         self.oscany = w.OnOff(lhs, False, self.check)
-        self.oscan.grid(row=2, column=1, sticky=tk.W)
-        self.oscany.grid(row=2, column=2, sticky=tk.W)
+        self.oscan.grid(row=3, column=1, sticky=tk.W)
+        self.oscany.grid(row=3, column=2, sticky=tk.W)
 
         # led on (expert mode only)
         self.ledLab = tk.Label(lhs, text='LED setting')
-        self.ledLab.grid(row=3, column=0, sticky=tk.W)
+        self.ledLab.grid(row=4, column=0, sticky=tk.W)
         self.led = w.OnOff(lhs, False, None)
-        self.led.grid(row=3, column=1, columnspan=2, pady=2, sticky=tk.W)
+        self.led.grid(row=4, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # dummy mode enabled (expert mode only)
         self.dummyLab = tk.Label(lhs, text='Dummy Output')
-        self.dummyLab.grid(row=4, column=0, sticky=tk.W)
+        self.dummyLab.grid(row=5, column=0, sticky=tk.W)
         self.dummy = w.OnOff(lhs, True, self.check)
-        self.dummy.grid(row=4, column=1, columnspan=2, pady=2, sticky=tk.W)
+        self.dummy.grid(row=5, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # Faster Clock speed enabled
         self.fastClkLab = tk.Label(lhs, text='Fast Clocks')
-        self.fastClkLab.grid(row=5, column=0, sticky=tk.W)
+        self.fastClkLab.grid(row=6, column=0, sticky=tk.W)
         self.fastClk = w.OnOff(lhs, False, self.check)
-        self.fastClk.grid(row=5, column=1, columnspan=2, pady=2, sticky=tk.W)
+        self.fastClk.grid(row=6, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # Readout speed
-        tk.Label(lhs, text='Readout speed').grid(row=6, column=0, sticky=tk.W)
+        tk.Label(lhs, text='Readout speed').grid(row=7, column=0, sticky=tk.W)
         self.readSpeed = w.Select(lhs, 1, ('Fast', 'Slow'), self.check)
-        self.readSpeed.grid(row=6, column=1, columnspan=2, pady=2, sticky=tk.W)
+        self.readSpeed.grid(row=7, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # Exp delay
-        tk.Label(lhs, text='Exposure delay (s)').grid(row=7, column=0,
+        tk.Label(lhs, text='Exposure delay (s)').grid(row=8, column=0,
                                                       sticky=tk.W)
         self.expose = w.Expose(lhs, 0.1, 0.00001, 1677.7207,
                                self.check, width=7)
-        self.expose.grid(row=7, column=1, columnspan=2, pady=2, sticky=tk.W)
+        self.expose.grid(row=8, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # num exp
-        tk.Label(lhs, text='Num. exposures  ').grid(row=8, column=0,  sticky=tk.W)
+        tk.Label(lhs, text='Num. exposures  ').grid(row=9, column=0,  sticky=tk.W)
         self.number = w.PosInt(lhs, 0, None, False, width=7)
-        self.number.grid(row=8, column=1, columnspan=2, pady=2, sticky=tk.W)
+        self.number.grid(row=9, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # nb, ng, nr etc
         labels = ('nu', 'ng', 'nr', 'ni', 'nz')
@@ -254,7 +265,7 @@ class InstPars(tk.LabelFrame):
                                      ys, ysmin, ysmax, nx, ny,
                                      xbfac, ybfac, self.check)
 
-        self.quad_frame.grid(row=9, column=0, columnspan=3,
+        self.quad_frame.grid(row=10, column=0, columnspan=3,
                              sticky=tk.W+tk.N)
 
         # Pack two halfs
@@ -272,6 +283,79 @@ class InstPars(tk.LabelFrame):
             return self.drift_frame
         return self.quad_frame
 
+    def setupNodding(self):
+        """
+        Setup Nodding for GTC
+        """
+        g = get_root(self).globals
+
+        if not self.nod():
+            # re-enable clear mode box if not drift
+            if not self.isDrift():
+                self.clear.enable()
+
+            # clear existing nod pattern
+            self.nodPattern = {}
+            self.check()
+            return
+
+        # Do nothing if we're not at the GTC
+        if g.cpars['telins_name'] != 'GTC':
+            messagebox.showerror('Error', 'Cannot nod WHT')
+            self.nod.set(False)
+            self.nodPattern = {}
+            return
+
+        # check for drift mode and bomb out
+        if self.isDrift():
+            messagebox.showerror('Error', 'Cannot nod telescope in drift mode')
+            self.nod.set(False)
+            self.nodPattern = {}
+            return
+
+        # check for clear not enabled and warn
+        if not self.clear():
+            if not messagebox.askokcancel('Warning',
+                                          'Nodding telescope will enable clear mode. Continue?'):
+                self.nod.set(False)
+                self.nodPattern = {}
+                return
+
+        # Ask for nod pattern
+        try:
+            home = expanduser('~')
+            fname = filedialog.askopenfilename(
+                title='Open offsets text file',
+                defaultextension='.txt',
+                filetypes=[('text files', '.txt')],
+                initialdir=home)
+
+            if not fname:
+                g.clog.warn('Aborted load from disk')
+                raise ValueError
+
+            ra, dec = np.loadtxt(fname).T
+            if len(ra) != len(dec):
+                g.clog.warn('Mismatched lengths of RA and Dec offsets')
+                raise ValueError
+
+            data = dict(
+                ra=ra.tolist(),
+                dec=dec.tolist()
+            )
+        except:
+            g.clog.warn('Setting nod pattern failed. Disabling nodding')
+            self.nod.set(False)
+            self.nodPattern = {}
+            return
+
+        # store nodding on ipars object
+        self.nodPattern = data
+        # enable clear mode
+        self.clear.set(True)
+        # update
+        self.check()
+
     def setExpertLevel(self):
         g = get_root(self).globals
         level = g.cpars['expert_level']
@@ -288,16 +372,16 @@ class InstPars(tk.LabelFrame):
             self.dummyLab.grid_forget()
             self.dummy.grid_forget()
         else:
-            self.ledLab.grid(row=3, column=0, sticky=tk.W)
-            self.led.grid(row=3, column=1, columnspan=2, pady=2, sticky=tk.W)
+            self.ledLab.grid(row=4, column=0, sticky=tk.W)
+            self.led.grid(row=4, column=1, columnspan=2, pady=2, sticky=tk.W)
 
             self.oscanLab.config(text='Overscan (x, y)')
-            self.oscany.grid(row=2, column=2, sticky=tk.W)
+            self.oscany.grid(row=3, column=2, sticky=tk.W)
             if hasattr(self, 'remember_oscany'):
                 self.oscany.set(self.remember_oscany)
 
-            self.dummyLab.grid(row=4, column=0, sticky=tk.W)
-            self.dummy.grid(row=4, column=1, columnspan=2, pady=2, sticky=tk.W)
+            self.dummyLab.grid(row=5, column=0, sticky=tk.W)
+            self.dummy.grid(row=5, column=1, columnspan=2, pady=2, sticky=tk.W)
 
     def isDrift(self):
         if self.app.value() == 'Drift':
@@ -342,6 +426,11 @@ class InstPars(tk.LabelFrame):
             multipliers=self.nmult.getall(),
             clear=self.clear()
         )
+
+        # only allow nodding in clear mode, even if GUI has got confused
+        if data['clear'] and self.nodPattern:
+            data['nodpattern'] = self.nodPattern
+
         # no mixing clear and multipliers, no matter what GUI says
         if data['clear']:
             data['multipliers'] = [1 for i in self.nmult.getall()]
@@ -378,6 +467,7 @@ class InstPars(tk.LabelFrame):
         """
         Loads in an application saved in JSON format.
         """
+        g = get_root(self).globals
         data = json.loads(json_string)['appdata']
         # first set the parameters which change regardless of mode
         # number of exposures
@@ -408,6 +498,15 @@ class InstPars(tk.LabelFrame):
         mult_values = data.get('multipliers',
                                (1, 1, 1, 1, 1))
         self.nmult.setall(mult_values)
+
+        # look for nodpattern in data
+        nodPattern = data.get('nodpattern', {})
+        if nodPattern and g.cpars['telins_name'] == 'GTC':
+            self.nodPattern = nodPattern
+            self.nod.set(True)
+        else:
+            self.nodPattern = {}
+            self.nod.set(False)
 
         # now for the behaviour which depends on mode
         if 'app' in data:
@@ -471,7 +570,7 @@ class InstPars(tk.LabelFrame):
             - spots and flags overlapping windows or null window parameters
             - flags windows with invalid dimensions given the binning parameter
             - sets the correct number of enabled windows
-            - disables or enables clear button depending on drift mode or not
+            - disables or enables clear and nod buttons depending on drift mode or not
             - checks for window synchronisation, enabling sync button if required
             - enables or disables start button if settings are OK
 
@@ -481,6 +580,7 @@ class InstPars(tk.LabelFrame):
             True or False according to whether the settings are OK.
         """
         status = True
+        g = get_root(self).globals
 
         # keep binning factors of drift mode and windowed mode up to date
         xbin, ybin = self.wframe.xbin.value(), self.wframe.ybin.value()
@@ -497,6 +597,7 @@ class InstPars(tk.LabelFrame):
 
         if self.isDrift():
             self.clearLab.config(state='disable')
+            self.nodLab.config(state='disable')
             if not self.drift_frame.winfo_ismapped():
                 self.quad_frame.grid_forget()
                 self.drift_frame.grid(row=9, column=0, columnspan=3,
@@ -506,19 +607,32 @@ class InstPars(tk.LabelFrame):
                 self.oscany.config(state='disable')
                 self.oscan.config(state='disable')
                 self.clear.config(state='disable')
+                self.nod.config(state='disable')
                 self.wframe.enable()
                 status = self.wframe.check()
 
         elif self.isFF():
             self.clearLab.config(state='normal')
+            if g.cpars['telins_name'] == 'GTC':
+                self.nodLab.config(state='normal')
+            else:
+                self.nodLab.config(state='disable')
             if not self.frozen:
                 self.oscany.config(state='normal')
                 self.oscan.config(state='normal')
                 self.clear.config(state='normal')
+                if g.cpars['telins_name'] == 'GTC':
+                    self.nod.config(state='normal')
+                else:
+                    self.nod.config(state='disable')
                 self.wframe.disable()
 
         else:
             self.clearLab.config(state='normal')
+            if g.cpars['telins_name'] == 'GTC':
+                self.nodLab.config(state='normal')
+            else:
+                self.nodLab.config(state='disable')
             if not self.quad_frame.winfo_ismapped():
                 self.drift_frame.grid_forget()
                 self.quad_frame.grid(row=9, column=0, columnspan=3,
@@ -528,11 +642,14 @@ class InstPars(tk.LabelFrame):
                 self.oscany.config(state='disable')
                 self.oscan.config(state='normal')
                 self.clear.config(state='normal')
+                if g.cpars['telins_name'] == 'GTC':
+                    self.nod.config(state='normal')
+                else:
+                    self.nod.config(state='disable')
                 self.wframe.enable()
                 status = self.wframe.check()
 
         # exposure delay
-        g = get_root(self).globals
         if self.expose.ok():
             self.expose.config(bg=g.COL['main'])
         else:
@@ -557,6 +674,7 @@ class InstPars(tk.LabelFrame):
         """
         self.app.disable()
         self.clear.disable()
+        self.nod.disable()
         self.led.disable()
         self.dummy.disable()
         self.readSpeed.disable()
@@ -572,6 +690,7 @@ class InstPars(tk.LabelFrame):
         """
         self.app.enable()
         self.clear.enable()
+        self.nod.enable()
         self.led.enable()
         self.dummy.enable()
         self.readSpeed.enable()
@@ -826,6 +945,14 @@ class InstPars(tk.LabelFrame):
         else:
             for nw in range(nwin):
                 cycleTime += yshift[nw] + line_clear[nw] + readout[nw]
+
+        # use 5sec estimate for nod time
+        # TODO: replace with accurate estimate
+        if self.nod() and lclear:
+            cycleTime += 5
+        elif self.nod():
+            g = get_root(self).globals
+            g.clog.warn('ERR: nodding enabled with clear mode off')
 
         frameRate = 1.0/cycleTime
         expTime = expose_delay if lclear else cycleTime - frame_transfer
@@ -1453,12 +1580,21 @@ class Start(w.ActButton):
         # POST
         try:
             success = postJSON(g, data)
+            if not success:
+                raise Exception('postJSON returned False')
         except Exception as err:
             g.clog.warn("Failed to post data to servers")
             g.clog.warn(str(err))
             return False
 
-        if not success:
+        # Is nod enabled? Should we start GTC offsetter?
+        try:
+            success = startNodding(g, data)
+            if not success:
+                raise Exception('startNodding returned False')
+        except Exception as err:
+            g.clog.warn("Failed to start GTC offsetter")
+            g.clog.warn(str(err))
             return False
 
         # START
