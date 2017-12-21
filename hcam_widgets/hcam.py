@@ -612,6 +612,17 @@ class InstPars(tk.LabelFrame):
                 status = self.wframe.check()
 
         elif self.isFF():
+            # special case check of binning from window frame
+            xbinw, ybinw = self.wframe.xbin, self.wframe.ybin
+            xbinw.config(bg=g.COL['main'])
+            ybinw.config(bg=g.COL['main'])
+            if 1024 % xbinw.value() != 0:
+                status = False
+                xbinw.config(bg=g.COL['error'])
+            if 512 % ybinw.value() != 0:
+                status = False
+                ybinw.config(bg=g.COL['error'])
+
             self.clearLab.config(state='normal')
             if g.cpars['telins_name'] == 'GTC':
                 self.nodLab.config(state='normal')
