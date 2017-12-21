@@ -621,7 +621,7 @@ class InstPars(tk.LabelFrame):
             if 1024 % xbin != 0:
                 status = False
                 xbinw.config(bg=g.COL['error'])
-            if 512 % ybinw != 0:
+            if 512 % ybin != 0:
                 status = False
                 ybinw.config(bg=g.COL['error'])
 
