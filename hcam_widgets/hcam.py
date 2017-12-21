@@ -588,6 +588,11 @@ class InstPars(tk.LabelFrame):
         frame.xbin.set(xbin)
         frame.ybin.set(ybin)
 
+        # clear errors on binning (may be set later if FF)
+        xbinw, ybinw = self.wframe.xbin, self.wframe.ybin
+        xbinw.config(bg=g.COL['main'])
+        ybinw.config(bg=g.COL['main'])
+
         if not self.frozen:
             if self.clear() or self.isDrift():
                 # disable nmult in clear or drift mode
@@ -613,13 +618,10 @@ class InstPars(tk.LabelFrame):
 
         elif self.isFF():
             # special case check of binning from window frame
-            xbinw, ybinw = self.wframe.xbin, self.wframe.ybin
-            xbinw.config(bg=g.COL['main'])
-            ybinw.config(bg=g.COL['main'])
-            if 1024 % xbinw.value() != 0:
+            if 1024 % xbin != 0:
                 status = False
                 xbinw.config(bg=g.COL['error'])
-            if 512 % ybinw.value() != 0:
+            if 512 % ybin != 0:
                 status = False
                 ybinw.config(bg=g.COL['error'])
 
