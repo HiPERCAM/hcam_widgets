@@ -3239,6 +3239,14 @@ class WinPairs(tk.Frame):
             if nx is None or nx % xbin != 0:
                 nxw.config(bg=g.COL['error'])
                 status = False
+            elif (nx // xbin) % 4 != 0:
+                """
+                The NGC collects pixel data in chunks before transmission.
+                As a result, to avoid loss of data from frames, the binned
+                x-size must be a multiple of 4.
+                """
+                nxw.config(bg=g.COL['error'])
+                status = False
 
             if ny is None or ny % ybin != 0:
                 nyw.config(bg=g.COL['error'])
@@ -3609,6 +3617,15 @@ class WinQuads(tk.Frame):
             if nx is None or nx % xbin != 0:
                 nxw.config(bg=g.COL['error'])
                 status = False
+            elif (nx // xbin) % 4 != 0:
+                """
+                The NGC collects pixel data in chunks before transmission.
+                As a result, to avoid loss of data from frames, the binned
+                x-size must be a multiple of 4.
+                """
+                nxw.config(bg=g.COL['error'])
+                status = False
+
             if ny is None or ny % ybin != 0:
                 nyw.config(bg=g.COL['error'])
                 status = False
@@ -3955,6 +3972,14 @@ class Windows(tk.Frame):
 
             # Are unbinned dimensions consistent with binning factors?
             if nx is None or nx % xbin != 0:
+                nxw.config(bg=g.COL['error'])
+                status = False
+            elif (nx // xbin) % 4 != 0:
+                """
+                The NGC collects pixel data in chunks before transmission.
+                As a result, to avoid loss of data from frames, the binned
+                x-size must be a multiple of 4.
+                """
                 nxw.config(bg=g.COL['error'])
                 status = False
 
