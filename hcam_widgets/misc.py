@@ -232,6 +232,10 @@ def createJSON(g, full=True):
     Container with globals
     """
     data = dict()
+    if 'gps_attached' not in g.cpars:
+        data['gps_attached'] = 1
+    else:
+        data['gps_attached'] = 1 if g.cpars['gps_attached'] else 0
     data['appdata'] = g.ipars.dumpJSON()
     data['user'] = g.rpars.dumpJSON()
     if full:

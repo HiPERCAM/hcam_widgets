@@ -35,11 +35,11 @@ SETUP_READ = 9.0e-7  # time required for Naidu's setup_read SR
 DUMP_TIME_SLOW = 18e-6  # time to dump extra pixels, slow clocking
 DUMP_TIME_FAST = 3.6e-6  # time to dump extra pixels, fast clocking
 VIDEO_SLOW_SE = 8.72e-6  # ~113 kHz, Naidu's clock speed for single output mode
-VIDEO_SLOW = 3.8e-6  # ~260 kHz
+VIDEO_SLOW = 5.2e-6  # ~192 kHz, same clock speed as fast, but 4 samples
 VIDEO_FAST = 1.9e-6  # ~520 kHz
-GAIN_FAST = 1.7  # electrons/ADU
-GAIN_SLOW = 1.7
-RNO_FAST = 4.5  # e- / pixel
+GAIN_FAST = 1.1  # electrons/ADU
+GAIN_SLOW = 1.1
+RNO_FAST = 5.0  # e- / pixel
 RNO_SLOW = 4.5
 DARK_E = 0.02  # e/pix/s
 
@@ -621,7 +621,7 @@ class InstPars(tk.LabelFrame):
             if 1024 % xbin != 0:
                 status = False
                 xbinw.config(bg=g.COL['error'])
-            if 512 % ybinw != 0:
+            if 512 % ybin != 0:
                 status = False
                 ybinw.config(bg=g.COL['error'])
 
