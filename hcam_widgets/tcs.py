@@ -6,6 +6,14 @@ import re
 from astropy import coordinates as coord
 from astropy import units as u
 
+try:
+    # should not be a required module since can run on WHT fine without it
+    from .gtc.corba import CORBAConnection, HIPERTELESCOPESERVER
+    import CosNaming
+    has_corba = True
+except Exception as err:
+    has_corba = False
+
 
 def getWhtTcs():
     cmd = "ssh whtguest@taurus.ing.iac.es "
@@ -46,4 +54,23 @@ def getWhtTcs():
 
 
 def getGtcTcs():
-    raise NotImplementedError()
+    if not has_corba:
+        raise IOError('CORBA not installed')
+
+    conn = CORBAConnection()
+    conn.init_orb()
+    conn.resolve_nameservice()
+
+    # name of CORBA object to access telescope server
+    # TODO: change to correct name
+    name = [CosNaming.NameComponent('EMIR', 'container'),
+            CosNaming.NameComponent('MCS', 'container'),
+            CosNaming.NameComponent('EMIRLKTempMon_1', '')]
+
+    server = conn.get_object(name, HIPERTELESCOPESERVER.HIPERTelescopeServer_ifce)
+
+    # can now use as standard python object, e.g
+    tcs_info_string = server.getTelescopeParams()
+
+    # format is "keyword = value \ comment; keyword = value \ comment; ..."
+    return tcs_info_string
