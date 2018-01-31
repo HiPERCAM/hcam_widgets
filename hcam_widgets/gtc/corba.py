@@ -36,8 +36,7 @@ class RawCORBAState(object):
     @staticmethod
     def init_orb(conn):
         # setup CORBA, TODO put correct GTC host here
-        os.environ['ORBDefaultInitRef'] = 'corbaname::vela:12008'
-        os.environ['ORBgiopMaxMsgSize'] = '202428800'
+        os.environ['ORBDefaultInitRef'] = 'corbaname::161.72.88.75:12008'
         os.environ['ORBclientCallTimeOutPeriod'] = '2000'  # in milliseconds
         orb = CORBA.ORB_init([], CORBA.ORB_ID)
         conn.orb = orb

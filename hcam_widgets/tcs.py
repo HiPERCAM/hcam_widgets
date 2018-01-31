@@ -8,7 +8,8 @@ from astropy import units as u
 
 try:
     # should not be a required module since can run on WHT fine without it
-    from .gtc.corba import CORBAConnection, HIPERTELESCOPESERVER
+    from .gtc.corba import CORBAConnection
+    import HIPERTELESCOPESERVER  # not part of this module, copy modules from GCS and place in PYTHONPATH
     import CosNaming
     has_corba = True
 except Exception as err:
@@ -63,14 +64,15 @@ def getGtcTcs():
 
     # name of CORBA object to access telescope server
     # TODO: change to correct name
-    name = [CosNaming.NameComponent('EMIR', 'container'),
-            CosNaming.NameComponent('MCS', 'container'),
-            CosNaming.NameComponent('EMIRLKTempMon_1', '')]
+    name = [CosNaming.NameComponent(id='HIPERTelescopeServer', kind='')]
 
     server = conn.get_object(name, HIPERTELESCOPESERVER.HIPERTelescopeServer_ifce)
 
     # can now use as standard python object, e.g
-    tcs_info_string = server.getTelescopeParams()
+    ra = server.getRightAscention()
+    dec = server.getDeclination()
+    pa = server.getPupilAngle()
+    focus = server.getFocus()
 
     # format is "keyword = value \ comment; keyword = value \ comment; ..."
-    return tcs_info_string
+    return ra, dec, pa, focus
