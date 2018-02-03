@@ -59,9 +59,23 @@ def getGtcTcs():
     server = get_telescope_server()
 
     # can now use as standard python object, e.g
+    pars = server.getTelescopeParams()
+
+    # pars is a list of strings describing tel info in FITS
+    # style, each entry in the list is a different class of
+    # thing (weather, telescope, instrument etc).
+
+    # munge them all together into one list of entries
+    # do some horrible munging to find PA
+    pars = [val.strip() for val in (';').join(pars).split(';') if val.strip() != '']
+    pa_entries = [par for par in pars if par.startswith('INSTRPA')]
+    if len(pa_entries):
+        _, value, _ = filter(None, re.split("[=/]+", pa_entries[0]))
+        pa = float(value)
+    else:
+        pa = -999
     ra = server.getRightAscention()
     dec = server.getDeclination()
-    pa = server.getPupilAngle()
     focus = server.getFocus()
 
     # format is "keyword = value \ comment; keyword = value \ comment; ..."
