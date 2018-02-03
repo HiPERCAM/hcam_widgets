@@ -1620,10 +1620,23 @@ class Start(w.ActButton):
             g.clog.warn(str(err))
             return False
 
+        # if we are nodding, send first trigger
+        nodPattern = data.get('appdata', {}).get('nodpattern', {})
+        if g.cpars['telins_name'] == 'GTC' and nodPattern:
+            try:
+                success = execCommand(g, 'trigger')
+                if not success:
+                    raise Exception('Failed to send first trigger - exposure will be paused indefinitely')
+            except Exception as err:
+                g.clog.warn('Run is paused indefinitely')
+                g.clog.warn(str(err))
+                return False
+
         # Run successfully started.
         # enable stop button, disable Start
         # also make inactive until RunType select box makes active again
         # start run timer
+
         self.disable()
         self.run_type_set = False
         g.observe.stop.enable()
