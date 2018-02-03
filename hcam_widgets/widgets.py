@@ -2768,8 +2768,10 @@ class InfoFrame(tk.LabelFrame):
 
                     # format ra, dec as HMS
                     coo = coord.SkyCoord(ra, dec, unit=(u.deg, u.deg))
-                    ratxt = coo.ra.to_string(sep=':', unit=u.hour)
-                    dectxt = coo.dec.to_string(sep=':', unit=u.deg, alwayssign=True)
+                    ratxt = coo.ra.to_string(sep=':', unit=u.hour, precision=0)
+                    dectxt = coo.dec.to_string(sep=':', unit=u.deg,
+                                               alwayssign=True,
+                                               precision=0)
                     self.ra.configure(text=ratxt)
                     self.dec.configure(text=dectxt)
 
