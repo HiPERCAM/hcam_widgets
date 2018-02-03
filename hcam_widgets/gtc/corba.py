@@ -1,6 +1,21 @@
 import CosNaming
 from omniORB import CORBA
+# not part of this module, copy modules from GCS and place in PYTHONPATH
+import HIPERTELESCOPESERVER
 import os
+
+
+def get_telescope_server():
+    conn = CORBAConnection()
+    conn.init_orb()
+    conn.resolve_nameservice()
+
+    # name of CORBA object to access telescope server
+    # TODO: change to correct name
+    name = [CosNaming.NameComponent(id='HIPERTelescopeServer', kind='')]
+
+    server = conn.get_object(name, HIPERTELESCOPESERVER.HIPERTelescopeServer_ifce)
+    return server
 
 
 class CORBAConnection(object):
