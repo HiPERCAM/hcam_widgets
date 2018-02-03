@@ -2376,6 +2376,11 @@ class Switch(tk.Frame):
                        font=g.ENTRY_FONT,
                        value='Focal plane slide').grid(row=0, column=2,
                                                        sticky=tk.W)
+        self.tecs = tk.Radiobutton(self, text='CCD TECs', variable=self.val,
+                                   font=g.ENTRY_FONT, value='CCD TECs')
+        self.tecs.grid(row=0, column=3, sticky=tk.W)
+
+        self.setExpertLevel()
 
     def _changed(self, *args):
         g = get_root(self).globals
@@ -2383,19 +2388,41 @@ class Switch(tk.Frame):
             g.setup.pack(anchor=tk.W, pady=10)
             g.fpslide.pack_forget()
             g.observe.pack_forget()
+            g.tecs.pack_forget()
 
         elif self.val.get() == 'Focal plane slide':
             g.setup.pack_forget()
             g.fpslide.pack(anchor=tk.W, pady=10)
             g.observe.pack_forget()
+            g.tecs.pack_forget()
 
         elif self.val.get() == 'Observe':
             g.setup.pack_forget()
             g.fpslide.pack_forget()
             g.observe.pack(anchor=tk.W, pady=10)
+            g.tecs.pack_forget()
+
+        elif self.val.get() == 'CCD TECs':
+            g.setup.pack_forget()
+            g.fpslide.pack_forget()
+            g.observe.pack_forget()
+            g.tecs.pack(anchor=tk.W, pady=10)
 
         else:
             raise DriverError('Unrecognised Switch value')
+
+    def setExpertLevel(self):
+        """
+        Modifies widget according to expertise level, which in this
+        case is just matter of hiding or revealing the button to
+        set CCD temps
+        """
+        g = get_root(self).globals
+        level = g.cpars['expert_level']
+        if level == 0:
+            self.tecs.grid_forget()
+        else:
+            self.tecs.grid(row=0, column=3, sticky=tk.W)
 
 
 class TelChooser(tk.Menu):
