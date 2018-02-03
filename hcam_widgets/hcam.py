@@ -1621,8 +1621,7 @@ class Start(w.ActButton):
             return False
 
         # if we are nodding, send first trigger
-        nodPattern = data.get('appdata', {}).get('nodpattern', {})
-        if g.cpars['telins_name'] == 'GTC' and nodPattern:
+        def future_trigger():
             try:
                 success = execCommand(g, 'trigger')
                 if not success:
@@ -1631,6 +1630,11 @@ class Start(w.ActButton):
                 g.clog.warn('Run is paused indefinitely')
                 g.clog.warn('use "ngcbCmd seq start" to fix')
                 g.clog.warn(str(err))
+
+        nodPattern = data.get('appdata', {}).get('nodpattern', {})
+        if g.cpars['telins_name'] == 'GTC' and nodPattern:
+            # schedule a trigger command for 2s in the future
+            self.after(2000, future_trigger)
 
         # Run successfully started.
         # enable stop button, disable Start
