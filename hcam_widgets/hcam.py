@@ -1629,8 +1629,8 @@ class Start(w.ActButton):
                     raise Exception('Failed to send first trigger - exposure will be paused indefinitely')
             except Exception as err:
                 g.clog.warn('Run is paused indefinitely')
+                g.clog.warn('use "ngcbCmd seq start" to fix')
                 g.clog.warn(str(err))
-                return False
 
         # Run successfully started.
         # enable stop button, disable Start
