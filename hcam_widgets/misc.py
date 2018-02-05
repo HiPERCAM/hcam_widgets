@@ -17,6 +17,14 @@ if not six.PY3:
 else:
     from tkinter import filedialog
 
+try:
+    # should not be a required module since can run on WHT fine without it
+    from .gtc.corba import get_telescope_server
+    from .headers import create_header_from_telpars
+    has_corba = True
+except Exception as err:
+    has_corba = False
+
 
 class ReadServer(object):
     """
@@ -241,6 +249,12 @@ def createJSON(g, full=True):
     if full:
         data['hardware'] = g.ccd_hw.dumpJSON()
         data['tcs'] = g.info.dumpJSON()
+
+        if g.cpars['telins_name'].lower() == 'gtc' and has_corba:
+            data['gtc_headers'] = dict(
+                create_header_from_telpars(s.getTelescopeParams())
+            )
+    print(data)
     return data
 
 
