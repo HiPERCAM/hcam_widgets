@@ -20,7 +20,7 @@ else:
 try:
     # should not be a required module since can run on WHT fine without it
     from .gtc.corba import get_telescope_server
-    from .headers import create_header_from_telpars
+    from .gtc.headers import create_header_from_telpars
     has_corba = True
 except Exception as err:
     has_corba = False
@@ -251,9 +251,11 @@ def createJSON(g, full=True):
         data['tcs'] = g.info.dumpJSON()
 
         if g.cpars['telins_name'].lower() == 'gtc' and has_corba:
+            s = get_telescope_server()
             data['gtc_headers'] = dict(
                 create_header_from_telpars(s.getTelescopeParams())
             )
+
     print(data)
     return data
 
