@@ -2666,6 +2666,7 @@ class InfoFrame(tk.LabelFrame):
         self.tcs_data_queue = Queue()
         # start checking TCS info
         self.after(20000, self.update_tcs)
+        self.after(20000, self.update_tcs_table)
         # queue for slide position info
         self.slide_pos_queue = Queue()
         self.after(20000, self.update_slidepos)
