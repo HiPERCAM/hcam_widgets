@@ -19,7 +19,8 @@ def parse_hstring(hs):
     """
     # split the string on = and /, also stripping whitespace and annoying quotes
     name, value, comment = yield_three(
-        val.strip().strip("'") for val in filter(None, re.split("[=/]+", hs)))
+        [val.strip().strip("'") for val in filter(None, re.split("[=/]+", hs))]
+    )
 
     # if comment has a slash in it, put it back together
     try:
