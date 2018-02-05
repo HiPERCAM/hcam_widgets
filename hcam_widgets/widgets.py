@@ -18,6 +18,7 @@ from astropy.time import Time
 
 # internal
 from . import DriverError, tcs
+from .gtc.headers import create_gtc_header_table, add_gtc_header_table_row
 from .tkutils import get_root
 from .logs import Logger, GuiHandler
 from .astro import calc_riseset
@@ -2654,6 +2655,9 @@ class InfoFrame(tk.LabelFrame):
         tk.Label(self, text='CCD temps:').grid(row=4, column=6, padx=5, sticky=tk.W)
         self.ccd_temps.grid(row=4, column=7, padx=5, sticky=tk.W)
 
+        # add a FITS table to record TCS info
+        self.tcs_table = create_gtc_header_table()
+
         # start
         self.count = 0
         self.update()
@@ -2685,6 +2689,33 @@ class InfoFrame(tk.LabelFrame):
             foc=self._getVal(self.focus),
             mdist=self._getVal(self.mdist)
         )
+
+    def clear_tcs_table(self):
+        """
+        Create a new table from scratch - should be cleared for each run.
+        """
+        self.tcs_table = create_gtc_header_table()
+
+    def update_tcs_table(self):
+        """
+        Periodically update a table of info from the TCS.
+
+        Only works at GTC
+        """
+        g = get_root(self).globals
+        if not g.cpars['tcs_on'] or not g.cpars['telins_name'].lower() == 'gtc':
+            self.after(60000, self.update_tcs_table)
+            return
+
+        try:
+            tel_server = tcs.get_telescope_server()
+            telpars = tel_server.getTelescopeParams()
+            add_gtc_header_table_row(self.tcs_table, telpars)
+        except Exception as err:
+            g.clog.warn('Could not update table of TCS info\n' + str(err))
+
+        # schedule next call for 60s later
+        self.after(60000, self.update_tcs_table)
 
     def update_tcs(self):
         """

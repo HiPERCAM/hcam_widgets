@@ -4,6 +4,17 @@ import warnings
 import re
 
 from astropy.io import fits
+from astropy.table import Table
+from astropy.coordinates import Longitude
+from astropy import units as u
+from astropy.time import Time
+
+
+VARIABLE_GTC_KEYS = [
+    'LST', 'ROTATOR', 'PARANG', 'DOME_AZ', 'AZIMUTH', 'ELEVAT', 'AIRMASS',
+    'TELFOCUS', 'T_TUBE', 'T_PRIM', 'M2UX', 'M2UY', 'M2UZ', 'M2RX',
+    'HUMIN', 'HUMOUT', 'TAMBIENT', 'PRESSURE', 'HUMIDITY', 'WINDSPEE', 'WINDDIRE', 'DEWPOINT'
+]
 
 
 def yield_three(iterable):
@@ -38,6 +49,11 @@ def create_header_from_telpars(telpars):
 
     The GTC telescope server gives a list of string describing
     FITS header items such as RA, DEC, etc.
+
+    Arguments
+    ---------
+    telpars : list
+        list returned by server call to getTelescopeParams
     """
     # pars is a list of strings describing tel info in FITS
     # style, each entry in the list is a different class of
@@ -54,3 +70,30 @@ def create_header_from_telpars(telpars):
         hdr = fits.Header(map(parse_hstring, pars))
 
     return hdr
+
+
+def create_gtc_header_table():
+    t = Table(names=['MJD'] + VARIABLE_GTC_KEYS)
+    return t
+
+
+def add_gtc_header_table_row(t, telpars):
+    """
+    Add a row with current values to GTC table
+
+    Arguments
+    ---------
+    t : `~astropy.table.Table`
+        The table to append row to
+    telpars : list
+        list returned by server call to getTelescopeParams
+    """
+    now = Time.now().mjd
+    hdr = create_header_from_telpars(telpars)
+
+    # make dictionary of vals to put in table
+    vals = {k: v for k, v in hdr.items() if k in VARIABLE_GTC_KEYS}
+    vals['MJD'] = now
+    # store LST as hourangle
+    vals['LST'] = Longitude(vals['LST'], unit=u.hour).hourangle
+    t.add_row(vals)
