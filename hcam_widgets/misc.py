@@ -255,8 +255,6 @@ def createJSON(g, full=True):
             data['gtc_headers'] = dict(
                 create_header_from_telpars(s.getTelescopeParams())
             )
-
-    print(data)
     return data
 
 
