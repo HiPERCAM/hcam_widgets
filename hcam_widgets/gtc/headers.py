@@ -1,6 +1,7 @@
 # deal with headers from GTC
 from __future__ import print_function, unicode_literals, absolute_import, division
 import warnings
+import re
 
 from astropy.io import fits
 
