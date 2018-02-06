@@ -8,7 +8,6 @@ import sys
 import traceback
 import os
 import re
-from io import BytesIO
 
 from astropy.io import fits
 from astropy.io.votable import from_table
@@ -18,8 +17,10 @@ import requests
 from . import DriverError
 if not six.PY3:
     import tkFileDialog as filedialog
+    from StringIO import StringIO
 else:
     from tkinter import filedialog
+    from io import StringIO
 
 try:
     # should not be a required module since can run on WHT fine without it
@@ -359,12 +360,11 @@ def insertFITSHDU(g):
     run_number = getRunNumber(g)
     tcs_table = g.info.tcs_table
 
-    g.clog.info('adding TCS table data to {}'.format(run_number))
+    g.clog.info('Adding TCS table data to run{:%04d}.fits'.format(run_number))
     url = g.cpars['hipercam_server'] + 'addhdu'
     try:
-        vot = from_table(tcs_table)
-        fd = BytesIO()
-        vot.to_xml(fd, compressed=False, tabledata_format='binary')
+        fd = StringIO()
+        ascii.write(tcs_table, format='ecsv', output=fd)
         files = {'file': fd.getvalue()}
         r = requests.post(url, data={'run': 'run{:04d}.fits'.format(run_number)},
                           files=files)
