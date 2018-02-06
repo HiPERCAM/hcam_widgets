@@ -10,7 +10,7 @@ import os
 import re
 
 from astropy.io import fits
-from astropy.io.votable import from_table
+from astropy.io import ascii
 import requests
 
 
