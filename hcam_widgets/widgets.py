@@ -2541,6 +2541,11 @@ class Timer(tk.Label):
 
             if self.count % 10 == 0:
                 if not isRunActive(g):
+
+                    # try and write FITS table before enabling start button, otherwise
+                    # a new start will clear table
+                    insertFITSHDU(g)
+
                     g.observe.start.enable()
                     g.observe.stop.disable()
                     g.setup.ngcReset.enable()
