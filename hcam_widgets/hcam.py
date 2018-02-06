@@ -1640,11 +1640,12 @@ class Start(w.ActButton):
         # enable stop button, disable Start
         # also make inactive until RunType select box makes active again
         # start run timer
-
+        # finally, clear table which stores TCS info during this run
         self.disable()
         self.run_type_set = False
         g.observe.stop.enable()
         g.info.timer.start()
+        g.info.clear_tcs_table()
         return True
 
 

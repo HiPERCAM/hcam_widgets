@@ -23,7 +23,7 @@ from .tkutils import get_root
 from .logs import Logger, GuiHandler
 from .astro import calc_riseset
 from .misc import (execCommand, checkSimbad, isRunActive, stopNodding,
-                   getRunNumber, postJSON, getFrameNumber)
+                   getRunNumber, postJSON, getFrameNumber, insertFITSHDU)
 
 if not six.PY3:
     import Tkinter as tk
@@ -1667,6 +1667,7 @@ class Stop(ActButton):
         # flags to help with stopping in background
         self.stopped_ok = True
         self.stopping = False
+        self.run_being_stopped = None
 
     def enable(self):
         """
@@ -1715,6 +1716,7 @@ class Stop(ActButton):
 
         def stop_in_background():
             try:
+                self.run_being_stopped = getRunNumber(g)
                 self.stopping = True
                 if execCommand(g, 'abort'):
                     self.stopped_ok = True
@@ -1742,6 +1744,11 @@ class Stop(ActButton):
         if self.stopped_ok:
             # Exposure stopped OK; modify buttons
             self.disable()
+
+            # try and write FITS table before stopping, otherwise
+            # a new start will clear table
+            insertFITSHDU(g, g.info.tcs_table, self.run_being_stopped)
+
             g.observe.start.enable()
             g.setup.powerOn.disable()
             g.setup.powerOff.enable()

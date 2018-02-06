@@ -8,8 +8,12 @@ import sys
 import traceback
 import os
 import re
+from io import BytesIO
 
 from astropy.io import fits
+from astropy.io.votable import from_table
+import requests
+
 
 from . import DriverError
 if not six.PY3:
@@ -337,6 +341,46 @@ def jsonFromFits(fname):
         user=user
     )
     return json.dumps(setup_data)
+
+
+def insertFITSHDU(g, tcs_table, run_number):
+    """
+    Uploads a table of TCS data to the servers, which is appended onto a run.
+
+    Arguments
+    ---------
+    g : hcam_drivers.globals.Container
+        the Container object of application globals
+    tcs_table : `~astropy.table.Table`
+        the table to serialise and post
+    run_number : int
+        the run to append the data to
+    """
+    if not g.cpars['hcam_server_on']:
+        g.clog.warn('insertFITSHDU: servers are not active')
+        return False
+
+    g.clog.info('adding TCS table data to {}'.format(run_number))
+    url = g.cpars['hipercam_server'] + 'addhdu'
+    try:
+        vot = from_table(tcs_table)
+        fd = BytesIO()
+        vot.to_xml(fd, compressed=False, tabledata_format='binary')
+        files = {'file': fd.getvalue()}
+        r = requests.post(url, data={'run': 'run{:04d}.fits'.format(run_number)},
+                          files=files)
+        fd.close()
+        rs = ReadServer(r.content, status_msg=False)
+        if rs.ok:
+            g.clog.info('Response from server was OK')
+            return True
+        else:
+            g.clog.warn('Response from server was not OK')
+            g.clog.warn('Reason: ' + rs.err)
+            return False
+    except Exception as err:
+        g.clog.warn('insertFITSHDU failed')
+        g.clog.warn(str(err))
 
 
 def execCommand(g, command, timeout=10):
