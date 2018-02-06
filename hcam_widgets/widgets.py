@@ -1667,7 +1667,6 @@ class Stop(ActButton):
         # flags to help with stopping in background
         self.stopped_ok = True
         self.stopping = False
-        self.run_being_stopped = None
 
     def enable(self):
         """
@@ -1716,7 +1715,6 @@ class Stop(ActButton):
 
         def stop_in_background():
             try:
-                self.run_being_stopped = getRunNumber(g)
                 self.stopping = True
                 if execCommand(g, 'abort'):
                     self.stopped_ok = True
@@ -1745,9 +1743,9 @@ class Stop(ActButton):
             # Exposure stopped OK; modify buttons
             self.disable()
 
-            # try and write FITS table before stopping, otherwise
+            # try and write FITS table before enabling start button, otherwise
             # a new start will clear table
-            insertFITSHDU(g, g.info.tcs_table, self.run_being_stopped)
+            insertFITSHDU(g)
 
             g.observe.start.enable()
             g.setup.powerOn.disable()

@@ -343,7 +343,7 @@ def jsonFromFits(fname):
     return json.dumps(setup_data)
 
 
-def insertFITSHDU(g, tcs_table, run_number):
+def insertFITSHDU(g):
     """
     Uploads a table of TCS data to the servers, which is appended onto a run.
 
@@ -351,14 +351,13 @@ def insertFITSHDU(g, tcs_table, run_number):
     ---------
     g : hcam_drivers.globals.Container
         the Container object of application globals
-    tcs_table : `~astropy.table.Table`
-        the table to serialise and post
-    run_number : int
-        the run to append the data to
     """
     if not g.cpars['hcam_server_on']:
         g.clog.warn('insertFITSHDU: servers are not active')
         return False
+
+    run_number = getRunNumber(g)
+    tcs_table = g.info.tcs_table
 
     g.clog.info('adding TCS table data to {}'.format(run_number))
     url = g.cpars['hipercam_server'] + 'addhdu'
