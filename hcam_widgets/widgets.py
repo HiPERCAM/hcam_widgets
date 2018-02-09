@@ -2723,7 +2723,7 @@ class InfoFrame(tk.LabelFrame):
             telpars = tel_server.getTelescopeParams()
             add_gtc_header_table_row(self.tcs_table, telpars)
         except Exception as err:
-            g.clog.warn('Could not update table of TCS info\n' + str(err))
+            g.clog.warn('Could not update table of TCS info')
 
         # schedule next call for 60s later
         self.after(60000, self.update_tcs_table)
