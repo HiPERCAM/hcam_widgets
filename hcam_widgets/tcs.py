@@ -56,10 +56,8 @@ def getGtcTcs():
     if not has_corba:
         raise IOError('CORBA not installed')
 
-    server = get_telescope_server()
-
-    # can now use as standard python object, e.g
     try:
+        server = get_telescope_server()
         pars = server.getTelescopeParams()
         ra = server.getRightAscention()
         dec = server.getDeclination()
