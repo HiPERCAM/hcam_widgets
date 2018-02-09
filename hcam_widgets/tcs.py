@@ -59,7 +59,13 @@ def getGtcTcs():
     server = get_telescope_server()
 
     # can now use as standard python object, e.g
-    pars = server.getTelescopeParams()
+    try:
+        pars = server.getTelescopeParams()
+        ra = server.getRightAscention()
+        dec = server.getDeclination()
+        focus = server.getFocus()
+    except:
+        raise IOError('cannot communicate with GTC telescope server')
 
     # pars is a list of strings describing tel info in FITS
     # style, each entry in the list is a different class of
@@ -74,9 +80,6 @@ def getGtcTcs():
         pa = float(value)
     else:
         pa = -999
-    ra = server.getRightAscention()
-    dec = server.getDeclination()
-    focus = server.getFocus()
 
     # format is "keyword = value \ comment; keyword = value \ comment; ..."
     return ra, dec, pa, focus

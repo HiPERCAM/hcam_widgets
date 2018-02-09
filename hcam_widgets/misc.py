@@ -256,10 +256,13 @@ def createJSON(g, full=True):
         data['tcs'] = g.info.dumpJSON()
 
         if g.cpars['telins_name'].lower() == 'gtc' and has_corba:
-            s = get_telescope_server()
-            data['gtc_headers'] = dict(
-                create_header_from_telpars(s.getTelescopeParams())
-            )
+            try:
+                s = get_telescope_server()
+                data['gtc_headers'] = dict(
+                    create_header_from_telpars(s.getTelescopeParams())
+                )
+            except:
+                g.clog.warn('cannot get GTC headers from telescope server')
     return data
 
 
