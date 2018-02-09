@@ -1745,7 +1745,11 @@ class Stop(ActButton):
 
             # try and write FITS table before enabling start button, otherwise
             # a new start will clear table
-            insertFITSHDU(g)
+            try:
+                insertFITSHDU(g)
+            except Exception as err:
+                g.clog.warn('Could not add FITS Table to run')
+                g.clog.warn(str(err))
 
             g.observe.start.enable()
             g.setup.powerOn.disable()
@@ -2544,7 +2548,11 @@ class Timer(tk.Label):
 
                     # try and write FITS table before enabling start button, otherwise
                     # a new start will clear table
-                    insertFITSHDU(g)
+                    try:
+                        insertFITSHDU(g)
+                    except Exception as err:
+                        g.clog.warn('Could not add FITS Table to run')
+                        g.clog.warn(str(err))
 
                     g.observe.start.enable()
                     g.observe.stop.disable()
