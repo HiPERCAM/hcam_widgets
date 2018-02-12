@@ -363,7 +363,7 @@ def insertFITSHDU(g):
     run_number = getRunNumber(g)
     tcs_table = g.info.tcs_table
 
-    g.clog.info('Adding TCS table data to run{:%04d}.fits'.format(run_number))
+    g.clog.info('Adding TCS table data to run{:04d}.fits'.format(run_number))
     url = g.cpars['hipercam_server'] + 'addhdu'
     try:
         fd = StringIO()
