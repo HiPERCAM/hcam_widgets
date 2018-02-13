@@ -214,10 +214,10 @@ def postJSON(g, data):
     g.clog.debug('content length = ' + str(len(json_data)))
     req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
     response = opener.open(req, timeout=5).read()
-    g.rlog.info('postJSON response: ' + response.decode())
     csr = ReadServer(response, status_msg=False)
     if not csr.ok:
         g.clog.warn('Server response was not OK')
+        g.rlog.warn('postJSON response: ' + response.decode())
         g.clog.warn('Server error = ' + csr.err)
         return False
 
