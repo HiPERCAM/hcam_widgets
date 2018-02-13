@@ -214,9 +214,11 @@ def postJSON(g, data):
     g.clog.debug('content length = ' + str(len(json_data)))
     req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
     response = opener.open(req, timeout=5)
+    g.rlog.info('postJSON response: ' + response)
     csr = ReadServer(response.read(), status_msg=False)
     if not csr.ok:
         g.clog.warn('Server response was not OK')
+        g.clog.warn('Server error = ' + csr.err)
         return False
 
     # now try to setup nodding server if appropriate

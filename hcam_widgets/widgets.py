@@ -2535,7 +2535,7 @@ class Timer(tk.Label):
     def update(self):
         """
         Updates @ 10Hz to give smooth running clock, checks
-        run status @1Hz to reduce load on servers.
+        run status @0.5Hz to reduce load on servers.
         """
         g = get_root(self).globals
         try:
@@ -2543,7 +2543,7 @@ class Timer(tk.Label):
             delta = int(round(time.time() - self.startTime))
             self.configure(text='{0:<d} s'.format(delta))
 
-            if self.count % 10 == 0:
+            if self.count % 20 == 0:
                 if not isRunActive(g):
 
                     # try and write FITS table before enabling start button, otherwise
@@ -2559,7 +2559,7 @@ class Timer(tk.Label):
                     g.setup.ngcReset.enable()
                     g.setup.powerOn.disable()
                     g.setup.powerOff.enable()
-                    g.clog.info('Run stopped')
+                    g.clog.info('Timer detected stopped run')
 
                     # enable idle mode now run has stopped
                     g.clog.info('Setting chips to idle')
