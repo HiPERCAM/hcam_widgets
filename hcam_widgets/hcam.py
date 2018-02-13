@@ -605,7 +605,7 @@ class InstPars(tk.LabelFrame):
             self.nodLab.config(state='disable')
             if not self.drift_frame.winfo_ismapped():
                 self.quad_frame.grid_forget()
-                self.drift_frame.grid(row=9, column=0, columnspan=3,
+                self.drift_frame.grid(row=10, column=0, columnspan=3,
                                       sticky=tk.W+tk.N)
 
             if not self.frozen:
@@ -648,7 +648,7 @@ class InstPars(tk.LabelFrame):
                 self.nodLab.config(state='disable')
             if not self.quad_frame.winfo_ismapped():
                 self.drift_frame.grid_forget()
-                self.quad_frame.grid(row=9, column=0, columnspan=3,
+                self.quad_frame.grid(row=10, column=0, columnspan=3,
                                      sticky=tk.W+tk.N)
 
             if not self.frozen:
