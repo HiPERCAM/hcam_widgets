@@ -1732,6 +1732,7 @@ class Stop(ActButton):
         t = threading.Thread(target=stop_in_background)
         t.daemon = True
         t.start()
+        self.after(500, self.check)
 
     def check(self):
         """
@@ -1793,7 +1794,7 @@ class Stop(ActButton):
             g.setup.powerOff.disable()
 
             # wait a second before trying again
-            self.after(1000, self.check)
+            self.after(500, self.check)
 
         else:
             self.enable()
