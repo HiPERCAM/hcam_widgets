@@ -38,6 +38,20 @@ or if you don't have root access::
 
  pip install --user .
 
+Optional package dependencies
+-----------------------------
+
+``hcam_widgets`` supports several other tools, such as the finding chart tool ``hfinder`` and the
+instrument control GUI ``hdriver``. Most users will need no extra modules installed. However,
+If you want to be able to run ``hdriver``, *and* you want full communication with the telescope
+whilst running at the GTC, you need to install the CORBA implementation ``omniORBpy``.
+
+Full install instructions are found at the omniORB project `homepage <http://omniorb.sourceforge.net/>`_.
+Be sure to install both omniORB and omniORBpy. Also, the omniORBpy module and the lib64 variant must
+both be in the ``PYTHONPATH``. Finally, communicating with the GTC requires the installation of
+Interface Definition Language (IDL) files, and the python modules compiled from them. Contact S. Littlefair
+for these files, which must also be in the ``PYTHONPATH``.
+
 * Free software: MIT license
 
 
