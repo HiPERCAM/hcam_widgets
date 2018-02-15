@@ -18,11 +18,12 @@ from astropy.time import Time
 
 # internal
 from . import DriverError, tcs
+from .gtc.headers import create_gtc_header_table, add_gtc_header_table_row
 from .tkutils import get_root
 from .logs import Logger, GuiHandler
 from .astro import calc_riseset
 from .misc import (execCommand, checkSimbad, isRunActive, stopNodding,
-                   getRunNumber, postJSON, getFrameNumber)
+                   getRunNumber, postJSON, getFrameNumber, insertFITSHDU)
 
 if not six.PY3:
     import Tkinter as tk
@@ -1731,6 +1732,7 @@ class Stop(ActButton):
         t = threading.Thread(target=stop_in_background)
         t.daemon = True
         t.start()
+        self.after(500, self.check)
 
     def check(self):
         """
@@ -1741,6 +1743,15 @@ class Stop(ActButton):
         if self.stopped_ok:
             # Exposure stopped OK; modify buttons
             self.disable()
+
+            # try and write FITS table before enabling start button, otherwise
+            # a new start will clear table
+            try:
+                insertFITSHDU(g)
+            except Exception as err:
+                g.clog.warn('Could not add FITS Table to run')
+                g.clog.warn(str(err))
+
             g.observe.start.enable()
             g.setup.powerOn.disable()
             g.setup.powerOff.enable()
@@ -1783,7 +1794,7 @@ class Stop(ActButton):
             g.setup.powerOff.disable()
 
             # wait a second before trying again
-            self.after(1000, self.check)
+            self.after(500, self.check)
 
         else:
             self.enable()
@@ -2376,6 +2387,11 @@ class Switch(tk.Frame):
                        font=g.ENTRY_FONT,
                        value='Focal plane slide').grid(row=0, column=2,
                                                        sticky=tk.W)
+        self.tecs = tk.Radiobutton(self, text='CCD TECs', variable=self.val,
+                                   font=g.ENTRY_FONT, value='CCD TECs')
+        self.tecs.grid(row=0, column=3, sticky=tk.W)
+
+        self.setExpertLevel()
 
     def _changed(self, *args):
         g = get_root(self).globals
@@ -2383,19 +2399,44 @@ class Switch(tk.Frame):
             g.setup.pack(anchor=tk.W, pady=10)
             g.fpslide.pack_forget()
             g.observe.pack_forget()
+            g.tecs.pack_forget()
 
         elif self.val.get() == 'Focal plane slide':
             g.setup.pack_forget()
             g.fpslide.pack(anchor=tk.W, pady=10)
             g.observe.pack_forget()
+            g.tecs.pack_forget()
 
         elif self.val.get() == 'Observe':
             g.setup.pack_forget()
             g.fpslide.pack_forget()
             g.observe.pack(anchor=tk.W, pady=10)
+            g.tecs.pack_forget()
+
+        elif self.val.get() == 'CCD TECs':
+            g.setup.pack_forget()
+            g.fpslide.pack_forget()
+            g.observe.pack_forget()
+            g.tecs.pack(anchor=tk.W, pady=10)
 
         else:
             raise DriverError('Unrecognised Switch value')
+
+    def setExpertLevel(self):
+        """
+        Modifies widget according to expertise level, which in this
+        case is just matter of hiding or revealing the button to
+        set CCD temps
+        """
+        g = get_root(self).globals
+        level = g.cpars['expert_level']
+        if level == 0:
+            if self.val.get() == 'CCD TECs':
+                self.val.set('Observe')
+                self._changed()
+            self.tecs.grid_forget()
+        else:
+            self.tecs.grid(row=0, column=3, sticky=tk.W)
 
 
 class TelChooser(tk.Menu):
@@ -2495,7 +2536,7 @@ class Timer(tk.Label):
     def update(self):
         """
         Updates @ 10Hz to give smooth running clock, checks
-        run status @1Hz to reduce load on servers.
+        run status @0.5Hz to reduce load on servers.
         """
         g = get_root(self).globals
         try:
@@ -2503,14 +2544,23 @@ class Timer(tk.Label):
             delta = int(round(time.time() - self.startTime))
             self.configure(text='{0:<d} s'.format(delta))
 
-            if self.count % 10 == 0:
+            if self.count % 20 == 0:
                 if not isRunActive(g):
+
+                    # try and write FITS table before enabling start button, otherwise
+                    # a new start will clear table
+                    try:
+                        insertFITSHDU(g)
+                    except Exception as err:
+                        g.clog.warn('Could not add FITS Table to run')
+                        g.clog.warn(str(err))
+
                     g.observe.start.enable()
                     g.observe.stop.disable()
                     g.setup.ngcReset.enable()
                     g.setup.powerOn.disable()
                     g.setup.powerOff.enable()
-                    g.clog.info('Run stopped')
+                    g.clog.info('Timer detected stopped run')
 
                     # enable idle mode now run has stopped
                     g.clog.info('Setting chips to idle')
@@ -2624,6 +2674,9 @@ class InfoFrame(tk.LabelFrame):
         tk.Label(self, text='CCD temps:').grid(row=4, column=6, padx=5, sticky=tk.W)
         self.ccd_temps.grid(row=4, column=7, padx=5, sticky=tk.W)
 
+        # add a FITS table to record TCS info
+        self.tcs_table = create_gtc_header_table()
+
         # start
         self.count = 0
         self.update()
@@ -2632,6 +2685,7 @@ class InfoFrame(tk.LabelFrame):
         self.tcs_data_queue = Queue()
         # start checking TCS info
         self.after(20000, self.update_tcs)
+        self.after(20000, self.update_tcs_table)
         # queue for slide position info
         self.slide_pos_queue = Queue()
         self.after(20000, self.update_slidepos)
@@ -2655,6 +2709,33 @@ class InfoFrame(tk.LabelFrame):
             foc=self._getVal(self.focus),
             mdist=self._getVal(self.mdist)
         )
+
+    def clear_tcs_table(self):
+        """
+        Create a new table from scratch - should be cleared for each run.
+        """
+        self.tcs_table = create_gtc_header_table()
+
+    def update_tcs_table(self):
+        """
+        Periodically update a table of info from the TCS.
+
+        Only works at GTC
+        """
+        g = get_root(self).globals
+        if not g.cpars['tcs_on'] or not g.cpars['telins_name'].lower() == 'gtc':
+            self.after(60000, self.update_tcs_table)
+            return
+
+        try:
+            tel_server = tcs.get_telescope_server()
+            telpars = tel_server.getTelescopeParams()
+            add_gtc_header_table_row(self.tcs_table, telpars)
+        except Exception as err:
+            g.clog.warn('Could not update table of TCS info')
+
+        # schedule next call for 60s later
+        self.after(60000, self.update_tcs_table)
 
     def update_tcs(self):
         """
@@ -2738,8 +2819,10 @@ class InfoFrame(tk.LabelFrame):
 
                     # format ra, dec as HMS
                     coo = coord.SkyCoord(ra, dec, unit=(u.deg, u.deg))
-                    ratxt = coo.ra.to_string(sep=':', unit=u.hour)
-                    dectxt = coo.dec.to_string(sep=':', unit=u.deg, alwayssign=True)
+                    ratxt = coo.ra.to_string(sep=':', unit=u.hour, precision=0)
+                    dectxt = coo.dec.to_string(sep=':', unit=u.deg,
+                                               alwayssign=True,
+                                               precision=0)
                     self.ra.configure(text=ratxt)
                     self.dec.configure(text=dectxt)
 

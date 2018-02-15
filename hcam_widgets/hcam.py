@@ -605,7 +605,7 @@ class InstPars(tk.LabelFrame):
             self.nodLab.config(state='disable')
             if not self.drift_frame.winfo_ismapped():
                 self.quad_frame.grid_forget()
-                self.drift_frame.grid(row=9, column=0, columnspan=3,
+                self.drift_frame.grid(row=10, column=0, columnspan=3,
                                       sticky=tk.W+tk.N)
 
             if not self.frozen:
@@ -648,7 +648,7 @@ class InstPars(tk.LabelFrame):
                 self.nodLab.config(state='disable')
             if not self.quad_frame.winfo_ismapped():
                 self.drift_frame.grid_forget()
-                self.quad_frame.grid(row=9, column=0, columnspan=3,
+                self.quad_frame.grid(row=10, column=0, columnspan=3,
                                      sticky=tk.W+tk.N)
 
             if not self.frozen:
@@ -1620,14 +1620,32 @@ class Start(w.ActButton):
             g.clog.warn(str(err))
             return False
 
+        # if we are nodding, send first trigger
+        def future_trigger():
+            try:
+                success = execCommand(g, 'trigger')
+                if not success:
+                    raise Exception('Failed to send first trigger - exposure will be paused indefinitely')
+            except Exception as err:
+                g.clog.warn('Run is paused indefinitely')
+                g.clog.warn('use "ngcbCmd seq start" to fix')
+                g.clog.warn(str(err))
+
+        nodPattern = data.get('appdata', {}).get('nodpattern', {})
+        if g.cpars['telins_name'] == 'GTC' and nodPattern:
+            # schedule a trigger command for 2s in the future
+            self.after(2000, future_trigger)
+
         # Run successfully started.
         # enable stop button, disable Start
         # also make inactive until RunType select box makes active again
         # start run timer
+        # finally, clear table which stores TCS info during this run
         self.disable()
         self.run_type_set = False
         g.observe.stop.enable()
         g.info.timer.start()
+        g.info.clear_tcs_table()
         return True
 
 

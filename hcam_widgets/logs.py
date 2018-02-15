@@ -63,6 +63,9 @@ class FileHandler(logging.FileHandler):
                                       '%Y-%m-%d %H:%M:%S')
         self.setFormatter(formatter)
 
+        # include DEBUG messages
+        self.setLevel(logging.DEBUG)
+
 
 class StreamHandler(logging.StreamHandler):
     """
