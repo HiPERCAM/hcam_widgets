@@ -3734,14 +3734,14 @@ class WinQuads(tk.Frame):
             perform_check = all([param is not None for param in (
                 xsll, xslr, ys, nx, ny
             )])
-            if (perform_check and ((xsll - 1) % xbin != 0 or (xslr - 1) % xbin != 0 or
+            if (perform_check and ((xsll - 1) % xbin != 0 or (xslr - 1025) % xbin != 0 or
                                    (ys - 1) % ybin != 0)):
                 synced = False
 
             perform_check = all([param is not None for param in (
                 xsul, xsur, ys, nx, ny
             )])
-            if (perform_check and ((xsul - 1) % xbin != 0 or (xsur - 1) % xbin != 0 or
+            if (perform_check and ((xsul - 1) % xbin != 0 or (xsur - 1025) % xbin != 0 or
                                    (ys - 1) % ybin != 0)):
                 synced = False
 
@@ -3793,20 +3793,20 @@ class WinQuads(tk.Frame):
             return
 
         for n, (xsll, xsul, xslr, xsur, ys, nx, ny) in enumerate(self):
-            if xsll % xbin != 1:
+            if (xsll-1) % xbin != 0:
                 xsll = xbin * ((xsll-1)//xbin)+1
                 self.xsll[n].set(xsll)
-            if xsul % xbin != 1:
+            if (xsul-1) % xbin != 0:
                 xsul = xbin * ((xsul-1)//xbin)+1
                 self.xsul[n].set(xsul)
-            if xslr % xbin != 1:
-                xslr = xbin * ((xslr-1)//xbin)+1
+            if (xslr-1025) % xbin != 0:
+                xslr = xbin * ((xslr-1025)//xbin)+1025
                 self.xslr[n].set(xslr)
-            if xsur % xbin != 1:
-                xsur = xbin * ((xsur-1)//xbin)+1
+            if (xsur-1025) % xbin != 0:
+                xsur = xbin * ((xsur-1025)//xbin)+1025
                 self.xsur[n].set(xsur)
 
-            if ybin > 1 and ys % ybin != 1:
+            if ybin > 1 and (ys-1) % ybin != 0:
                 ys = ybin*((ys-1)//ybin)+1
                 self.ys[n].set(ys)
 
