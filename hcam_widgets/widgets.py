@@ -371,9 +371,13 @@ class IntegerEntry(tk.Entry):
             # Store new value.
             self._value = newvalue
             self._variable.set(self.newvalue)
+            if self.checker:
+                self.checker(*dummy)
         else:
             # Store new value
             self._value = value
+            if self.checker:
+                self.checker(*dummy)
 
     # following are callbacks for bindings
     def _dadd1(self, event):
