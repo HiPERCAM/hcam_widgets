@@ -10,6 +10,7 @@ import warnings
 from functools import reduce
 import numpy as np
 import six
+import subprocess
 
 # astropy utilities
 from astropy import coordinates as coord
@@ -2570,6 +2571,9 @@ class Timer(tk.Label):
                     g.setup.powerOn.disable()
                     g.setup.powerOff.enable()
                     g.clog.info('Timer detected stopped run')
+
+                    warn_cmd = '/usr/bin/ssh observer@192.168.1.1 spd-say "\'exposure finished\'"'
+                    subprocess.check_output(warn_cmd, shell=True, stderr=subprocess.PIPE)
 
                     # enable idle mode now run has stopped
                     g.clog.info('Setting chips to idle')
