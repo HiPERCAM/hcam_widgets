@@ -3417,6 +3417,7 @@ class WinPairs(tk.Frame):
                 self.ys[n].set(ys)
 
             n += 1
+        self.sbutt.config(bg=g.COL['main'])
         self.sbutt.config(state='disable')
 
     def freeze(self):
@@ -3810,6 +3811,7 @@ class WinQuads(tk.Frame):
                 ys = ybin*((ys-1)//ybin)+1
                 self.ys[n].set(ys)
 
+        self.sbutt.config(bg=g.COL['main'])
         self.sbutt.config(state='disable')
 
     def freeze(self):
@@ -4141,6 +4143,7 @@ class Windows(tk.Frame):
                 self.ys[n].set(ys)
 
             n += 1
+        self.sbutt.config(bg=g.COL['main'])
         self.sbutt.config(state='disable')
 
     def freeze(self):
