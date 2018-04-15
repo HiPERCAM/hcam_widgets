@@ -4075,10 +4075,11 @@ class Windows(tk.Frame):
             # "synced" because the purpose of this is to enable
             # / disable the sync button and we don't want it to be
             # enabled just because xs or ys are not set.
-            if xs is not None and ys is not None and nx is not None and \
-                    ny is not None and \
-                    ((xs - 1) % xbin != 0 or (ys - 1) % ybin != 0):
-                synced = False
+            if (xs is not None and ys is not None and nx is not None and
+                ny is not None):
+                    if (xs < 1025 and ((xs - 1) % xbin != 0 or (ys - 1) % ybin != 0)
+                        or ((xs-1025) % xbin != 0 or (ys - 1) % ybin != 0)):
+                        synced = False
 
             # Range checks
             if xs is None or nx is None or xs + nx - 1 > xsw.imax:
@@ -4129,7 +4130,10 @@ class Windows(tk.Frame):
         n = 0
         for xs, ys, nx, ny in self:
             if xbin > 1 and xs % xbin != 1:
-                xs = xbin*((xs-1)//xbin)+1
+                if xs < 1025:
+                    xs = xbin*((xs-1)//xbin)+1
+                else:
+                    xs = xbin*((xs-1025)//xbin)+1025
                 self.xs[n].set(xs)
 
             if ybin > 1 and ys % ybin != 1:
