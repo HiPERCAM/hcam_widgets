@@ -491,9 +491,7 @@ class InstPars(tk.LabelFrame):
         # dwell
         dwell = data.get('dwell', 0)
         self.expose.set(str(float(dwell)))
-        # binning
-        self.wframe.xbin.set(data.get('xbin', 1))
-        self.wframe.ybin.set(data.get('ybin', 1))
+
         # multipliers
         mult_values = data.get('multipliers',
                                (1, 1, 1, 1, 1))
@@ -512,6 +510,10 @@ class InstPars(tk.LabelFrame):
         if 'app' in data:
             self.app.set(data['app'])
             app = data['app']
+            # binning
+            self.wframe.xbin.set(data.get('xbin', 1))
+            self.wframe.ybin.set(data.get('ybin', 1))
+
             if app == 'Drift':
                 # disable clear mode in drift
                 self.clear.set(0)
