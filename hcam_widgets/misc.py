@@ -42,6 +42,8 @@ class ReadServer(object):
      err     : message if ok == False
      state   : state of the camera. Possibilties are:
                'IDLE', 'BUSY', 'ERROR', 'ABORT', 'UNKNOWN'
+     clocks  : whether the clock voltages are enabled. Possible values:
+               'enabled', 'disabled'
      run     : current or last run number
     """
     def __init__(self, resp, status_msg=False):
@@ -61,6 +63,7 @@ class ReadServer(object):
             self.ok = False
             self.err = 'Could not parse JSON response'
             self.state = None
+            self.clocks = None
             self.root = dict()
             return
 
@@ -69,6 +72,7 @@ class ReadServer(object):
             self.ok = False
             self.err = 'Could not identify status'
             self.state = None
+            self.clocks = None
             return
         else:
             self.ok = True if self.root['RETCODE'] == "OK" else False
@@ -77,6 +81,7 @@ class ReadServer(object):
             self.state = None
             self.run = 0
             self.err = ''
+            self.clocks = None
             self.msg = self.root['MESSAGEBUFFER']
             return
 
@@ -86,12 +91,27 @@ class ReadServer(object):
             self.ok = False
             self.err = 'Could not identify state'
             self.state = None
+            self.clocks = None
             self.root = dict()
             return
         else:
             self.ok = True
             self.err = ''
             self.state = self.root['system.subStateName']
+
+        # determine state of clocks
+        sfind = self.root['clcd_0.statusName']
+        if sfind is 'ERR':
+            self.ok = False
+            self.err = 'Could not identify clock status'
+            self.state = None
+            self.clocks = None
+            self.root = dict()
+            return
+        else:
+            self.ok = True
+            self.err = ''
+            self.clocks = self.root['clcd_0.statusName']
 
         # Find current run number (set it to 0 if we fail)
         newDataFileName = self.root["exposure.newDataFileName"]
@@ -454,6 +474,21 @@ def isRunActive(g):
             raise DriverError('isRunActive error, state = ' + rs.state)
     else:
         raise DriverError('isRunActive error: servers are not active')
+
+
+def isPoweredOn(g):
+    if g.cpars['hcam_server_on']:
+        url = g.cpars['hipercam_server'] + 'summary'
+        response = urllib.request.urlopen(url, timeout=2)
+        rs = ReadServer(response.read(), status_msg=True)
+        if not rs.ok:
+            raise DriverError('isPoweredOn error: ' + str(rs.err))
+        if rs.clocks == 'enabled':
+            return True
+        else:
+            return False
+    else:
+        raise DriverError('isPoweredOn error: servers are not active')
 
 
 def getFrameNumber(g):

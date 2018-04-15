@@ -23,7 +23,8 @@ from .tkutils import get_root
 from .logs import Logger, GuiHandler
 from .astro import calc_riseset
 from .misc import (execCommand, checkSimbad, isRunActive, stopNodding,
-                   getRunNumber, postJSON, getFrameNumber, insertFITSHDU)
+                   getRunNumber, postJSON, getFrameNumber, insertFITSHDU,
+                   isPoweredOn)
 
 if not six.PY3:
     import Tkinter as tk
@@ -2159,6 +2160,9 @@ class CLDCOn(ActButton):
     def act(self):
         g = get_root(self).globals
         g.clog.debug('CLDC On pressed')
+        if isPoweredOn(g):
+            g.clog.info('clocks already on')
+            return True
 
         if execCommand(g, 'pon'):
             g.clog.info('CLDC on command successful; clocks powered on')
@@ -2227,10 +2231,11 @@ class PowerOn(ActButton):
             g.clog.info('ESO server online')
             g.cpars['eso_server_online'] = True
 
-            success = execCommand(g, 'pon')
-            if not success:
-                g.clog.warn('Unable to power on CLDC')
-                return False
+            if not isPoweredOn(g):
+                success = execCommand(g, 'pon')
+                if not success:
+                    g.clog.warn('Unable to power on CLDC')
+                    return False
 
             # change other buttons
             self.disable()
