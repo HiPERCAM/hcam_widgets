@@ -3352,7 +3352,7 @@ class WinPairs(tk.Frame):
             # enabled just because xs or ys are not set.
             perform_check = all([param is not None for param in (xsl, xsr, ys, nx, ny)])
             if (perform_check and
-                ((xsl - 1) % xbin != 0 or (xsr - 1) % xbin != 0 or
+                ((xsl - 1) % xbin != 0 or (xsr - 1025) % xbin != 0 or
                  (ys - 1) % ybin != 0)):
                 synced = False
 
@@ -3407,14 +3407,12 @@ class WinPairs(tk.Frame):
         n = 0
         for xsl, xsr, ys, nx, ny in self:
             if xbin > 1:
-                if xsl % xbin != 1:
-                    xsl = xbin*((xsl-1)//xbin)+1
-                    self.xsl[n].set(xsl)
-                if xsr % xbin != 1:
-                    xsr = xbin*((xsr-1)//xbin)+1
-                    self.xsr[n].set(xsr)
+                xsl = xbin*((xsl-1)//xbin)+1
+                self.xsl[n].set(xsl)
+                xsr = xbin*((xsr-1025)//xbin)+1025
+                self.xsr[n].set(xsr)
 
-            if ybin > 1 and ys % ybin != 1:
+            if ybin > 1:
                 ys = ybin*((ys-1)//ybin)+1
                 self.ys[n].set(ys)
 
