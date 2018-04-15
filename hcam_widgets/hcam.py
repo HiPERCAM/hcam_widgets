@@ -506,13 +506,16 @@ class InstPars(tk.LabelFrame):
             self.nodPattern = {}
             self.nod.set(False)
 
+        # binning
+        self.quad_frame.xbin.set(data.get('xbin', 1))
+        self.quad_frame.ybin.set(data.get('ybin', 1))
+        self.drift_frame.xbin.set(data.get('xbin', 1))
+        self.drift_frame.ybin.set(data.get('ybin', 1))
+
         # now for the behaviour which depends on mode
         if 'app' in data:
             self.app.set(data['app'])
             app = data['app']
-            # binning
-            self.wframe.xbin.set(data.get('xbin', 1))
-            self.wframe.ybin.set(data.get('ybin', 1))
 
             if app == 'Drift':
                 # disable clear mode in drift
@@ -532,6 +535,7 @@ class InstPars(tk.LabelFrame):
                 self.wframe.ys[0].set(data['y1start'])
                 self.wframe.nx[0].set(data['x1size'])
                 self.wframe.ny[0].set(data['y1size'])
+                self.wframe.check()
 
             elif app == 'FullFrame':
                 # enable clear mode if set
@@ -563,6 +567,7 @@ class InstPars(tk.LabelFrame):
                     else:
                         break
                 self.wframe.nquad.set(nquad)
+                self.wframe.check()
 
     def check(self, *args):
         """
@@ -584,16 +589,16 @@ class InstPars(tk.LabelFrame):
         status = True
         g = get_root(self).globals
 
-        # keep binning factors of drift mode and windowed mode up to date
-        xbin, ybin = self.wframe.xbin.value(), self.wframe.ybin.value()
-        frame = self.quad_frame if self.quad_frame is not self.wframe else self.drift_frame
-        frame.xbin.set(xbin)
-        frame.ybin.set(ybin)
-
         # clear errors on binning (may be set later if FF)
         xbinw, ybinw = self.wframe.xbin, self.wframe.ybin
         xbinw.config(bg=g.COL['main'])
         ybinw.config(bg=g.COL['main'])
+
+        # keep binning factors of drift mode and windowed mode up to date
+        xbin, ybin = self.wframe.xbin.value(), self.wframe.ybin.value()
+        oframe = self.quad_frame if self.quad_frame is not self.wframe else self.drift_frame
+        oframe.xbin.set(xbin)
+        oframe.ybin.set(ybin)
 
         if not self.frozen:
             if self.clear() or self.isDrift():
