@@ -100,7 +100,7 @@ class ReadServer(object):
             self.state = self.root['system.subStateName']
 
         # determine state of clocks
-        sfind = self.root['clcd_0.statusName']
+        sfind = self.root['cldc_0.statusName']
         if sfind is 'ERR':
             self.ok = False
             self.err = 'Could not identify clock status'
@@ -111,7 +111,7 @@ class ReadServer(object):
         else:
             self.ok = True
             self.err = ''
-            self.clocks = self.root['clcd_0.statusName']
+            self.clocks = self.root['cldc_0.statusName']
 
         # Find current run number (set it to 0 if we fail)
         newDataFileName = self.root["exposure.newDataFileName"]
