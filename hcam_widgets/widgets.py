@@ -260,8 +260,8 @@ class IntegerEntry(tk.Entry):
         if self._leftMousePressed:
             self._leftMousePressed = False
             self.after_cancel(self.after_id)
-            if self.checker:
-                self.checker()
+        if self.checker:
+            self.checker()
 
     def _shiftLeftMouseDown(self, event):
         self._shiftLeftMousePressed = True
@@ -272,8 +272,8 @@ class IntegerEntry(tk.Entry):
         if self._shiftLeftMousePressed:
             self._shiftLeftMousePressed = False
             self.after_cancel(self.after_id)
-            if self.checker:
-                self.checker()
+        if self.checker:
+            self.checker()
 
     def _rightMouseDown(self, event):
         self._rightMousePressed = True
@@ -284,8 +284,8 @@ class IntegerEntry(tk.Entry):
         if self._rightMousePressed:
             self._rightMousePressed = False
             self.after_cancel(self.after_id)
-            if self.checker:
-                self.checker()
+        if self.checker:
+            self.checker()
 
     def _shiftRightMouseDown(self, event):
         self._shiftRightMousePressed = True
@@ -296,8 +296,8 @@ class IntegerEntry(tk.Entry):
         if self._shiftRightMousePressed:
             self._shiftRightMousePressed = False
             self.after_cancel(self.after_id)
-            if self.checker:
-                self.checker()
+        if self.checker:
+            self.checker()
 
     def _pollMouse(self):
         """
