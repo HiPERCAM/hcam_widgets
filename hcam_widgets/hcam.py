@@ -595,8 +595,9 @@ class InstPars(tk.LabelFrame):
         ybinw.config(bg=g.COL['main'])
 
         # keep binning factors of drift mode and windowed mode up to date
-        xbin, ybin = self.wframe.xbin.value(), self.wframe.ybin.value()
-        oframe = self.quad_frame if self.drift_frame.winfo_ismapped() else self.drift_frame
+        oframe, aframe = ((self.quad_frame, self.drift_frame) if self.drift_frame.winfo_ismapped()
+                          else (self.drift_frame, self.quad_frame))
+        xbin, ybin = aframe.xbin.value(), aframe.ybin.value()
         oframe.xbin.set(xbin)
         oframe.ybin.set(ybin)
 

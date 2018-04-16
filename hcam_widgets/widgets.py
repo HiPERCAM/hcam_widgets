@@ -746,6 +746,14 @@ class ListInt(IntegerEntry):
         except ValueError:
             return None
 
+    def set(self, num):
+        """
+        Sets current value to num
+        """
+        if self.validate(num) is not None:
+            self.index = self.allowed.index(num)
+        IntegerEntry.set(self, num)
+
     def add(self, num):
         """
         Adds num to the current value
