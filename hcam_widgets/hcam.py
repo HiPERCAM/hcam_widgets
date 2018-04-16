@@ -596,7 +596,7 @@ class InstPars(tk.LabelFrame):
 
         # keep binning factors of drift mode and windowed mode up to date
         xbin, ybin = self.wframe.xbin.value(), self.wframe.ybin.value()
-        oframe = self.quad_frame if self.quad_frame is not self.wframe else self.drift_frame
+        oframe = self.quad_frame if self.drift_frame.winfo_ismapped() else self.drift_frame
         oframe.xbin.set(xbin)
         oframe.ybin.set(ybin)
 
@@ -628,9 +628,17 @@ class InstPars(tk.LabelFrame):
             if 1024 % xbin != 0:
                 status = False
                 xbinw.config(bg=g.COL['error'])
+            elif (1024 // xbin) % 4 != 0:
+                status = False
+                xbinw.config(bg=g.COL['error'])
             if 512 % ybin != 0:
                 status = False
                 ybinw.config(bg=g.COL['error'])
+
+            if not self.quad_frame.winfo_ismapped():
+                self.drift_frame.grid_forget()
+                self.quad_frame.grid(row=10, column=0, columnspan=3,
+                                     sticky=tk.W+tk.N)
 
             self.clearLab.config(state='normal')
             if g.cpars['telins_name'] == 'GTC':
