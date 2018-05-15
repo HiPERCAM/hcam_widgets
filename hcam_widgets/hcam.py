@@ -1038,6 +1038,9 @@ class RunPars(tk.LabelFrame):
         self.progid = w.TextEntry(self, 20, self.check)
         self.progid.grid(row=row, column=column, sticky=tk.W)
 
+        # OB ID for GTC (not shown, but stored)
+        self.obid = 1
+
         # principal investigator
         row += 1
         self.pi = w.TextEntry(self, 20, self.check)
@@ -1064,6 +1067,10 @@ class RunPars(tk.LabelFrame):
             val = user.get(field)
             if val is not None:
                 widget.set(val)
+
+        obid = user.get('OB')
+        if obid is not None:
+            self.obid = obid
 
         setField(self.target, 'target')
         setField(self.progid, 'ID')
@@ -1092,6 +1099,7 @@ class RunPars(tk.LabelFrame):
             target=target,
             ID=self.progid.value(),
             PI=self.pi.value(),
+            OBID=self.obid,
             Observers=self.observers.value(),
             comment=self.comment.value(),
             flags=dtype,
