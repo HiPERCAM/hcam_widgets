@@ -685,6 +685,15 @@ class InstPars(tk.LabelFrame):
             self.expose.config(bg=g.COL['warn'])
             status = False
 
+        # don't allow binning other than 1, 2 in overscan or prescan mode
+        if self.oscan() or self.oscany():
+            if xbin not in (1, 2):
+                status = False
+                xbinw.config(bg=g.COL['error'])
+            if ybin not in (1, 2):
+                status = False
+                ybinw.config(bg=g.COL['error'])
+
         # allow posting if parameters are OK. update count and SN estimates too
         if status:
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
