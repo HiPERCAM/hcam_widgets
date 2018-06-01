@@ -155,7 +155,7 @@ class InstPars(tk.LabelFrame):
         self.clear.grid(row=1, column=1, columnspan=2, sticky=tk.W)
 
         # nod telescope
-        self.nodLab = tk.Label(lhs, text='Nodding')
+        self.nodLab = tk.Label(lhs, text='Dithering')
         self.nodLab.grid(row=2, column=0, sticky=tk.W)
         self.nod = w.OnOff(lhs, False, self.setupNodding)
         self.nod.grid(row=2, column=1, columnspan=2, sticky=tk.W)
@@ -301,14 +301,14 @@ class InstPars(tk.LabelFrame):
 
         # Do nothing if we're not at the GTC
         if g.cpars['telins_name'] != 'GTC':
-            messagebox.showerror('Error', 'Cannot nod WHT')
+            messagebox.showerror('Error', 'Cannot dither WHT')
             self.nod.set(False)
             self.nodPattern = {}
             return
 
         # check for drift mode and bomb out
         if self.isDrift():
-            messagebox.showerror('Error', 'Cannot nod telescope in drift mode')
+            messagebox.showerror('Error', 'Cannot dither telescope in drift mode')
             self.nod.set(False)
             self.nodPattern = {}
             return
@@ -316,7 +316,7 @@ class InstPars(tk.LabelFrame):
         # check for clear not enabled and warn
         if not self.clear():
             if not messagebox.askokcancel('Warning',
-                                          'Nodding telescope will enable clear mode. Continue?'):
+                                          'Dithering telescope will enable clear mode. Continue?'):
                 self.nod.set(False)
                 self.nodPattern = {}
                 return
@@ -344,7 +344,7 @@ class InstPars(tk.LabelFrame):
                 dec=dec.tolist()
             )
         except:
-            g.clog.warn('Setting nod pattern failed. Disabling nodding')
+            g.clog.warn('Setting dither pattern failed. Disabling dithering')
             self.nod.set(False)
             self.nodPattern = {}
             return
@@ -990,7 +990,7 @@ class InstPars(tk.LabelFrame):
             cycleTime += 5
         elif self.nod():
             g = get_root(self).globals
-            g.clog.warn('ERR: nodding enabled with clear mode off')
+            g.clog.warn('ERR: dithering enabled with clear mode off')
 
         frameRate = 1.0/cycleTime
         expTime = expose_delay if lclear else cycleTime - frame_transfer
@@ -1637,7 +1637,7 @@ class Start(w.ActButton):
         try:
             success = startNodding(g, data)
             if not success:
-                raise Exception('startNodding returned False')
+                raise Exception('Failed to start dither: response was false')
         except Exception as err:
             g.clog.warn("Failed to start GTC offsetter")
             g.clog.warn(str(err))

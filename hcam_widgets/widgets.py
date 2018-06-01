@@ -1788,7 +1788,7 @@ class Stop(ActButton):
             try:
                 success = stopNodding(g)
                 if not success:
-                    raise Exception('stopNodding returned False')
+                    raise Exception('Failed to stop dithering: response was false')
             except Exception as err:
                 g.clog.warn('Failed to stop GTC offset script')
                 g.clog.warn(str(err))
@@ -2596,7 +2596,7 @@ class Timer(tk.Label):
                     try:
                         success = stopNodding(g)
                         if not success:
-                            raise Exception('stopNodding returned False')
+                            raise Exception('failed to stop dithering')
                     except Exception as err:
                         g.clog.warn('Failed to stop GTC offset script')
                         g.clog.warn(str(err))

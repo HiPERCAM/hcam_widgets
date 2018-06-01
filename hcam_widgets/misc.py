@@ -153,9 +153,9 @@ def startNodding(g, data):
             opener = urllib.request.build_opener()
             req = urllib.request.Request(url)
             response = opener.open(req, timeout=5).read().decode()
-            g.rlog.info('Nod Server Response: ' + response)
+            g.rlog.info('Dither Server Response: ' + response)
         except Exception as err:
-            g.clog.warn('Failed to stop nod server')
+            g.clog.warn('Failed to stop dither server')
             g.clog.warn(str(err))
             return False
     return True
@@ -168,9 +168,9 @@ def stopNodding(g):
             opener = urllib.request.build_opener()
             req = urllib.request.Request(url)
             response = opener.open(req, timeout=5).read().decode()
-            g.rlog.info('Nod Server Response: ' + response)
+            g.rlog.info('Dither Server Response: ' + response)
         except Exception as err:
-            g.clog.warn('Failed to stop nod server')
+            g.clog.warn('Failed to stop dither server')
             g.clog.warn(str(err))
             return False
     return True
@@ -249,7 +249,7 @@ def postJSON(g, data):
         opener = urllib.request.build_opener()
         req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
         response = opener.open(req, timeout=5).read().decode()
-        g.rlog.info('Nod Server Response: ' + response)
+        g.rlog.info('Offset Server Response: ' + response)
         if not json.loads(response)['status'] == 'OK':
             g.clog.warn('Offset Server response was not OK')
             return False
