@@ -750,7 +750,7 @@ class InstPars(tk.LabelFrame):
         """
         try:
             if self.isFF():
-                return ''
+                return 'fullframe'
             elif self.isDrift():
                 xbin = self.wframe.xbin.value()
                 ybin = self.wframe.ybin.value()
