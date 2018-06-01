@@ -1723,6 +1723,10 @@ class Stop(ActButton):
         g = get_root(self).globals
         g.clog.debug('Stop pressed')
 
+        # Stop exposure meter
+        # do this first, so timer doesn't also try to enable idle mode
+        g.info.timer.stop()
+
         def stop_in_background():
             try:
                 self.stopping = True
@@ -1766,10 +1770,6 @@ class Stop(ActButton):
             g.setup.powerOn.disable()
             g.setup.powerOff.enable()
 
-            # Stop exposure meter
-            # do this first, so timer doesn't also try to enable idle mode
-            g.info.timer.stop()
-
             # Report that run has stopped
             g.clog.info('Run stopped')
 
@@ -1811,6 +1811,8 @@ class Stop(ActButton):
             g.observe.start.disable()
             g.setup.powerOn.disable()
             g.setup.powerOff.disable()
+            # Start exposure meter
+            g.info.timer.start()
             return False
 
 
