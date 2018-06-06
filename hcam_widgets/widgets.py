@@ -3436,6 +3436,7 @@ class WinPairs(tk.Frame):
                 self.ys[n].set(ys)
 
             n += 1
+        g = get_root(self).globals
         self.sbutt.config(bg=g.COL['main'])
         self.sbutt.config(state='disable')
 
