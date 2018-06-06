@@ -2786,7 +2786,7 @@ class InfoFrame(tk.LabelFrame):
                 error = traceback.format_exception_only(t, v)[0].strip()
                 tback = 'TCS Traceback (most recent call last):\n' + \
                         ''.join(traceback.format_tb(tb))
-                g.FIFO.put((error, tback))
+                g.FIFO.put(('TCS', error, tback))
 
         t = threading.Thread(target=tcs_threaded_update)
         t.start()
@@ -2812,7 +2812,7 @@ class InfoFrame(tk.LabelFrame):
                 error = traceback.format_exception_only(t, v)[0].strip()
                 tback = 'Slide Traceback (most recent call last):\n' + \
                         ''.join(traceback.format_tb(tb))
-                g.FIFO.put((error, tback))
+                g.FIFO.put(('Slide', error, tback))
 
         t = threading.Thread(target=slide_threaded_update)
         t.start()

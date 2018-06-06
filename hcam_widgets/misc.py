@@ -586,4 +586,4 @@ class FifoThread(threading.Thread):
             error = traceback.format_exception_only(t, v)[0][:-1]
             tback = (self.name + ' Traceback (most recent call last):\n' +
                      ''.join(traceback.format_tb(tb)))
-            self.fifo.put((error, tback))
+            self.fifo.put((self.name, error, tback))
