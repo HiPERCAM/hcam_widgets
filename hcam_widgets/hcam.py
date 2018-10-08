@@ -208,7 +208,7 @@ class InstPars(tk.LabelFrame):
         labels = ('nu', 'ng', 'nr', 'ni', 'nz')
         ivals = (1, 1, 1, 1, 1)
         imins = (1, 1, 1, 1, 1)
-        imaxs = (20, 20, 20, 20, 20)
+        imaxs = (50, 50, 50, 50, 50)
         self.nmult = ExposureMultiplier(rhs, labels, ivals, imins, imaxs,
                                         5, self.check, False, width=4)
         # grid (on RHS)
