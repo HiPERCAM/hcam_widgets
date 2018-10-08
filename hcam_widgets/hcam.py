@@ -12,7 +12,7 @@ import numpy as np
 from . import widgets as w
 from . import DriverError
 from .tkutils import get_root
-from .misc import (createJSON, saveJSON, postJSON, startNodding,
+from .misc import (createJSON, saveJSON, postJSON, startNodding, forceNod,
                    execCommand, isRunActive, jsonFromFits)
 
 if not six.PY3:
@@ -1653,21 +1653,16 @@ class Start(w.ActButton):
             g.clog.warn(str(err))
             return False
 
-        # if we are nodding, send first trigger
-        def future_trigger():
-            try:
-                success = execCommand(g, 'trigger')
-                if not success:
-                    raise Exception('Failed to send first trigger - exposure will be paused indefinitely')
-            except Exception as err:
-                g.clog.warn('Run is paused indefinitely')
-                g.clog.warn('use "ngcbCmd seq start" to fix')
-                g.clog.warn(str(err))
-
-        nodPattern = data.get('appdata', {}).get('nodpattern', {})
-        if g.cpars['telins_name'] == 'GTC' and nodPattern:
-            # schedule a trigger command for 2s in the future
-            self.after(2000, future_trigger)
+        # Send first offset if nodding enabled.
+        # Initial trigger is sent after first offset, otherwise we'll hang indefinitely
+        try:
+            success = forceNod(g, data)
+            if not success:
+                raise Exception('Failed to send intitial offset and trigger - exposure will be paused indefinitely')
+        except Exception as err:
+            g.clog.warn('Run is paused indefinitely')
+            g.clog.warn('use "ngcbCmd seq start" to fix')
+            g.clog.warn(str(err))
 
         # Run successfully started.
         # enable stop button, disable Start

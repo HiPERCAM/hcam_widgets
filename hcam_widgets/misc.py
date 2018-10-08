@@ -145,6 +145,22 @@ def overlap(xl1, yl1, nx1, ny1, xl2, yl2, nx2, ny2):
             yl2 < yl1+ny1 and yl2+ny2 > yl1)
 
 
+def forceNod(g, data):
+    nodPattern = data.get('appdata', {}).get('nodpattern', {})
+    if g.cpars['telins_name'] == 'GTC' and nodPattern:
+        try:
+            url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'force')
+            opener = urllib.request.build_opener()
+            req = urllib.request.Request(url)
+            response = opener.open(req, timeout=5).read().decode()
+            g.rlog.info('Dither Server Response: ' + response)
+        except Exception as err:
+            g.clog.warn('Failed to send dither offset')
+            g.clog.warn(str(err))
+            return False
+    return True
+
+
 def startNodding(g, data):
     nodPattern = data.get('appdata', {}).get('nodpattern', {})
     if g.cpars['telins_name'] == 'GTC' and nodPattern:
