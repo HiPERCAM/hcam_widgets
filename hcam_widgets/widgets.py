@@ -2250,6 +2250,10 @@ class PowerOn(ActButton):
             g.observe.stop.disable()
             g.setup.powerOff.enable()
 
+            success = execCommand(g, 'seqStart')
+            if not success:
+                g.clog.warn('Failed to start sequencer after Power On.')
+
             try:
                 g.info.run.configure(text='{0:03d}'.format(getRunNumber(g)))
             except Exception as err:
