@@ -2809,7 +2809,7 @@ class InfoFrame(tk.LabelFrame):
 
         def slide_threaded_update():
             try:
-                pos_ms, pos_mm, pos_px = g.fpslide.slide.return_position()
+                (pos_ms, pos_mm, pos_px), msg = g.fpslide.slide.return_position()
                 self.slide_pos_queue.put((pos_ms, pos_mm, pos_px))
             except Exception as err:
                 t, v, tb = sys.exc_info()
