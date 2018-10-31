@@ -1751,7 +1751,7 @@ class Save(w.ActButton):
             return False
 
         # Get data to save
-        data = createJSON(g)
+        data = createJSON(g, full=False)
 
         # Save to disk
         if saveJSON(g, data):
