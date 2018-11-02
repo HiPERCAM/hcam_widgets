@@ -1087,7 +1087,7 @@ class RunPars(tk.LabelFrame):
             if val is not None:
                 widget.set(val)
 
-        obid = user.get('OB')
+        obid = user.get('OBID')
         if obid is not None:
             self.obid = obid
 
