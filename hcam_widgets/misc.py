@@ -263,8 +263,14 @@ def postJSON(g, data):
         url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'setup')
         g.clog.debug('Offset Server URL = ' + url)
         opener = urllib.request.build_opener()
-        req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
-        response = opener.open(req, timeout=5).read().decode()
+        try:
+            req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
+            response = opener.open(req, timeout=5).read().decode()
+        except Exception as err:
+            g.clog.warn('Could not communicate with GTC offsetter')
+            g.clog.warn(str(err))
+            return False
+
         g.rlog.info('Offset Server Response: ' + response)
         if not json.loads(response)['status'] == 'OK':
             g.clog.warn('Offset Server response was not OK')
