@@ -502,6 +502,7 @@ class InstPars(tk.LabelFrame):
         if nodPattern and g.cpars['telins_name'] == 'GTC':
             self.nodPattern = nodPattern
             self.nod.set(True)
+            self.clear.set(True)
         else:
             self.nodPattern = {}
             self.nod.set(False)
@@ -694,6 +695,15 @@ class InstPars(tk.LabelFrame):
                 status = False
                 ybinw.config(bg=g.COL['error'])
 
+        # disable clear if nodding enabled. re-enable if not drift
+        if not self.frozen:
+            if self.nod() or self.nodPattern:
+                self.clear.config(state='disable')
+                self.clearLab.config(state='disable')
+            elif not self.isDrift():
+                self.clear.config(state='enable')
+                self.clearLab.config(state='enable')
+                
         # allow posting if parameters are OK. update count and SN estimates too
         if status:
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
