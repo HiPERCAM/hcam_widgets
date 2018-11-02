@@ -698,11 +698,11 @@ class InstPars(tk.LabelFrame):
         # disable clear if nodding enabled. re-enable if not drift
         if not self.frozen:
             if self.nod() or self.nodPattern:
-                self.clear.config(state='disable')
-                self.clearLab.config(state='disable')
+                self.clear.config(state='disabled')
+                self.clearLab.config(state='disabled')
             elif not self.isDrift():
-                self.clear.config(state='enable')
-                self.clearLab.config(state='enable')
+                self.clear.config(state='normal')
+                self.clearLab.config(state='normal')
                 
         # allow posting if parameters are OK. update count and SN estimates too
         if status:
