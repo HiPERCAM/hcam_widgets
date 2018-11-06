@@ -1816,6 +1816,38 @@ class Stop(ActButton):
             return False
 
 
+class ProgramID(tk.Frame):
+    """
+    Class to combine the ProgramID and OB number.
+
+    This is a text entry field and a PosInt widget bound together.
+    The point of this widget is simply to get a nice layout.
+    """
+    def __init__(self, master):
+        tk.Frame.__init__(self, master)
+        self.master = master
+        check = master.check if hasattr(master, 'check') else None
+        self.progid = TextEntry(self, 20, check)
+        self.obid = PosInt(self, 1, check, True, width=4)
+    
+        self.progid.pack(side=tk.LEFT, anchor=tk.W)
+        tk.Label(self, text='/').pack(side=tk.LEFT, anchor=tk.W, padx=2)
+        self.obid.pack(side=tk.LEFT, anchor=tk.W, padx=2)
+
+    def disable(self):
+        self.obid.disable()
+
+    def enable(self):
+        self.obid.enable()
+
+    def ok(self):
+        return self.progid.ok() & self.obid.ok()
+
+    def configure(self, **kwargs):
+        self.progid.configure(**kwargs)
+        self.obid.configure(**kwargs)
+
+
 class Target(tk.Frame):
     """
     Class wrapping up what is needed for a target name which
