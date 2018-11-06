@@ -703,7 +703,7 @@ class InstPars(tk.LabelFrame):
             elif not self.isDrift():
                 self.clear.config(state='normal')
                 self.clearLab.config(state='normal')
-                
+
         # allow posting if parameters are OK. update count and SN estimates too
         if status:
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
@@ -1072,7 +1072,6 @@ class RunPars(tk.LabelFrame):
         self.comment = w.TextEntry(self, 38)
         self.comment.grid(row=row, column=column, sticky=tk.W)
 
-
     def loadJSON(self, json_string):
         """
         Sets the values of the run parameters given an JSON string
@@ -1138,12 +1137,13 @@ class RunPars(tk.LabelFrame):
             self.prog_ob.configure(state='disable')
             self.target.disable()
         else:
-            self.pi.configure(state='normal')
             if expert:
+                self.pi.configure(state='normal')
                 self.prog_ob.configure(state='normal')
                 self.prog_ob.enable()
             else:
                 self.prog_ob.configure(state='disable')
+                self.pi.configure(state='disable')
                 self.prog_ob.disable()
             self.target.enable()
 
@@ -1183,13 +1183,15 @@ class RunPars(tk.LabelFrame):
     def setExpertLevel(self):
         g = get_root(self).globals
         expert = g.cpars['expert_level'] > 0
-        if expert:                
+        if expert:
+            self.pi.configure(state='normal')
             self.prog_ob.configure(state='normal')
             self.prog_ob.enable()
         else:
             self.prog_ob.configure(state='disable')
+            self.pi.configure(state='disable')
             self.prog_ob.disable()
-            
+
     def freeze(self):
         """
         Freeze all settings so that they can't be altered
