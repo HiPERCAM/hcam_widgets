@@ -1025,7 +1025,7 @@ class RunPars(tk.LabelFrame):
         tk.Label(self, text='Filters').grid(row=row, column=column, sticky=tk.W)
 
         row += 1
-        tk.Label(self, text='Programme ID').grid(row=row, column=column, sticky=tk.W)
+        tk.Label(self, text='Programme ID/OB').grid(row=row, column=column, sticky=tk.W)
 
         row += 1
         tk.Label(self, text='Principal Investigator').grid(row=row,
@@ -1052,13 +1052,10 @@ class RunPars(tk.LabelFrame):
         self.filter = w.TextEntry(self, 20, self.check)
         self.filter.grid(row=row, column=column, sticky=tk.W)
 
-        # programme ID
+        # programme ID / OBID
         row += 1
-        self.progid = w.TextEntry(self, 20, self.check)
-        self.progid.grid(row=row, column=column, sticky=tk.W)
-
-        # OB ID for GTC (not shown, but stored)
-        self.obid = 1
+        self.prog_ob = w.ProgramID(self)
+        self.prog_ob.grid(row=row, column=column, sticky=tk.W)
 
         # principal investigator
         row += 1
@@ -1075,6 +1072,7 @@ class RunPars(tk.LabelFrame):
         self.comment = w.TextEntry(self, 38)
         self.comment.grid(row=row, column=column, sticky=tk.W)
 
+
     def loadJSON(self, json_string):
         """
         Sets the values of the run parameters given an JSON string
@@ -1087,12 +1085,9 @@ class RunPars(tk.LabelFrame):
             if val is not None:
                 widget.set(val)
 
-        obid = user.get('OBID')
-        if obid is not None:
-            self.obid = obid
-
+        setField(self.prog_ob.obid, 'OBID')
         setField(self.target, 'target')
-        setField(self.progid, 'ID')
+        setField(self.prog_ob.progid, 'ID')
         setField(self.pi, 'PI')
         setField(self.observers, 'Observers')
         setField(self.comment, 'comment')
@@ -1116,9 +1111,9 @@ class RunPars(tk.LabelFrame):
 
         return dict(
             target=target,
-            ID=self.progid.value(),
+            ID=self.prog_ob.progid.value(),
             PI=self.pi.value(),
-            OBID=self.obid,
+            OBID=self.prog_ob.obid.value(),
             Observers=self.observers.value(),
             comment=self.comment.value(),
             flags=dtype,
@@ -1136,14 +1131,20 @@ class RunPars(tk.LabelFrame):
         msg = ''
         g = get_root(self).globals
         dtype = g.observe.rtype()
+        expert = g.cpars['expert_level'] > 0
 
         if dtype == 'bias' or dtype == 'flat' or dtype == 'dark':
             self.pi.configure(state='disable')
-            self.progid.configure(state='disable')
+            self.prog_ob.configure(state='disable')
             self.target.disable()
         else:
             self.pi.configure(state='normal')
-            self.progid.configure(state='normal')
+            if expert:
+                self.prog_ob.configure(state='normal')
+                self.prog_ob.enable()
+            else:
+                self.prog_ob.configure(state='disable')
+                self.prog_ob.disable()
             self.target.enable()
 
         if g.cpars['require_run_params']:
@@ -1157,12 +1158,12 @@ class RunPars(tk.LabelFrame):
             if dtype == 'data caution' or \
                dtype == 'data' or dtype == 'technical':
 
-                if self.progid.ok():
-                    self.progid.config(bg=g.COL['main'])
+                if self.prog_ob.ok():
+                    self.prog_ob.config(bg=g.COL['main'])
                 else:
-                    self.progid.config(bg=g.COL['error'])
+                    self.prog_ob.config(bg=g.COL['error'])
                     ok = False
-                    msg += 'Programme ID field cannot be blank\n'
+                    msg += 'Programme or OB ID field cannot be blank\n'
 
                 if self.pi.ok():
                     self.pi.config(bg=g.COL['main'])
@@ -1179,13 +1180,23 @@ class RunPars(tk.LabelFrame):
                 msg += 'Observers field cannot be blank'
         return (ok, msg)
 
+    def setExpertLevel(self):
+        g = get_root(self).globals
+        expert = g.cpars['expert_level'] > 0
+        if expert:                
+            self.prog_ob.configure(state='normal')
+            self.prog_ob.enable()
+        else:
+            self.prog_ob.configure(state='disable')
+            self.prog_ob.disable()
+            
     def freeze(self):
         """
         Freeze all settings so that they can't be altered
         """
         self.target.disable()
         self.filter.configure(state='disable')
-        self.progid.configure(state='disable')
+        self.prog_ob.configure(state='disable')
         self.pi.configure(state='disable')
         self.observers.configure(state='disable')
         self.comment.configure(state='disable')
@@ -1198,7 +1209,7 @@ class RunPars(tk.LabelFrame):
         self.filter.configure(state='normal')
         dtype = g.observe.rtype()
         if dtype == 'data caution' or dtype == 'data' or dtype == 'technical':
-            self.progid.configure(state='normal')
+            self.prog_ob.configure(state='normal')
             self.pi.configure(state='normal')
             self.target.enable()
         self.observers.configure(state='normal')
