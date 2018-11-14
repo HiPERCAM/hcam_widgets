@@ -72,6 +72,6 @@ def getGtcTcs():
         pa = float(hdr['INSTRPA'])
         focus = float(hdr['M2UZ'])
     except:
-        ra, dec, pa, focus = -999
+        ra, dec, pa, focus = -999, -999, -999, -999
 
     return ra, dec, pa, focus
