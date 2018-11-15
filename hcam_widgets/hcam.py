@@ -1084,11 +1084,7 @@ class RunPars(tk.LabelFrame):
             if val is not None:
                 widget.set(val)
 
-        # GTC keep changing the name of this JSON field
-        setField(self.prog_ob.obid, 'OBID')
         setField(self.prog_ob.obid, 'OB')
-
-        # other fields are more reliable
         setField(self.target, 'target')
         setField(self.prog_ob.progid, 'ID')
         setField(self.pi, 'PI')
