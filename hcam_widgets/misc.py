@@ -513,6 +513,22 @@ def isPoweredOn(g):
         raise DriverError('isPoweredOn error: servers are not active')
 
 
+def isOnline(g):
+    # checks if ESO Server is in ONLINE state
+    if g.cpars['hcam_server_on']:
+        url = g.cpars['hipercam_server'] + 'status'
+        response = urllib.request.urlopen(url, timeout=2)
+        rs = ReadServer(response.read(), status_msg=False)
+        if not rs.ok:
+            raise DriverError('isOnline error: ' + str(rs.err))
+        if rs.msg.lower() == 'online':
+            return True
+        else:
+            return False
+    else:
+        raise DriverError('isOnline error: hserver is not active')
+
+
 def getFrameNumber(g):
     """
     Polls the data server to find the current frame number.
