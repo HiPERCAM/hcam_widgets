@@ -1116,7 +1116,7 @@ class RunPars(tk.LabelFrame):
             target=target,
             ID=self.prog_ob.progid.value(),
             PI=self.pi.value(),
-            OBID=self.prog_ob.obid.value(),
+            OB=self.prog_ob.obid.value(),
             Observers=self.observers.value(),
             comment=self.comment.value(),
             flags=dtype,
