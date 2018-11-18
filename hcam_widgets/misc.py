@@ -628,3 +628,33 @@ class FifoThread(threading.Thread):
             tback = (self.name + ' Traceback (most recent call last):\n' +
                      ''.join(traceback.format_tb(tb)))
             self.fifo.put((self.name, error, tback))
+
+
+# helper routines to get and set Hardware Values
+def set_hardware_value(cpars, device, prop, value=None):
+    data = {'value': value}
+    if not cpars['hw_server'].endswith('/'):
+        cpars['hw_server'] += '/'
+    url = '{}{}/{}'.format(
+        cpars['hw_server'], device, prop
+    )
+    r = requests.post(url, json=data)
+    if r.status_code != 200:
+        raise ValueError('could not set {} on {}: {}'.format(
+            prop, device, json.loads(r.content.decode())['MESSAGEBUFFER']
+        ))
+    return json.loads(r.content.decode())['value']
+
+
+def get_hardware_value(cpars, device, prop):
+    if not cpars['hw_server'].endswith('/'):
+        cpars['hw_server'] += '/'
+    url = '{}{}/{}'.format(
+        cpars['hw_server'], device, prop
+    )
+    r = requests.get(url)
+    if r.status_code != 200:
+        raise ValueError('could not get {} from {}: {}'.format(
+            prop, device, json.loads(r.content.decode())['MESSAGEBUFFER']
+        ))
+    return json.loads(r.content.decode())['value']

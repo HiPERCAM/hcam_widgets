@@ -11,6 +11,7 @@ from functools import reduce
 import numpy as np
 import six
 import subprocess
+import re
 
 # astropy utilities
 from astropy import coordinates as coord
@@ -25,7 +26,7 @@ from .logs import Logger, GuiHandler
 from .astro import calc_riseset
 from .misc import (execCommand, checkSimbad, isRunActive, stopNodding,
                    getRunNumber, postJSON, getFrameNumber, insertFITSHDU,
-                   isPoweredOn)
+                   isPoweredOn, set_hardware_value, get_hardware_value)
 
 if not six.PY3:
     import Tkinter as tk
@@ -1829,7 +1830,7 @@ class ProgramID(tk.Frame):
         check = master.check if hasattr(master, 'check') else None
         self.progid = TextEntry(self, 20, check)
         self.obid = PosInt(self, 1, check, True, width=4)
-    
+
         self.progid.pack(side=tk.LEFT, anchor=tk.W)
         tk.Label(self, text='/').pack(side=tk.LEFT, anchor=tk.W, padx=2)
         self.obid.pack(side=tk.LEFT, anchor=tk.W, padx=2)
@@ -2836,12 +2837,15 @@ class InfoFrame(tk.LabelFrame):
         """
         g = get_root(self).globals
         if not g.cpars['focal_plane_slide_on']:
-            self.after(20000, self.update_slidepos)
+            self.after(40000, self.update_slidepos)
             return
 
         def slide_threaded_update():
             try:
-                (pos_ms, pos_mm, pos_px), msg = g.fpslide.slide.return_position()
+                pos_str = get_hardware_value(g.cpars, 'slide', 'position')
+                expr = ".* = (\d*\.\d*) pixels \((\d*\.\d*) mm, (\d*) ms\)"
+                match = re.match(expr, pos_str)
+                pos_ms, pos_mm, pos_px = int(match[3]), float(match[2]), float(match[1])
                 self.slide_pos_queue.put((pos_ms, pos_mm, pos_px))
             except Exception as err:
                 t, v, tb = sys.exc_info()
