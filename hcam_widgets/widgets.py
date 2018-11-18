@@ -2837,16 +2837,19 @@ class InfoFrame(tk.LabelFrame):
         """
         g = get_root(self).globals
         if not g.cpars['focal_plane_slide_on']:
-            self.after(40000, self.update_slidepos)
+            self.after(20000, self.update_slidepos)
             return
 
         def slide_threaded_update():
             try:
                 pos_str = get_hardware_value(g.cpars, 'slide', 'position')
-                expr = ".* = (\d*\.\d*) pixels \((\d*\.\d*) mm, (\d*) ms\)"
+                expr = ".* = ([-+]?\d*\.\d*) pixels \((\d*\.\d*) mm, (\d*) ms\)"
                 match = re.match(expr, pos_str)
-                pos_px, pos_mm, pos_ms = match.groups()
-                self.slide_pos_queue.put((pos_ms, pos_mm, pos_px))
+                try:
+                    pos_px, pos_mm, pos_ms = match.groups()
+                except AttributeError:
+                    raise ValueError('cannot parse ' + pos_str)
+                self.slide_pos_queue.put((pos_ms, pos_mm, float(pos_px)))
             except Exception as err:
                 t, v, tb = sys.exc_info()
                 error = traceback.format_exception_only(t, v)[0].strip()
