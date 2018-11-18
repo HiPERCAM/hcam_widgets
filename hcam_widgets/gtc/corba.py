@@ -3,6 +3,24 @@ from omniORB import CORBA
 # not part of this module, copy modules from GCS and place in PYTHONPATH
 import HIPERTELESCOPESERVER
 import os
+import numpy as np
+
+
+def dew_point():
+    """
+    Calculate dew point following Magnus Formula (Sonntag90)
+
+    Use M1 mirror temp as proxy for internal temp. Normally
+    colder, so this is a pessimistic estimate.
+    """
+    # Magnus formula params
+    lam, beta = 243.12, 17.62
+    server = get_telescope_server()
+    rh = server.getHumidity()
+    T = server.getM1Temperature() - 273
+    EW = np.exp(beta*T/(lam+T))
+    E = rh*EW/100
+    return lam * np.log(E) / (beta - np.log(E))
 
 
 def get_telescope_server():
