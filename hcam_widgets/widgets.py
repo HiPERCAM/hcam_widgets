@@ -2845,7 +2845,7 @@ class InfoFrame(tk.LabelFrame):
                 pos_str = get_hardware_value(g.cpars, 'slide', 'position')
                 expr = ".* = (\d*\.\d*) pixels \((\d*\.\d*) mm, (\d*) ms\)"
                 match = re.match(expr, pos_str)
-                pos_ms, pos_mm, pos_px = int(match[3]), float(match[2]), float(match[1])
+                pos_px, pos_mm, pos_ms = match.groups()
                 self.slide_pos_queue.put((pos_ms, pos_mm, pos_px))
             except Exception as err:
                 t, v, tb = sys.exc_info()
