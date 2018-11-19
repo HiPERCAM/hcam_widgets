@@ -2843,7 +2843,7 @@ class InfoFrame(tk.LabelFrame):
         def slide_threaded_update():
             try:
                 pos_str = get_hardware_value(g.cpars, 'slide', 'position')
-                expr = ".* = ([-+]?\d*\.\d*) pixels \((\d*\.\d*) mm, (\d*) ms\)"
+                expr = ".* =\s+([-+]?\d*\.\d*) pixels \((\d*\.\d*) mm, (\d*) ms\)"
                 match = re.match(expr, pos_str)
                 try:
                     pos_px, pos_mm, pos_ms = match.groups()
