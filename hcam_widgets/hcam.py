@@ -212,7 +212,11 @@ class InstPars(tk.LabelFrame):
         self.nmult = ExposureMultiplier(rhs, labels, ivals, imins, imaxs,
                                         5, self.check, False, width=4)
         # grid (on RHS)
-        self.nmult.grid(row=0, column=0, pady=2, sticky=tk.W + tk.S)
+        self.nmult.grid(row=0, column=0, columnspan=2, pady=2, sticky=tk.E + tk.S)
+
+        tk.Label(rhs, text='COMPO  ').grid(row=1, column=0)
+        self.compo = w.OnOff(rhs, False, self.check)
+        self.compo.grid(row=1, column=1, pady=2, sticky=tk.W)
 
         # We have two possible window frames. A single pair for
         # drift mode, or a 2-quad frame for window mode.
@@ -589,6 +593,12 @@ class InstPars(tk.LabelFrame):
         """
         status = True
         g = get_root(self).globals
+
+        # if we've just enabled COMPO, then raise window if exists
+        if self.compo():
+            compo_hw_widget = getattr(g, 'compo_hw', None)
+            if compo_hw_widget is not None:
+                compo_hw_widget.deiconify()
 
         # clear errors on binning (may be set later if FF)
         xbinw, ybinw = self.wframe.xbin, self.wframe.ybin
