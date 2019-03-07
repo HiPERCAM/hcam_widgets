@@ -4,8 +4,11 @@ import six
 
 # non-standard imports
 from astropy import units as u
-from scipy.interpolate import interp1d
+from astropy.coordinates.matrix_utilities import rotation_matrix
+from astropy.coordinates import CartesianRepresentation
+from astropy.utils import lazyproperty
 import numpy as np
+from matplotlib import path, transforms
 
 # internal imports
 from . import widgets as w
@@ -16,37 +19,113 @@ if not six.PY3:
 else:
     import tkinter as tk
 
-# predicted position of pick-off pupil from FoV centre
-THETA = u.Quantity([0, 5, 10, 15, 20, 25, 30,
-                    35, 40, 45, 50, 55, 60, 65], unit=u.deg)
-X = u.Quantity([0.0, 0.476, 0.949, 1.414, 1.868, 2.309, 2.731, 3.133,
-                3.511, 3.863, 4.185, 4.475, 4.731, 4.951], unit=u.arcmin)
-Y = u.Quantity([0.0, 0.021, 0.083, 0.186, 0.329, 0.512, 0.732, 0.988,
-                1.278, 1.600, 1.951, 2.329, 2.731, 3.154], unit=u.arcmin)
-PICKOFF_SIZE = 26.73*u.arcsec  # 330 pixels
-MIRROR_SIZE = 24.3*u.arcsec  # 300 pixels
-SHADOW_X = 39.285*u.arcsec  # 485 pix, extent of vignetting by injector arm
-SHADOW_Y = 45.36*u.arcsec  # 560 pix, extent of vignetting by injector arm
-INJECTOR_THETA = 13*u.deg  # angle of injector arm when in position
+flip_y = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
 
-# interpolated functions for X and Y positions - not unit aware
-x_func = interp1d(THETA, X, kind='cubic', bounds_error=False, fill_value='extrapolate')
-y_func = interp1d(THETA, Y, kind='cubic', bounds_error=False, fill_value='extrapolate')
+# COMPO is only available on GTC, so these values are well-known
+pixel_scale = 0.08086 * u.arcsec / u.pix
+focal_plane_scale = 1.214 * u.arcsec / u.mm
+MIRROR_SIZE = 300 * u.pix * pixel_scale / focal_plane_scale
 
 
-@u.quantity_input(theta=u.deg)
-def field_stop_centre(theta):
+def focal_plane_to_sky(cartrep):
+    return cartrep.transform(flip_y) * focal_plane_scale
+
+
+class Chip:
     """
-    Returns field stop centre X and Y positions
-
-    This is used in preference to the interpolated functions above
-    because it is unit-aware.
+    Representing the Chip
     """
-    neg_mask = theta < 0*u.deg
-    theta = np.fabs(theta.to(u.deg)).value
-    x, y = u.Quantity(x_func(theta), unit=u.arcmin), u.Quantity(y_func(theta), unit=u.arcmin)
-    x[neg_mask] *= -1
-    return x, y
+    NX = 2048 * u.pix * pixel_scale / focal_plane_scale
+    NY = 1024 * u.pix * pixel_scale / focal_plane_scale
+
+    @lazyproperty
+    def vertices(self):
+        return CartesianRepresentation(
+            [-self.NX/2, self.NX/2, self.NX/2, -self.NX/2],
+            [-self.NY/2, -self.NY/2, self.NY/2, self.NY/2],
+            0*u.mm
+        )
+
+    def clip_shape(self, vertices):
+        """
+        Clip a shape defined as a CartesianRepresentation of points by the chip edges
+
+        Works in 2D - i.e drops the z-axis - as this is a projected clipping
+
+        Notes
+        -----
+        This makes use of Sutherland-Hodgman clipping as implemented in
+        AGG 2.4 and exposed in Matplotlib.
+
+        Parameters
+        ----------
+        vertices :  astropy.coordinates.CartesianRepresentation
+            vertices of shape to be clipped
+
+        Returns
+        --------
+        astropy.coordinates.CartesianRepresentation
+            new vertices, after clipping
+        """
+        # enforce pixel space
+        try:
+            xyz = vertices.xyz.to(u.mm)
+        except u.UnitConversionError:
+            raise ValueError('vertices are not in units of physical length')
+
+        # drop Z axis and reshape to (N, 2)
+        xy = xyz[:2].T
+        poly = path.Path(xy, closed=True)
+        clip_rect = transforms.Bbox([[-self.NX.value/2, -self.NY.value/2],
+                                    [self.NX.value/2, self.NY.value/2]])
+        poly_clipped = poly.clip_to_bbox(clip_rect).to_polygons()[0]
+        if np.all(poly_clipped[0] == poly_clipped[-1]):
+            poly_clipped = poly_clipped[:-1]
+
+        return CartesianRepresentation(*u.Quantity(poly_clipped, unit=u.mm).T, vertices.z)
+
+
+class Baffle:
+    """
+    The Baffle present on both arms
+    """
+    BAFFLE_X = 36 * u.mm
+    BAFFLE_Y = 44 * u.mm
+    INJECTION_ROT = rotation_matrix(-13*u.deg, 'z')
+    INJECTION_TRANS = CartesianRepresentation(57.5*u.mm, 23.2*u.mm, 0*u.mm)
+
+    @lazyproperty
+    def right_pickoff_vertices(self):
+        """
+        The vertices of the pickoff baffle when in place
+        """
+        vertices = CartesianRepresentation(
+            [-self.BAFFLE_X/2, self.BAFFLE_X/2, self.BAFFLE_X/2, -self.BAFFLE_X/2],
+            [-self.BAFFLE_Y/2, -self.BAFFLE_Y/2, self.BAFFLE_Y/2, self.BAFFLE_Y/2],
+            0*u.mm
+        )
+        # rotate and translate
+        vertices = vertices.transform(self.INJECTION_ROT) + self.INJECTION_TRANS
+
+        # crop to chip
+        c = Chip()
+        return c.clip_shape(vertices)
+
+
+class PickoffArm:
+
+    @u.quantity_input(theta=u.deg)
+    def position(self, theta):
+        """
+        Position of pupil stop centre in focal plane (mm)
+
+        Uses approximate formula which agrees with Zeemax calculations inc distortion to 1pix
+        """
+        r = 270*u.mm
+        x = r * np.sin(theta)
+        y = r * (1 - np.cos(theta))
+        # actually not in focal plane, but assuming it is is OK
+        return CartesianRepresentation(x, y, 0*u.mm)
 
 
 class COMPOSetupWidget(tk.Toplevel):
