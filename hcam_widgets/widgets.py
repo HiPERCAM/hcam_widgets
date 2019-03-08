@@ -26,7 +26,7 @@ from .logs import Logger, GuiHandler
 from .astro import calc_riseset
 from .misc import (execCommand, checkSimbad, isRunActive, stopNodding,
                    getRunNumber, postJSON, getFrameNumber, insertFITSHDU,
-                   isPoweredOn, set_hardware_value, get_hardware_value)
+                   isPoweredOn, get_hardware_value)
 
 if not six.PY3:
     import Tkinter as tk
@@ -3873,7 +3873,7 @@ class WinQuads(tk.Frame):
             if ybin > 1 and (ys-1) % ybin != 0:
                 ys = ybin*((ys-1)//ybin)+1
                 self.ys[n].set(ys)
-
+        g = get_root(self).globals
         self.sbutt.config(bg=g.COL['main'])
         self.sbutt.config(state='disable')
 
@@ -4190,6 +4190,7 @@ class Windows(tk.Frame):
         with a full-frame binned version. This does nothing if the
         binning factor == 1
         """
+        g = get_root(self).globals
         xbin = self.xbin.value()
         ybin = self.ybin.value()
         n = 0
