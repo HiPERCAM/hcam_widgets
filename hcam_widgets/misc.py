@@ -12,7 +12,7 @@ import re
 from astropy.io import fits
 from astropy.io import ascii
 import requests
-
+import Pyro4
 
 from . import DriverError
 if not six.PY3:
@@ -27,7 +27,7 @@ try:
     from .gtc.corba import get_telescope_server
     from .gtc.headers import create_header_from_telpars
     has_corba = True
-except Exception as err:
+except Exception:
     has_corba = False
 
 
@@ -628,30 +628,45 @@ class FifoThread(threading.Thread):
 
 
 # helper routines to get and set Hardware Values
-def set_hardware_value(cpars, device, prop, value=None):
-    data = {'value': value}
-    if not cpars['hw_server'].endswith('/'):
-        cpars['hw_server'] += '/'
-    url = '{}{}/{}'.format(
-        cpars['hw_server'], device, prop
-    )
-    r = requests.post(url, json=data)
-    if r.status_code != 200:
-        raise ValueError('could not set {} on {}: {}'.format(
-            prop, device, json.loads(r.content.decode())['MESSAGEBUFFER']
-        ))
-    return json.loads(r.content.decode())['value']
+def set_hardware_value(cpars, device, prop, value=None, background=False):
+    """
+    Send a command to hardware, either to set a value or a property
+
+    Parameters
+    -----------
+    cpars : `hcam_widgets.globals.Container`
+        Container which should contain address of hwserver
+    device : string
+        Device to access. Valid devices are CCDx, NGC, RACK, CHILLER, SLIDE
+    prop : string
+        Property of device whose value you want.
+    background : bool (default: False)
+        Run in background thread. If True, the result will be a
+        `Pyro.Future`. Check `result.ready` to see when call complete.
+    """
+    proxy = Pyro4.proxy(cpars['hw_server'])
+    if background:
+        proxy._pyroAsync()
+    return proxy.send_command(device, prop, value)
 
 
-def get_hardware_value(cpars, device, prop):
-    if not cpars['hw_server'].endswith('/'):
-        cpars['hw_server'] += '/'
-    url = '{}{}/{}'.format(
-        cpars['hw_server'], device, prop
-    )
-    r = requests.get(url)
-    if r.status_code != 200:
-        raise ValueError('could not get {} from {}: {}'.format(
-            prop, device, json.loads(r.content.decode())['MESSAGEBUFFER']
-        ))
-    return json.loads(r.content.decode())['value']
+def get_hardware_value(cpars, device, prop, background=False):
+    """
+    Get a hardware value from the HW Server.
+
+    Parameters
+    -----------
+    cpars : `hcam_widgets.globals.Container`
+        Container which should contain address of hwserver
+    device : string
+        Device to access. Valid devices are CCDx, NGC, RACK, CHILLER, SLIDE
+    prop : string
+        Property of device whose value you want.
+    background : bool (default: False)
+        Run in background thread. If True, the result will be a
+        `Pyro.Future`. Check `result.ready` to see when call complete.
+    """
+    proxy = Pyro4.proxy(cpars['hw_server'])
+    if background:
+        proxy._pyroAsync()
+    return proxy.get_value(device, prop)
