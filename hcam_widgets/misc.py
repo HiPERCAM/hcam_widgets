@@ -648,7 +648,7 @@ def set_hardware_value(cpars, device, prop, value=None, background=False):
         Run in background thread. If True, the result will be a
         `Pyro.Future`. Check `result.ready` to see when call complete.
     """
-    proxy = Pyro4.proxy(cpars['hw_server'])
+    proxy = Pyro4.Proxy(cpars['hw_server'])
     if background:
         proxy._pyroAsync()
     try:
@@ -674,7 +674,7 @@ def get_hardware_value(cpars, device, prop, background=False):
         Run in background thread. If True, the result will be a
         `Pyro.Future`. Check `result.ready` to see when call complete.
     """
-    proxy = Pyro4.proxy(cpars['hw_server'])
+    proxy = Pyro4.Proxy(cpars['hw_server'])
     if background:
         proxy._pyroAsync()
     try:
