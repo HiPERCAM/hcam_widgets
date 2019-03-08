@@ -517,7 +517,10 @@ def isOnline(g):
     # checks if ESO Server is in ONLINE state
     if g.cpars['hcam_server_on']:
         url = g.cpars['hipercam_server'] + 'status'
-        response = urllib.request.urlopen(url, timeout=2)
+        try:
+            response = urllib.request.urlopen(url, timeout=2)
+        except urllib.error.URLError:
+            return False
         rs = ReadServer(response.read(), status_msg=False)
         if not rs.ok:
             raise DriverError('isOnline error: ' + str(rs.err))
