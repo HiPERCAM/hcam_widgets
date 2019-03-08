@@ -13,6 +13,7 @@ from astropy.io import fits
 from astropy.io import ascii
 import requests
 import Pyro4
+from Pyro4.errors import CommunicationError
 
 from . import DriverError
 if not six.PY3:
@@ -650,7 +651,11 @@ def set_hardware_value(cpars, device, prop, value=None, background=False):
     proxy = Pyro4.proxy(cpars['hw_server'])
     if background:
         proxy._pyroAsync()
-    return proxy.send_command(device, prop, value)
+    try:
+        val = proxy.send_command(device, prop, value)
+    except CommunicationError:
+        raise RuntimeError('cannot talk to HWServer. Is it running?')
+    return val
 
 
 def get_hardware_value(cpars, device, prop, background=False):
@@ -672,4 +677,8 @@ def get_hardware_value(cpars, device, prop, background=False):
     proxy = Pyro4.proxy(cpars['hw_server'])
     if background:
         proxy._pyroAsync()
-    return proxy.get_value(device, prop)
+    try:
+        val = proxy.get_value(device, prop)
+    except CommunicationError:
+        raise RuntimeError('cannot talk to HWServer. Is it running?')
+    return val
