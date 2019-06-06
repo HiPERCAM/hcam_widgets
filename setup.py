@@ -31,7 +31,7 @@ setup(
     author="Stuart Littlefair",
     author_email='s.littlefair@shef.ac.uk',
     url='https://github.com/HiPERCAM/hcam_widgets',
-    download_url='https://github.com/HiPERCAM/hcam_widgets/archive/v0.6.0.tar.gz',
+    download_url='https://github.com/HiPERCAM/hcam_widgets/archive/v0.7.0.tar.gz',
     packages=[
         'hcam_widgets',
         'hcam_widgets.gtc'
