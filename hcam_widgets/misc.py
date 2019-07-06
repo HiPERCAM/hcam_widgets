@@ -648,13 +648,13 @@ def set_hardware_value(cpars, device, prop, value=None, background=False):
         Run in background thread. If True, the result will be a
         `Pyro.Future`. Check `result.ready` to see when call complete.
     """
-    proxy = Pyro4.Proxy(cpars['hw_server'])
-    if background:
-        proxy._pyroAsync()
-    try:
-        val = proxy.send_command(device, prop, value)
-    except CommunicationError:
-        raise RuntimeError('cannot talk to HWServer. Is it running?')
+    with Pyro4.Proxy(cpars['hw_server']) as proxy:
+        if background:
+            proxy._pyroAsync()
+        try:
+            val = proxy.send_command(device, prop, value)
+        except CommunicationError:
+            raise RuntimeError('cannot talk to HWServer. Is it running?')
     return val
 
 
@@ -674,11 +674,11 @@ def get_hardware_value(cpars, device, prop, background=False):
         Run in background thread. If True, the result will be a
         `Pyro.Future`. Check `result.ready` to see when call complete.
     """
-    proxy = Pyro4.Proxy(cpars['hw_server'])
-    if background:
-        proxy._pyroAsync()
-    try:
-        val = proxy.get_value(device, prop)
-    except CommunicationError:
-        raise RuntimeError('cannot talk to HWServer. Is it running?')
+    with Pyro4.Proxy(cpars['hw_server']) as proxy:
+        if background:
+            proxy._pyroAsync()
+        try:
+            val = proxy.get_value(device, prop)
+        except CommunicationError:
+            raise RuntimeError('cannot talk to HWServer. Is it running?')
     return val
