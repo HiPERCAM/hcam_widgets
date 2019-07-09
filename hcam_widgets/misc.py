@@ -655,6 +655,10 @@ def set_hardware_value(cpars, device, prop, value=None, background=False):
             val = proxy.send_command(device, prop, value)
         except CommunicationError:
             raise RuntimeError('cannot talk to HWServer. Is it running?')
+        except Exception as err:
+            err_msg = str(err) + '\n Remote error on Server\n'
+            err_msg += ''.join(Pyro4.util.getPyroTraceback())
+            raise RuntimeError(err_msg)
     return val
 
 
@@ -681,4 +685,8 @@ def get_hardware_value(cpars, device, prop, background=False):
             val = proxy.get_value(device, prop)
         except CommunicationError:
             raise RuntimeError('cannot talk to HWServer. Is it running?')
+        except Exception as err:
+            err_msg = str(err) + '\n Remote error on Server\n'
+            err_msg += ''.join(Pyro4.util.getPyroTraceback())
+            raise RuntimeError(err_msg)
     return val
