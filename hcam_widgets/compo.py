@@ -1,4 +1,3 @@
-# Information and utilities regarding COMPO
 from __future__ import print_function, unicode_literals, absolute_import, division
 import six
 
@@ -7,6 +6,7 @@ from astropy import units as u
 from astropy.coordinates.matrix_utilities import rotation_matrix
 from astropy.coordinates import CartesianRepresentation
 from astropy.utils import lazyproperty
+from scipy.interpolate import interp1d
 import numpy as np
 from matplotlib import path, transforms
 
@@ -25,6 +25,31 @@ flip_y = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
 pixel_scale = 0.08086 * u.arcsec / u.pix
 focal_plane_scale = 1.214 * u.arcsec / u.mm
 MIRROR_SIZE = 300 * u.pix * pixel_scale / focal_plane_scale
+
+# predicted position of pick-off pupil from FoV centre
+# from Zeemax simulations
+THETA = u.Quantity([0, 5, 10, 15, 20, 25, 30,
+                    35, 40, 45, 50, 55, 60, 65], unit=u.deg)
+X = u.Quantity([0.0, 0.476, 0.949, 1.414, 1.868, 2.309, 2.731, 3.133,
+                3.511, 3.863, 4.185, 4.475, 4.731, 4.951], unit=u.arcmin)
+Y = u.Quantity([0.0, 0.021, 0.083, 0.186, 0.329, 0.512, 0.732, 0.988,
+                1.278, 1.600, 1.951, 2.329, 2.731, 3.154], unit=u.arcmin)
+
+
+PICKOFF_SIZE = 26.73*u.arcsec  # 330 pixels
+MIRROR_SIZE = 24.3*u.arcsec  # 300 pixels
+SHADOW_X = 39.285*u.arcsec  # 485 pix, extent of vignetting by injector arm
+SHADOW_Y = 45.36*u.arcsec  # 560 pix, extent of vignetting by injector arm
+INJECTOR_THETA = 13*u.deg  # angle of injector arm when in position
+
+# interpolated functions for X and Y positions - not unit aware
+x_func = interp1d(THETA, X, kind='cubic', bounds_error=False, fill_value='extrapolate')
+y_func = interp1d(THETA, Y, kind='cubic', bounds_error=False, fill_value='extrapolate')
+
+
+@u.quantity_input(theta=u.deg)
+def field_stop_centre(theta):
+    return x_func(theta)*u.arcmin, y_func(theta)*u.arcmin
 
 
 def focal_plane_to_sky(cartrep):
@@ -91,7 +116,7 @@ class Baffle:
     """
     BAFFLE_X = 36 * u.mm
     BAFFLE_Y = 44 * u.mm
-    INJECTION_ROT = rotation_matrix(-13*u.deg, 'z')
+    INJECTION_ROT = rotation_matrix(-INJECTOR_THETA, 'z')
     INJECTION_TRANS = CartesianRepresentation(57.5*u.mm, 23.2*u.mm, 0*u.mm)
 
     @lazyproperty
@@ -179,7 +204,6 @@ class COMPOSetupWidget(tk.Toplevel):
         self.lens_status = w.Ilabel(status, text='ERROR', width=10, anchor=tk.W)
         self.lens_status.config(bg=g.COL['critical'])
         self.lens_status.grid(row=2, column=1, sticky=tk.W, pady=2, padx=2)
-
 
     def dumpJSON(self):
         """
