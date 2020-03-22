@@ -8,7 +8,10 @@ from astropy.coordinates import CartesianRepresentation
 from astropy.utils import lazyproperty
 from scipy.interpolate import interp1d
 import numpy as np
-from matplotlib import path, transforms
+from matplotlib import pyplot as plt
+import matplotlib
+from matplotlib import path, transforms, patches, colors
+from matplotlib.collections import PatchCollection
 
 # internal imports
 from . import widgets as w
@@ -24,7 +27,11 @@ flip_y = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
 # COMPO is only available on GTC, so these values are well-known
 pixel_scale = 0.08086 * u.arcsec / u.pix
 focal_plane_scale = 1.214 * u.arcsec / u.mm
-MIRROR_SIZE = 300 * u.pix * pixel_scale / focal_plane_scale
+gtc_focalplane_equivalencies = [
+    (u.mm, u.arcsec, lambda x: x*1.214, lambda x: x/1.214),
+    (u.pix, u.arcsec, lambda x: x/0.08086, lambda x: x*0.08086),
+    (u.mm, u.pix, lambda x: x*1.214/0.08086, lambda x: x*0.08086/1.214)
+]
 
 # predicted position of pick-off pupil from FoV centre
 # from Zeemax simulations
@@ -35,12 +42,14 @@ X = u.Quantity([0.0, 0.476, 0.949, 1.414, 1.868, 2.309, 2.731, 3.133,
 Y = u.Quantity([0.0, 0.021, 0.083, 0.186, 0.329, 0.512, 0.732, 0.988,
                 1.278, 1.600, 1.951, 2.329, 2.731, 3.154], unit=u.arcmin)
 
-
+# Vital statistics from FDR
+PARK_POSITION = -60*u.deg
+MAX_ANGLE = 55*u.deg
 PICKOFF_SIZE = 26.73*u.arcsec  # 330 pixels
-MIRROR_SIZE = 24.3*u.arcsec  # 300 pixels
-SHADOW_X = 39.285*u.arcsec  # 485 pix, extent of vignetting by injector arm
-SHADOW_Y = 45.36*u.arcsec  # 560 pix, extent of vignetting by injector arm
-INJECTOR_THETA = 13*u.deg  # angle of injector arm when in position
+MIRROR_SIZE = 24.3*u.arcsec  # 20 mm
+SHADOW_X = 40*u.mm  # extent of vignetting by injector arm
+SHADOW_Y = 49*u.mm  # extent of vignetting by injector arm (~739 pix)
+INJECTOR_THETA = 13.04*u.deg  # angle of injector arm when in position
 
 # interpolated functions for X and Y positions - not unit aware
 x_func = interp1d(THETA, X, kind='cubic', bounds_error=False, fill_value='extrapolate')
@@ -49,19 +58,54 @@ y_func = interp1d(THETA, Y, kind='cubic', bounds_error=False, fill_value='extrap
 
 @u.quantity_input(theta=u.deg)
 def field_stop_centre(theta):
+    theta = theta.to_value(u.deg)
     return x_func(theta)*u.arcmin, y_func(theta)*u.arcmin
 
 
+def focal_plane_units(unit):
+    return unit in (u.deg, u.arcmin, u.arcsec, u.rad)
+
+
 def focal_plane_to_sky(cartrep):
-    return cartrep.transform(flip_y) * focal_plane_scale
+    cartrep = cartrep.transform(flip_y)
+    with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+        return CartesianRepresentation(cartrep.xyz.to(u.arcsec))
+
+
+@u.quantity_input(pickoff_angle=u.deg)
+def plot_compo(pickoff_angle, injection_side, axis=None):
+    if axis is None:
+        fig, axis = plt.subplots()
+    c = Chip().to_patches()
+    poa = PickoffArm().to_patches(pickoff_angle)
+    ia = InjectionArm(injection_side).to_patches()
+    # todo set colors with pc.set_array
+    cmap = colors.ListedColormap(
+        [
+            '#BFD7EA',  # Chip (blue)
+            '#59C9A5',  # POA arc
+            '#56E39F',  # POA Baffle
+            '#3A3042',  # POA FOV
+            '#FF8C42',  # Inj Baffle
+            '#3A3042',  # Inj Fov
+        ]
+    )
+    pc = PatchCollection(c+poa+ia, alpha=0.8, cmap=cmap)
+    pc.set_array(np.array([0, 1, 2, 3, 4, 5]))
+    axis.add_collection(pc)
+    axis.set_xlim(-300, 300)
+    axis.set_ylim(-50, 150)
+    axis.set_aspect('equal')
+    return axis
 
 
 class Chip:
     """
     Representing the Chip
     """
-    NX = 2048 * u.pix * pixel_scale / focal_plane_scale
-    NY = 1024 * u.pix * pixel_scale / focal_plane_scale
+    with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+        NX = (2048 * u.pix).to(u.mm)
+        NY = (1024 * u.pix).to(u.mm)
 
     @lazyproperty
     def vertices(self):
@@ -70,6 +114,14 @@ class Chip:
             [-self.NY/2, -self.NY/2, self.NY/2, self.NY/2],
             0*u.mm
         )
+
+    def to_patches(self, unit=u.mm):
+        with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+            ll = ((-self.NX/2).to_value(unit), (-self.NY/2).to_value(unit))
+            width = self.NX.to_value(unit)
+            height = self.NY.to_value(unit)
+            rect = patches.Rectangle(ll, width, height)
+        return [rect]
 
     def clip_shape(self, vertices):
         """
@@ -94,7 +146,8 @@ class Chip:
         """
         # enforce pixel space
         try:
-            xyz = vertices.xyz.to(u.mm)
+            with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+                xyz = vertices.xyz.to(u.mm)
         except u.UnitConversionError:
             raise ValueError('vertices are not in units of physical length')
 
@@ -114,27 +167,79 @@ class Baffle:
     """
     The Baffle present on both arms
     """
-    BAFFLE_X = 36 * u.mm
-    BAFFLE_Y = 44 * u.mm
-    INJECTION_ROT = rotation_matrix(-INJECTOR_THETA, 'z')
-    INJECTION_TRANS = CartesianRepresentation(57.5*u.mm, 23.2*u.mm, 0*u.mm)
+    BAFFLE_X = SHADOW_X
+    BAFFLE_Y = SHADOW_Y
+    INJECTION_ROTATION_RIGHT = rotation_matrix(-INJECTOR_THETA, 'z')
+    INJECTION_ROTATION_LEFT = rotation_matrix(INJECTOR_THETA, 'z')
+    INJECTION_TRANSLATION_RIGHT = CartesianRepresentation(57.5*u.mm, 23.2*u.mm, 0*u.mm)
+    INJECTION_TRANSLATION_LEFT = CartesianRepresentation(-57.5*u.mm, 23.2*u.mm, 0*u.mm)
 
     @lazyproperty
-    def right_pickoff_vertices(self):
-        """
-        The vertices of the pickoff baffle when in place
-        """
-        vertices = CartesianRepresentation(
+    def vertices(self):
+        return CartesianRepresentation(
             [-self.BAFFLE_X/2, self.BAFFLE_X/2, self.BAFFLE_X/2, -self.BAFFLE_X/2],
             [-self.BAFFLE_Y/2, -self.BAFFLE_Y/2, self.BAFFLE_Y/2, self.BAFFLE_Y/2],
             0*u.mm
         )
+
+    @lazyproperty
+    def right_injection_vertices(self):
+        """
+        The vertices of the injection baffle when in place
+        """
+        v = self.vertices
         # rotate and translate
-        vertices = vertices.transform(self.INJECTION_ROT) + self.INJECTION_TRANS
+        v = v.transform(self.INJECTION_ROTATION_RIGHT) + self.INJECTION_TRANSLATION_RIGHT
 
         # crop to chip
         c = Chip()
-        return c.clip_shape(vertices)
+        return c.clip_shape(v)
+
+    @lazyproperty
+    def left_injection_vertices(self):
+        """
+        The vertices of the injection baffle when in place
+        """
+        v = self.vertices
+        # rotate and translate
+        v = v.transform(self.INJECTION_ROTATION_LEFT) + self.INJECTION_TRANSLATION_LEFT
+
+        # crop to chip
+        c = Chip()
+        return c.clip_shape(v)
+
+
+class InjectionArm:
+
+    def __init__(self, side):
+        self.b = Baffle()
+        self.side = side
+
+    @property
+    def side(self):
+        return self._side
+
+    @side.setter
+    def side(self, value):
+        if value.lower() not in ('left', 'right'):
+            raise ValueError('side must be left or right')
+        self._side = value
+
+    @property
+    def position(self):
+        return self.b.INJECTION_TRANSLATION_LEFT if self.side == 'left' else self.b.INJECTION_TRANSLATION_RIGHT
+
+    def to_patches(self, unit=u.mm):
+        with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+            centre = self.position
+            fov = patches.Circle(
+                tuple(centre.xyz[:2].to_value(unit)),
+                radius=MIRROR_SIZE.to_value(unit)/2
+            )
+            v = self.b.left_injection_vertices if self.side == 'left' else self.b.right_injection_vertices
+            v = v.xyz[:2].T.to_value(unit)
+            baffle = patches.Polygon(v, closed=True)
+            return [baffle, fov]
 
 
 class PickoffArm:
@@ -151,6 +256,30 @@ class PickoffArm:
         y = r * (1 - np.cos(theta))
         # actually not in focal plane, but assuming it is is OK
         return CartesianRepresentation(x, y, 0*u.mm)
+
+    @u.quantity_input(theta=u.deg)
+    def to_patches(self, theta, unit=u.mm):
+        with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+            centre = self.position(theta)
+            patrol_arc_centre = (0, (270*u.mm).to_value(unit))
+            radius = (270*u.mm + 0.5*MIRROR_SIZE).to_value(unit)
+            arc = patches.Wedge(
+                patrol_arc_centre, radius,
+                # mpl, 0 is along x axis. COMPO, 0 is along -y
+                PARK_POSITION.to_value(u.deg) - 90, MAX_ANGLE.to_value(u.deg) - 90,
+                width=MIRROR_SIZE.to_value(unit)
+            )
+            pickoff = patches.Circle(
+                tuple(centre.xyz[:2].to_value(unit)),
+                radius=MIRROR_SIZE.to_value(unit)/2
+            )
+            baffle_cart = Baffle().vertices
+            baffle_cart = baffle_cart.transform(rotation_matrix(theta - 90*u.deg))
+            baffle_cart += centre
+            baffle_xy = baffle_cart.xyz[:2].T.to_value(unit)
+            baffle = patches.Polygon(baffle_xy, closed=True)
+
+        return [arc, baffle, pickoff]
 
 
 class COMPOSetupWidget(tk.Toplevel):
