@@ -97,12 +97,13 @@ def focal_plane_to_sky(cartrep):
 
 
 @u.quantity_input(pickoff_angle=u.deg)
-def plot_compo(pickoff_angle, injection_side, axis=None):
+@u.quantity_input(injection_angle=u.deg)
+def plot_compo(pickoff_angle, injection_angle, axis=None):
     if axis is None:
         fig, axis = plt.subplots()
     c = Chip().to_patches()
     poa = PickoffArm().to_patches(pickoff_angle)
-    ia = InjectionArm(injection_side).to_patches()
+    ia = InjectionArm().to_patches(injection_angle)
     # todo set colors with pc.set_array
     cmap = colors.ListedColormap(
         [
@@ -147,6 +148,15 @@ class Chip:
             rect = patches.Rectangle(ll, width, height)
         return [rect]
 
+    def contains(self, repr):
+        with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+            x = repr.x.to(u.mm)
+            y = repr.y.to(u.mm)
+        inchip = False
+        if (-self.NX/2 < x < self.NX/2) and (-self.NY/2 < y < self.NY/2):
+            inchip = True
+        return inchip
+
     def clip_shape(self, vertices):
         """
         Clip a shape defined as a CartesianRepresentation of points by the chip edges
@@ -184,6 +194,7 @@ class Chip:
         if np.all(poly_clipped[0] == poly_clipped[-1]):
             poly_clipped = poly_clipped[:-1]
 
+        print(poly_clipped, vertices.z)
         return CartesianRepresentation(*u.Quantity(poly_clipped, unit=u.mm).T, vertices.z)
 
 
@@ -206,85 +217,42 @@ class Baffle:
             0*u.mm
         )
 
-    @lazyproperty
-    def right_injection_vertices(self):
-        """
-        The vertices of the injection baffle when in place
-        """
-        v = self.vertices
-        # rotate and translate
-        v = v.transform(self.INJECTION_ROTATION_RIGHT) + self.INJECTION_TRANSLATION_RIGHT
-
-        # crop to chip
-        c = Chip()
-        return c.clip_shape(v)
-
-    @lazyproperty
-    def left_injection_vertices(self):
-        """
-        The vertices of the injection baffle when in place
-        """
-        v = self.vertices
-        # rotate and translate
-        v = v.transform(self.INJECTION_ROTATION_LEFT) + self.INJECTION_TRANSLATION_LEFT
-
-        # crop to chip
-        c = Chip()
-        return c.clip_shape(v)
-
 
 class InjectionArm:
 
-    def __init__(self, side):
-        self.b = Baffle()
-        self.side = side
-
-    @property
-    def side(self):
-        return self._side
-
-    @side.setter
-    def side(self, value):
-        if value.lower() not in ('left', 'right', 'guide'):
-            raise ValueError('side must be left or right')
-        self._side = value
-
-    @property
-    def position(self):
+    @u.quantity_input(theta=u.deg)
+    def position(self, theta):
         """
-        Position of field stop centre for injection arm
-        """
-        val = self.b.INJECTION_TRANSLATION_RIGHT
-        if self.side == 'left':
-            val = self.b.INJECTION_TRANSLATION_LEFT
-        elif self.side == 'guide':
-            theta = PARK_POSITION
-            r = 254.72 * u.mm  # length of injection arm
-            off = 270 * u.mm  # dist from rotation axis to FoV centre
-            d = off - r
-            x = r * np.sin(theta)
-            y = d + r * (1-np.cos(theta))
-            val = CartesianRepresentation(x, y, 0*u.mm)
-        return val
+        Position of pupil stop centre in focal plane (mm)
 
-    def to_patches(self, unit=u.mm):
+        Uses approximate formula which agrees with Zeemax calculations inc distortion to 1pix
+        """
+        r = 254.72 * u.mm  # length of injection arm
+        off = 270 * u.mm  # dist from rotation axis to FoV centre
+        d = off - r
+        x = r * np.sin(theta)
+        y = d + r * (1-np.cos(theta))
+        return CartesianRepresentation(x, y, 0*u.mm)
+
+    @u.quantity_input(theta=u.deg)
+    def to_patches(self, theta, unit=u.mm):
         with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
-            centre = self.position
+            centre = self.position(theta)
             fov = patches.Circle(
                 tuple(centre.xyz[:2].to_value(unit)),
                 radius=MIRROR_SIZE.to_value(unit)/2
             )
-            if self.side != 'guide':
-                v = self.b.left_injection_vertices if self.side == 'left' else self.b.right_injection_vertices
-                v = v.xyz[:2].T.to_value(unit)
-                baffle = patches.Polygon(v, closed=True)
-            else:
-                baffle_cart = Baffle().vertices
-                baffle_cart = baffle_cart.transform(rotation_matrix(-PARK_POSITION))
-                baffle_cart += centre
-                baffle_xy = baffle_cart.xyz[:2].T.to_value(unit)
-                baffle = patches.Polygon(baffle_xy, closed=True)
-            return [baffle, fov]
+
+            baffle_cart = Baffle().vertices
+            baffle_cart = baffle_cart.transform(rotation_matrix(-theta))
+            baffle_cart += centre
+            c = Chip()
+            if c.contains(centre):
+                baffle_cart = c.clip_shape(baffle_cart)
+            baffle_xy = baffle_cart.xyz[:2].T.to_value(unit)
+            baffle = patches.Polygon(baffle_xy, closed=True)
+
+        return [baffle, fov]
 
 
 class PickoffArm:
