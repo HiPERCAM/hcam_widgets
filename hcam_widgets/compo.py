@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals, absolute_import, division
 import six
+import pkg_resources
 
 # non-standard imports
 from astropy import units as u
@@ -9,7 +10,6 @@ from astropy.utils import lazyproperty
 from scipy.interpolate import interp1d
 import numpy as np
 from matplotlib import pyplot as plt
-import matplotlib
 from matplotlib import path, transforms, patches, colors
 from matplotlib.collections import PatchCollection
 
@@ -50,14 +50,35 @@ MIRROR_SIZE = 24.3*u.arcsec  # 20 mm
 SHADOW_X = 40*u.mm  # extent of vignetting by injector arm
 SHADOW_Y = 49*u.mm  # extent of vignetting by injector arm (~739 pix)
 INJECTOR_THETA = 13.04*u.deg  # angle of injector arm when in position
+LENS_REF_POSITION = 20 * u.mm  # TODO: this is made up, replace with true value
 
 # interpolated functions for X and Y positions - not unit aware
 x_func = interp1d(THETA, X, kind='cubic', bounds_error=False, fill_value='extrapolate')
 y_func = interp1d(THETA, Y, kind='cubic', bounds_error=False, fill_value='extrapolate')
 
+# interpolated functions for lens offset
+lens_data_file = pkg_resources.resource_filename('hcam_widgets', 'data/compo_lens_offset.csv')
+_, po_theta, lens_off = np.loadtxt(lens_data_file, delimiter=',', skiprows=1).T
+_g = interp1d(po_theta, lens_off, bounds_error=False, fill_value='extrapolate')
+
+
+@u.quantity_input(pickoff_theta=u.deg)
+def target_lens_position(pickoff_theta, guiding=False):
+    """
+    Find the correct position for the corrector lens
+    """
+    offset = _g(abs(pickoff_theta.to_value(u.deg))) * u.mm
+    return LENS_REF_POSITION + offset
+
 
 @u.quantity_input(theta=u.deg)
 def field_stop_centre(theta):
+    """
+    Where does the field stop of the injector arm fall in the focal plane?
+
+    This is based on Zeemax simulations that include distortions
+    and the curvature of the plane.
+    """
     theta = theta.to_value(u.deg)
     return x_func(theta)*u.arcmin, y_func(theta)*u.arcmin
 
@@ -67,6 +88,9 @@ def focal_plane_units(unit):
 
 
 def focal_plane_to_sky(cartrep):
+    """
+    Convert physical position in focal plane to sky offset from FoV
+    """
     cartrep = cartrep.transform(flip_y)
     with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
         return CartesianRepresentation(cartrep.xyz.to(u.arcsec))
@@ -221,13 +245,27 @@ class InjectionArm:
 
     @side.setter
     def side(self, value):
-        if value.lower() not in ('left', 'right'):
+        if value.lower() not in ('left', 'right', 'guide'):
             raise ValueError('side must be left or right')
         self._side = value
 
     @property
     def position(self):
-        return self.b.INJECTION_TRANSLATION_LEFT if self.side == 'left' else self.b.INJECTION_TRANSLATION_RIGHT
+        """
+        Position of field stop centre for injection arm
+        """
+        val = self.b.INJECTION_TRANSLATION_RIGHT
+        if self.side == 'left':
+            val = self.b.INJECTION_TRANSLATION_LEFT
+        elif self.side == 'guide':
+            theta = PARK_POSITION
+            r = 254.72 * u.mm  # length of injection arm
+            off = 270 * u.mm  # dist from rotation axis to FoV centre
+            d = off - r
+            x = r * np.sin(theta)
+            y = d + r * (1-np.cos(theta))
+            val = CartesianRepresentation(x, y, 0*u.mm)
+        return val
 
     def to_patches(self, unit=u.mm):
         with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
@@ -236,9 +274,16 @@ class InjectionArm:
                 tuple(centre.xyz[:2].to_value(unit)),
                 radius=MIRROR_SIZE.to_value(unit)/2
             )
-            v = self.b.left_injection_vertices if self.side == 'left' else self.b.right_injection_vertices
-            v = v.xyz[:2].T.to_value(unit)
-            baffle = patches.Polygon(v, closed=True)
+            if self.side != 'guide':
+                v = self.b.left_injection_vertices if self.side == 'left' else self.b.right_injection_vertices
+                v = v.xyz[:2].T.to_value(unit)
+                baffle = patches.Polygon(v, closed=True)
+            else:
+                baffle_cart = Baffle().vertices
+                baffle_cart = baffle_cart.transform(rotation_matrix(-PARK_POSITION))
+                baffle_cart += centre
+                baffle_xy = baffle_cart.xyz[:2].T.to_value(unit)
+                baffle = patches.Polygon(baffle_xy, closed=True)
             return [baffle, fov]
 
 
@@ -274,7 +319,7 @@ class PickoffArm:
                 radius=MIRROR_SIZE.to_value(unit)/2
             )
             baffle_cart = Baffle().vertices
-            baffle_cart = baffle_cart.transform(rotation_matrix(theta - 90*u.deg))
+            baffle_cart = baffle_cart.transform(rotation_matrix(-theta))
             baffle_cart += centre
             baffle_xy = baffle_cart.xyz[:2].T.to_value(unit)
             baffle = patches.Polygon(baffle_xy, closed=True)

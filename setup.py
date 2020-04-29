@@ -38,6 +38,7 @@ setup(
     ],
     package_dir={'hcam_widgets':
                  'hcam_widgets'},
+    include_package_data=True,
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,
