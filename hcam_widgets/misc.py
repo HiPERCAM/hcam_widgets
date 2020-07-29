@@ -14,7 +14,6 @@ from astropy.io import ascii
 
 from hcam_devices.wamp.utils import call
 from . import DriverError
-from .obsmodes import get_obsmode
 
 if not six.PY3:
     import tkFileDialog as filedialog
@@ -162,10 +161,9 @@ def postJSON(g, data):
     """
     g.clog.debug('Entering postJSON')
 
-    obmode = get_obsmode(data)
     ok = True
     try:
-        call('hipercam.ngc.rpc.load_setup', obmode)
+        call('hipercam.ngc.rpc.load_setup', data)
     except Exception as err:
         ok, status_msg = False, str(err)
 
@@ -358,7 +356,12 @@ def execCommand(g, command, timeout=10):
         return False
 
     try:
-        msg, ok = call('hipercam.ngc.rpc.{}'.format(command))
+        response = call('hipercam.ngc.rpc.{}'.format(command))
+        if response is not None:
+            msg, ok = response
+        else:
+            msg = ''
+            ok = True
         g.clog.info('execCommand, command = "' + command + '"')
 
         if ok:

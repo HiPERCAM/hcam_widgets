@@ -1723,7 +1723,7 @@ class Stop(ActButton):
         Carries out the action associated with Stop button
         """
         g = get_root(self).globals
-        g.clog.debug('Stop pressed')
+        g.clog.info('Stop pressed')
 
         # Stop exposure meter
         # do this first, so timer doesn't also try to enable idle mode
@@ -1766,9 +1766,11 @@ class Stop(ActButton):
             g.observe.start.enable()
             g.setup.powerOn.disable()
             g.setup.powerOff.enable()
+            self.disable()
 
             # Report that run has stopped
             g.clog.info('Run stopped')
+            self.stopping = False
 
             # enable idle mode now run has stopped
             g.clog.info('Setting chips to idle')
@@ -1791,11 +1793,11 @@ class Stop(ActButton):
                 g.clog.warn(str(err))
 
             return True
+
         elif stopped and not self.stopping:
             # exposure is not running, but we haven't been pressed
             g.observe.start.enable()
-            g.setup.powerOn.disable()
-            g.setup.powerOff.enable()
+            self.disable()
 
         elif self.stopping:
             # Exposure in process of stopping
@@ -1804,10 +1806,6 @@ class Stop(ActButton):
             g.observe.start.disable()
             g.setup.powerOn.disable()
             g.setup.powerOff.disable()
-
-            # wait a second before trying again
-            self.after(500, self.check)
-
         else:
             # exposure is underway
             self.enable()
@@ -2314,9 +2312,8 @@ class PowerOn(ActButton):
         g.clog.debug('Power on pressed')
         try:
             session = root.session
-            msg, ok = yield session.call('hipercam.ngc.rpc.ngc_server.online')
-            if not ok:
-                raise RuntimeError(msg)
+            yield session.call('hipercam.ngc.rpc.ngc_server.online')
+
         except Exception as err:
             g.clog.warn('Failed to bring server online: ' + str(err))
             return False
@@ -2337,7 +2334,7 @@ class PowerOn(ActButton):
             g.observe.stop.disable()
             g.setup.powerOff.enable()
 
-            success = execCommand(g, 'seqStart')
+            success = execCommand(g, 'seq_start')
             if not success:
                 g.clog.warn('Failed to start sequencer after Power On.')
 
@@ -2422,6 +2419,33 @@ class InstSetup(tk.LabelFrame):
                             self.powerOn, self.powerOff, self.seqStart, self.seqStop]
         # set which buttons are presented and where they go
         self.setExpertLevel()
+        self.telemetry_topics = [
+            ('hipercam.ngc.telemetry', self.on_telemetry)
+        ]
+
+    def on_telemetry(self, package):
+        g = get_root(self).globals
+        try:
+            telemetry = pickle.loads(package)
+            ngc_status = telemetry['state']['ngc_server']
+            res = ReadNGCTelemetry(telemetry)
+            # clocks
+            if res.clocks == 'enabled':
+                self.cldcOn.disable()
+                self.cldcOff.enable()
+                self.seqStart.enable()
+            else:
+                self.cldcOn.enable()
+                self.cldcOff.disable()
+            # power on/off
+            if res.clocks == 'enabled' and 'online' in ngc_status:
+                self.powerOff.enable()
+                self.powerOn.disable()
+            else:
+                self.powerOn.enable()
+                self.powerOff.disable()
+        except Exception:
+            g.clog.warn('could not decode NGC telemetry')
 
     def setExpertLevel(self):
         """
@@ -2649,7 +2673,6 @@ class Timer(tk.Label):
         run status @0.2Hz to reduce load on servers.
         """
         g = get_root(self).globals
-        print('tick')
         try:
             self.count += 1
             delta = int(round(time.time() - self.startTime))
@@ -2674,7 +2697,10 @@ class Timer(tk.Label):
                     g.clog.info('Timer detected stopped run')
 
                     warn_cmd = '/usr/bin/ssh observer@192.168.1.1 spd-say "\'exposure finished\'"'
-                    subprocess.check_output(warn_cmd, shell=True, stderr=subprocess.PIPE)
+                    try:
+                        subprocess.check_output(warn_cmd, shell=True, stderr=subprocess.PIPE)
+                    except Exception:
+                        pass
 
                     # enable idle mode now run has stopped
                     g.clog.info('Setting chips to idle')

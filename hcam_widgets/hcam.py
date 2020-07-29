@@ -2,6 +2,7 @@
 from __future__ import print_function, unicode_literals, absolute_import, division
 import math
 import json
+import pickle
 import six
 from os.path import expanduser
 
@@ -1848,6 +1849,8 @@ class Observe(tk.LabelFrame):
         ]
 
     def on_telemetry(self, package):
+        telemetry = pickle.loads(package)
+
         self.stop.on_telemetry(package)
 
     def setExpertLevel(self):
