@@ -97,8 +97,9 @@ class COMPOControlWidget(tk.Toplevel):
         g = get_root(self).globals
         addStyle(self)
         self.title("COMPO setup")
+
         # do not display on creation
-        # self.withdraw()
+        self.withdraw()
 
         # dont destroy when we click the close button
         self.protocol('WM_DELETE_WINDOW', self.withdraw)
@@ -155,10 +156,12 @@ class COMPOControlWidget(tk.Toplevel):
         self.canvas.get_tk_widget().pack()
         mimic_frame.grid(row=1, column=0, padx=4, pady=4)
 
-        self.session = None
-
         left.pack(pady=2, side=tk.LEFT, fill=tk.Y)
         right.pack(pady=2, side=tk.LEFT, fill=tk.Y)
+
+    @property
+    def session(self):
+        return get_root(self).session
 
     @inlineCallbacks
     def handle_connection(self):
@@ -222,11 +225,6 @@ class COMPOControlWidget(tk.Toplevel):
         yield self.session.call('hipercam.compo.rpc.pickoff.move')
         yield self.session.call('hipercam.compo.rpc.injection.move')
         yield self.session.call('hipercam.compo.rpc.lens.move')
-
-    def on_wamp_session(self, session):
-        self.print_message("Wamp session connected!")
-        print("Wamp session connected!")
-        self.session = session
 
     def send_message(self, topic, msg):
         if self.session:
