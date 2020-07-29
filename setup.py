@@ -34,7 +34,8 @@ setup(
     download_url='https://github.com/HiPERCAM/hcam_widgets/archive/v0.7.0.tar.gz',
     packages=[
         'hcam_widgets',
-        'hcam_widgets.gtc'
+        'hcam_widgets.compo',
+        'hcam_widgets.hardware'
     ],
     package_dir={'hcam_widgets':
                  'hcam_widgets'},

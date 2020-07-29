@@ -6,13 +6,7 @@ import re
 from astropy import coordinates as coord
 from astropy import units as u
 
-try:
-    # should not be a required module since can run on WHT fine without it
-    from .gtc.corba import get_telescope_server
-    from .gtc.headers import create_header_from_telpars
-    has_corba = True
-except Exception as err:
-    has_corba = False
+from hcam_devices.wamp.utils import call
 
 
 def getWhtTcs():
@@ -54,24 +48,20 @@ def getWhtTcs():
 
 
 def getGtcTcs():
-    if not has_corba:
-        raise IOError('CORBA not installed')
-    server = get_telescope_server()
-    try:
-        pars = server.getTelescopeParams()
-    except:
-        raise IOError('cannot communicate with GTC telescope server')
 
+    try:
+        hdr = call('hipercam.gtc.rpc.get_telescope_pars')
+    except Exception:
+        raise RuntimeError('failed to get tcs from GTC')
     try:
         # pars is a list of strings describing tel info in FITS
         # style, each entry in the list is a different class of
         # thing (weather, telescope, instrument etc).
-        hdr = create_header_from_telpars(pars)
         ra = float(hdr['RADEG'])
         dec = float(hdr['DECDEG'])
         pa = float(hdr['INSTRPA'])
         focus = float(hdr['M2UZ'])
-    except:
+    except ValueError:
         ra, dec, pa, focus = -999, -999, -999, -999
 
     return ra, dec, pa, focus

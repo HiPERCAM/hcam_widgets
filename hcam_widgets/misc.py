@@ -11,10 +11,11 @@ import re
 
 from astropy.io import fits
 from astropy.io import ascii
-import requests
 
-
+from hcam_devices.wamp.utils import call
 from . import DriverError
+from .obsmodes import get_obsmode
+
 if not six.PY3:
     import tkFileDialog as filedialog
     from StringIO import StringIO
@@ -22,100 +23,47 @@ else:
     from tkinter import filedialog
     from io import StringIO
 
-try:
-    # should not be a required module since can run on WHT fine without it
-    from .gtc.corba import get_telescope_server
-    from .gtc.headers import create_header_from_telpars
-    has_corba = True
-except Exception as err:
-    has_corba = False
 
-
-class ReadServer(object):
+class ReadNGCTelemetry(object):
     """
-    Class to field the json responses sent back from the ULTRACAM servers
+    Class to field the telemetry sent by the NGC server
 
     Set the following attributes:
-
-     root    : the decoded json response
-     ok      : whether response is OK or not (True/False)
-     err     : message if ok == False
+     ok      : True if telemetry is read OK
+     err     : reason if telemetry not parsed OK
      state   : state of the camera. Possibilties are:
                'IDLE', 'BUSY', 'ERROR', 'ABORT', 'UNKNOWN'
      clocks  : whether the clock voltages are enabled. Possible values:
                'enabled', 'disabled'
      run     : current or last run number
     """
-    def __init__(self, resp, status_msg=False):
+    def __init__(self, telemetry):
         """
         Parameters
         ----------
-        resp : bytes
-            response from server
-        status_msg : bool (default True)
-            Set True if the response should contain status info
+        telemetry : dict
+            telemetry package from NGC
         """
-        # Store the entire response
-        try:
-            self.root = json.loads(resp.decode())
-            self.ok = True
-        except Exception:
-            self.ok = False
-            self.err = 'Could not parse JSON response'
-            self.state = None
-            self.clocks = None
-            self.root = dict()
-            return
-
-        # Work out whether it was happy
-        if 'RETCODE' not in self.root:
-            self.ok = False
-            self.err = 'Could not identify status'
-            self.state = None
-            self.clocks = None
-            return
-        else:
-            self.ok = True if self.root['RETCODE'] == "OK" else False
-
-        if not status_msg:
-            self.state = None
-            self.run = 0
-            self.err = ''
-            self.clocks = None
-            self.msg = self.root['MESSAGEBUFFER']
-            return
-
         # Determine state of the camera
-        sfind = self.root['system.subStateName']
-        if sfind is 'ERR':
-            self.ok = False
-            self.err = 'Could not identify state'
+        self.ok = True
+        self.err = ''
+        if 'system.subStateName' not in telemetry:
+            self.err += 'could not identify state\n'
             self.state = None
-            self.clocks = None
-            self.root = dict()
-            return
         else:
-            self.ok = True
-            self.err = ''
-            self.state = self.root['system.subStateName']
+            self.state = telemetry['system.subStateName']
 
         # determine state of clocks
-        sfind = self.root['cldc_0.statusName']
-        if sfind is 'ERR':
+        if 'cldc_0.statusName' not in telemetry:
             self.ok = False
-            self.err = 'Could not identify clock status'
-            self.state = None
+            self.err += 'could not identify clock status\n'
             self.clocks = None
-            self.root = dict()
-            return
         else:
-            self.ok = True
-            self.err = ''
-            self.clocks = self.root['cldc_0.statusName']
+            self.clocks = telemetry['cldc_0.statusName']
 
         # Find current run number (set it to 0 if we fail)
-        newDataFileName = self.root["exposure.newDataFileName"]
-        exposure_state = self.root["exposure.expStatusName"]
+        newDataFileName = telemetry["exposure.newDataFileName"]
+        exposure_state = telemetry["exposure.expStatusName"]
         pattern = '\D*(\d*).*.fits'
         try:
             run_number = int(re.match(pattern, newDataFileName).group(1))
@@ -132,9 +80,8 @@ class ReadServer(object):
                 ))
         except (ValueError, IndexError, AttributeError):
             self.run = 0
-
-    def resp(self):
-        return json.dumps(self.root)
+            self.ok = False
+            self.err += 'cannot read run number'
 
 
 def overlap(xl1, yl1, nx1, ny1, xl2, yl2, nx2, ny2):
@@ -145,31 +92,11 @@ def overlap(xl1, yl1, nx1, ny1, xl2, yl2, nx2, ny2):
             yl2 < yl1+ny1 and yl2+ny2 > yl1)
 
 
-def forceNod(g, data):
-    nodPattern = data.get('appdata', {}).get('nodpattern', {})
-    if g.cpars['telins_name'] == 'GTC' and nodPattern:
-        try:
-            url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'force')
-            opener = urllib.request.build_opener()
-            req = urllib.request.Request(url)
-            response = opener.open(req, timeout=5).read().decode()
-            g.rlog.info('Dither Server Response: ' + response)
-        except Exception as err:
-            g.clog.warn('Failed to send dither offset')
-            g.clog.warn(str(err))
-            return False
-    return True
-
-
 def startNodding(g, data):
     nodPattern = data.get('appdata', {}).get('nodpattern', {})
     if g.cpars['telins_name'] == 'GTC' and nodPattern:
         try:
-            url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'start')
-            opener = urllib.request.build_opener()
-            req = urllib.request.Request(url)
-            response = opener.open(req, timeout=5).read().decode()
-            g.rlog.info('Dither Server Response: ' + response)
+            call('hipercam.gtc.rpc.gtc.start_nodding')
         except Exception as err:
             g.clog.warn('Failed to stop dither server')
             g.clog.warn(str(err))
@@ -180,11 +107,7 @@ def startNodding(g, data):
 def stopNodding(g):
     if g.cpars['telins_name'] == 'GTC':
         try:
-            url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'stop')
-            opener = urllib.request.build_opener()
-            req = urllib.request.Request(url)
-            response = opener.open(req, timeout=5).read().decode()
-            g.rlog.info('Dither Server Response: ' + response)
+            call('hipercam.gtc.rpc.gtc.stop_nodding')
         except Exception as err:
             g.clog.warn('Failed to stop dither server')
             g.clog.warn(str(err))
@@ -239,41 +162,32 @@ def postJSON(g, data):
     """
     g.clog.debug('Entering postJSON')
 
-    # encode data as json
-    json_data = json.dumps(data).encode('utf-8')
+    obmode = get_obsmode(data)
+    ok = True
+    try:
+        call('hipercam.ngc.rpc.load_setup', obmode)
+    except Exception as err:
+        ok, status_msg = False, str(err)
 
-    # Send the xml to the server
-    url = urllib.parse.urljoin(g.cpars['hipercam_server'], g.SERVER_POST_PATH)
-    g.clog.debug('Server URL = ' + url)
-
-    opener = urllib.request.build_opener()
-    g.clog.debug('content length = ' + str(len(json_data)))
-    req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
-    response = opener.open(req, timeout=15).read()
-    g.rlog.debug('Server response: ' + response.decode())
-    csr = ReadServer(response, status_msg=False)
-    if not csr.ok:
+    if not ok:
         g.clog.warn('Server response was not OK')
-        g.rlog.warn('postJSON response: ' + response.decode())
-        g.clog.warn('Server error = ' + csr.err)
+        g.rlog.warn('Error: ' + status_msg)
         return False
 
     # now try to setup nodding server if appropriate
-    if g.cpars['telins_name'] == 'GTC':
-        url = urllib.parse.urljoin(g.cpars['gtc_offset_server'], 'setup')
-        g.clog.debug('Offset Server URL = ' + url)
-        opener = urllib.request.build_opener()
+    nodpattern = data.get('appdata', {}).get('nodpattern', {})
+    if g.cpars['telins_name'] == 'GTC' and nodpattern:
         try:
-            req = urllib.request.Request(url, data=json_data, headers={'Content-type': 'application/json'})
-            response = opener.open(req, timeout=5).read().decode()
+            ra_offsets = list(nodpattern['ra'])
+            dec_offsets = list(nodpattern['dec'])
+            call('hipercam.gtc.rpc.load_nod_pattern', ra_offsets, dec_offsets)
+            ok = True
         except Exception as err:
-            g.clog.warn('Could not communicate with GTC offsetter')
-            g.clog.warn(str(err))
-            return False
+            ok, status_msg = False, str(err)
 
-        g.rlog.info('Offset Server Response: ' + response)
-        if not json.loads(response)['status'] == 'OK':
+        if not ok:
             g.clog.warn('Offset Server response was not OK')
+            g.rlog.warn('Error: ' + status_msg)
             return False
 
     g.clog.debug('Leaving postJSON')
@@ -300,13 +214,11 @@ def createJSON(g, full=True):
         data['hardware'] = g.ccd_hw.dumpJSON()
         data['tcs'] = g.info.dumpJSON()
 
-        if g.cpars['telins_name'].lower() == 'gtc' and has_corba:
+        if g.cpars['telins_name'].lower() == 'gtc':
             try:
-                s = get_telescope_server()
-                data['gtc_headers'] = dict(
-                    create_header_from_telpars(s.getTelescopeParams())
-                )
-            except:
+                telpars = call('hipercam.gtc.rpc.get_telescope_pars')
+                data['gtc_headers'] = telpars
+            except Exception:
                 g.clog.warn('cannot get GTC headers from telescope server')
     return data
 
@@ -409,22 +321,10 @@ def insertFITSHDU(g):
     tcs_table = g.info.tcs_table
 
     g.clog.info('Adding TCS table data to run{:04d}.fits'.format(run_number))
-    url = g.cpars['hipercam_server'] + 'addhdu'
     try:
         fd = StringIO()
         ascii.write(tcs_table, format='ecsv', output=fd)
-        files = {'file': fd.getvalue()}
-        r = requests.post(url, data={'run': 'run{:04d}.fits'.format(run_number)},
-                          files=files)
-        fd.close()
-        rs = ReadServer(r.content, status_msg=False)
-        if rs.ok:
-            g.clog.info('Response from server was OK')
-            return True
-        else:
-            g.clog.warn('Response from server was not OK')
-            g.clog.warn('Reason: ' + rs.err)
-            return False
+        call('hipercam.ngc.rpc.add_hdu', fd.getvalue(), run_number)
     except Exception as err:
         g.clog.warn('insertFITSHDU failed')
         g.clog.warn(str(err))
@@ -442,12 +342,12 @@ def execCommand(g, command, timeout=10):
 
     Possible commands are:
 
-      start   : starts a run
-      stop    : stops a run
-      abort   : aborts a run
-      online  : bring ESO control server online and power up hardware
-      off     : put ESO control server in idle state and power down
-      standby : server can communicate, but child processes disabled
+      start              : starts a run
+      stop               : stops a run
+      abort              : aborts a run
+      ngc_server.online  : bring ESO control server online and power up hardware
+      ngc_server.offline : put ESO control server in idle state and power down
+      ngc_server.standby : server can communicate, but child processes disabled
       reset   : resets the NGC controller front end
 
     Returns True/False according to whether the command
@@ -458,20 +358,17 @@ def execCommand(g, command, timeout=10):
         return False
 
     try:
-        url = g.cpars['hipercam_server'] + command
+        msg, ok = call('hipercam.ngc.rpc.{}'.format(command))
         g.clog.info('execCommand, command = "' + command + '"')
-        response = urllib.request.urlopen(url, timeout=timeout)
-        rs = ReadServer(response.read(), status_msg=False)
 
-        g.rlog.info('Server response =\n' + rs.resp())
-        if rs.ok:
+        if ok:
             g.clog.info('Response from server was OK')
             return True
         else:
             g.clog.warn('Response from server was not OK')
-            g.clog.warn('Reason: ' + rs.err)
+            g.clog.warn('Reason: ' + msg)
             return False
-    except urllib.error.URLError as err:
+    except Exception as err:
         g.clog.warn('execCommand failed')
         g.clog.warn(str(err))
 
@@ -483,29 +380,34 @@ def isRunActive(g):
     Polls the data server to see if a run is active
     """
     if g.cpars['hcam_server_on']:
-        url = g.cpars['hipercam_server'] + 'summary'
-        response = urllib.request.urlopen(url, timeout=2)
-        rs = ReadServer(response.read(), status_msg=True)
-        if not rs.ok:
-            raise DriverError('isRunActive error: ' + str(rs.err))
-        if rs.state == 'idle':
+        try:
+            response = call('hipercam.ngc.rpc.summary')
+        except Exception as err:
+            raise DriverError('isRunActive error reading NGC status: ' + str(err))
+        tel = ReadNGCTelemetry(response)
+
+        if not tel.ok:
+            raise DriverError('isRunActive error: ' + str(tel.err))
+        if tel.state == 'idle':
             return False
-        elif rs.state == 'active':
+        elif tel.state == 'active':
             return True
         else:
-            raise DriverError('isRunActive error, state = ' + rs.state)
+            raise DriverError('isRunActive error, state = ' + tel.state)
     else:
         raise DriverError('isRunActive error: servers are not active')
 
 
 def isPoweredOn(g):
     if g.cpars['hcam_server_on']:
-        url = g.cpars['hipercam_server'] + 'summary'
-        response = urllib.request.urlopen(url, timeout=2)
-        rs = ReadServer(response.read(), status_msg=True)
-        if not rs.ok:
-            raise DriverError('isPoweredOn error: ' + str(rs.err))
-        if rs.clocks == 'enabled':
+        try:
+            response = call('hipercam.ngc.rpc.summary')
+        except Exception as err:
+            raise DriverError('isPoweredOn error reading NGC status: ' + str(err))
+        tel = ReadNGCTelemetry(response)
+        if not tel.ok:
+            raise DriverError('isPoweredOn error: ' + str(tel.err))
+        if tel.clocks == 'enabled':
             return True
         else:
             return False
@@ -516,15 +418,14 @@ def isPoweredOn(g):
 def isOnline(g):
     # checks if ESO Server is in ONLINE state
     if g.cpars['hcam_server_on']:
-        url = g.cpars['hipercam_server'] + 'status'
         try:
-            response = urllib.request.urlopen(url, timeout=2)
-        except urllib.error.URLError:
-            return False
-        rs = ReadServer(response.read(), status_msg=False)
-        if not rs.ok:
-            raise DriverError('isOnline error: ' + str(rs.err))
-        if rs.msg.lower() == 'online':
+            msg, ok = call('hipercam.ngc.rpc.status')
+        except Exception as err:
+            raise DriverError('isOnline error: ' + str(err))
+
+        if not ok:
+            raise DriverError('isOnline error: ' + msg)
+        if msg.lower() == 'online':
             return True
         else:
             return False
@@ -540,16 +441,12 @@ def getFrameNumber(g):
     """
     if not g.cpars['hcam_server_on']:
         raise DriverError('getRunNumber error: servers are not active')
-    url = g.cpars['hipercam_server'] + 'status/DET.FRAM2.NO'
-    response = urllib.request.urlopen(url, timeout=2)
-    rs = ReadServer(response.read(), status_msg=False)
+    msg, ok = call('hipercam.ngc.rpc.status', 'DET.FRAM2.NO')
+    if not ok:
+        raise DriverError('getFrameNumber error: could not get frame number ' + msg)
     try:
-        msg = rs.msg
-    except:
-        raise DriverError('getFrameNumber error: no message found')
-    try:
-        frame_no = int(msg.split()[1])
-    except:
+        frame_no = int(msg)
+    except ValueError:
         raise DriverError('getFrameNumber error: invalid msg ' + msg)
     return frame_no
 
@@ -561,13 +458,15 @@ def getRunNumber(g):
     """
     if not g.cpars['hcam_server_on']:
         raise DriverError('getRunNumber error: servers are not active')
-    url = g.cpars['hipercam_server'] + 'summary'
-    response = urllib.request.urlopen(url, timeout=2)
-    rs = ReadServer(response.read(), status_msg=True)
-    if rs.ok:
-        return rs.run
+    try:
+        response = call('hipercam.ngc.rpc.summary')
+    except Exception as err:
+        raise DriverError('isRunActive error reading NGC status: ' + str(err))
+    tel = ReadNGCTelemetry(response)
+    if tel.ok:
+        return tel.run
     else:
-        raise DriverError('getRunNumber error: ' + str(rs.err))
+        raise DriverError('getRunNumber error: ' + str(tel.err))
 
 
 def checkSimbad(g, target, maxobj=5, timeout=5):
