@@ -12,7 +12,7 @@ import numpy as np
 from . import widgets as w
 from . import DriverError
 from .tkutils import get_root
-from .misc import (createJSON, saveJSON, postJSON, startNodding, forceNod,
+from .misc import (createJSON, saveJSON, postJSON, startNodding,
                    execCommand, isRunActive, jsonFromFits)
 
 if not six.PY3:
@@ -347,7 +347,7 @@ class InstPars(tk.LabelFrame):
                 ra=ra.tolist(),
                 dec=dec.tolist()
             )
-        except:
+        except Exception:
             g.clog.warn('Setting dither pattern failed. Disabling dithering')
             self.nod.set(False)
             self.nodPattern = {}
@@ -803,7 +803,7 @@ class InstPars(tk.LabelFrame):
                         xsur, 1025 - ys - ny, nx, ny
                     )
                 return ret
-        except:
+        except Exception:
             return ''
 
     def timing(self):
@@ -1666,16 +1666,6 @@ class Start(w.ActButton):
             g.clog.warn(str(err))
             return False
 
-        # Is nod enabled? Should we start GTC offsetter?
-        try:
-            success = startNodding(g, data)
-            if not success:
-                raise Exception('Failed to start dither: response was false')
-        except Exception as err:
-            g.clog.warn("Failed to start GTC offsetter")
-            g.clog.warn(str(err))
-            return False
-
         # START
         try:
             success = execCommand(g, 'start')
@@ -1686,16 +1676,17 @@ class Start(w.ActButton):
             g.clog.warn(str(err))
             return False
 
-        # Send first offset if nodding enabled.
-        # Initial trigger is sent after first offset, otherwise we'll hang indefinitely
+        # Is nod enabled? Should we start GTC offsetter?
         try:
-            success = forceNod(g, data)
+            success = startNodding(g, data)
             if not success:
-                raise Exception('Failed to send intitial offset and trigger - exposure will be paused indefinitely')
+                raise Exception('Failed to start dither: response was false')
         except Exception as err:
-            g.clog.warn('Run is paused indefinitely')
-            g.clog.warn('use "ngcbCmd seq start" to fix')
+            g.clog.warn("Failed to start GTC offsetter")
             g.clog.warn(str(err))
+            g.clog.warn('Run may be paused indefinitely')
+            g.clog.warn('use "ngcbCmd seq start" to fix')
+            return False
 
         # Run successfully started.
         # enable stop button, disable Start
@@ -1852,6 +1843,12 @@ class Observe(tk.LabelFrame):
 
         # Implement expert level
         self.setExpertLevel()
+        self.telemetry_topics = [
+            ('hipercam.ngc.telemetry', self.on_telemetry)
+        ]
+
+    def on_telemetry(self, package):
+        self.stop.on_telemetry(package)
 
     def setExpertLevel(self):
         """

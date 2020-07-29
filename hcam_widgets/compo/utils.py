@@ -1,5 +1,4 @@
 from __future__ import print_function, unicode_literals, absolute_import, division
-import six
 import pkg_resources
 
 # non-standard imports
@@ -12,15 +11,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import path, transforms, patches, colors
 from matplotlib.collections import PatchCollection
-
-# internal imports
-from . import widgets as w
-from .tkutils import get_root, addStyle
-
-if not six.PY3:
-    import Tkinter as tk
-else:
-    import tkinter as tk
 
 flip_y = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
 
@@ -194,7 +184,6 @@ class Chip:
         if np.all(poly_clipped[0] == poly_clipped[-1]):
             poly_clipped = poly_clipped[:-1]
 
-        print(poly_clipped, vertices.z)
         return CartesianRepresentation(*u.Quantity(poly_clipped, unit=u.mm).T, vertices.z)
 
 
@@ -293,68 +282,3 @@ class PickoffArm:
             baffle = patches.Polygon(baffle_xy, closed=True)
 
         return [arc, baffle, pickoff]
-
-
-class COMPOSetupWidget(tk.Toplevel):
-    """
-    A child window to setup the COMPO pickoff arms.
-
-    Normally this window is hidden, but can be revealed from the main GUIs menu
-    or by clicking on a "use COMPO" widget in the main GUI.
-    """
-    def __init__(self, parent):
-        tk.Toplevel.__init__(self, parent)
-
-        g = get_root(self).globals
-
-        self.transient(parent)
-        self.parent = parent
-
-        addStyle(self)
-        self.title("COMPO setup")
-        # do not display on creation
-        self.withdraw()
-
-        # dont destroy when we click the close button
-        self.protocol('WM_DELETE_WINDOW', self.withdraw)
-
-        # create control widgets
-        tk.Label(self, text='Injection Side').grid(row=0, column=0, pady=4, padx=4, sticky=tk.W)
-        self.injection_side = w.Radio(self, ('L', 'R'), 3, None, initial=1)
-        self.injection_side.grid(row=0, column=1, pady=2, stick=tk.W)
-
-        tk.Label(self, text='Pickoff Angle').grid(row=1, column=0, pady=4, padx=4, sticky=tk.W)
-        self.pickoff_angle = w.RangedFloat(self, 0.0, -80, 80, None, False,
-                                           allowzero=True, width=4)
-        self.pickoff_angle.grid(row=1, column=1, pady=2, stick=tk.W)
-
-        # create status widgets
-        status = tk.LabelFrame(self, text='status')
-        status.grid(row=2, column=0, columnspan=2, pady=4, padx=4, sticky=tk.W)
-
-        tk.Label(status, text='Injection Arm').grid(row=0, column=0, sticky=tk.W)
-        self.injection_status = w.Ilabel(status, text='MOVING', width=10, anchor=tk.W)
-        self.injection_status.config(bg=g.COL['warn'])
-        self.injection_status.grid(row=0, column=1, sticky=tk.W, pady=2, padx=2)
-
-        tk.Label(status, text='Pickoff Arm').grid(row=1, column=0, sticky=tk.W)
-        self.pickoff_status = w.Ilabel(status, text='OK', width=10, anchor=tk.W)
-        self.pickoff_status.config(bg=g.COL['start'])
-        self.pickoff_status.grid(row=1, column=1, sticky=tk.W, pady=2, padx=2)
-
-        tk.Label(status, text='Lens Position').grid(row=2, column=0, sticky=tk.W)
-        self.lens_status = w.Ilabel(status, text='ERROR', width=10, anchor=tk.W)
-        self.lens_status.config(bg=g.COL['critical'])
-        self.lens_status.grid(row=2, column=1, sticky=tk.W, pady=2, padx=2)
-
-    def dumpJSON(self):
-        """
-        Encodes current COMPO setup data to JSON compatible dictionary
-        """
-        raise NotImplementedError
-
-    def loadJSON(self, data):
-        """
-        Sets widget values from JSON data
-        """
-        raise NotImplementedError
