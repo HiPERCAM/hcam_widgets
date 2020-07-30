@@ -161,7 +161,7 @@ class COMPOControlWidget(tk.Toplevel):
 
     @property
     def session(self):
-        return get_root(self).session
+        return get_root(self).globals.session
 
     @inlineCallbacks
     def handle_connection(self):

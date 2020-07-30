@@ -98,7 +98,7 @@ class CCDTempFrame(tk.LabelFrame):
         g.clog.info('desired setpoint ' + str(val))
 
         try:
-            session = get_root(self).session
+            session = get_root(self).globals.session
             topic = 'hipercam.ccd{}.setpoint'.format(ccd)
             yield session.publish(topic, int(val))
         except Exception:
@@ -114,7 +114,7 @@ class CCDTempFrame(tk.LabelFrame):
         ms, address = self.mapping(ccd)
         try:
             rpc = 'hipercam.meerstetter{}.rpc.reset'.format(ms)
-            session = get_root(self).session
+            session = get_root(self).globals.session
             yield session.call(rpc, address)
         except Exception:
             g.clog.warn('Unable to reset TEC {}'.format(ccd))

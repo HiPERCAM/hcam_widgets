@@ -171,7 +171,7 @@ class SlideFrame(tk.LabelFrame, Mimic):
         """
         Send a command to the focal plane slide
         """
-        session = get_root(self).session
+        session = get_root(self).globals.session
         if not session:
             self.print_message('no session')
             return
@@ -195,12 +195,12 @@ class SlideFrame(tk.LabelFrame, Mimic):
 
     def set_slide_target_position(self, pos):
         topic = "hipercam.slide.target_position"
-        session = get_root(self).session
+        session = get_root(self).globals.session
         if session:
             session.publish(topic, pos)
 
     def send_message(self, topic, msg):
-        session = get_root(self).session
+        session = get_root(self).globals.session
         if session:
             session.publish(topic, msg)
 

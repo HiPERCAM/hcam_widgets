@@ -8,6 +8,7 @@ from os.path import expanduser
 
 # non-standard imports
 import numpy as np
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 # internal imports
 from . import widgets as w
@@ -575,6 +576,7 @@ class InstPars(tk.LabelFrame):
                 self.wframe.nquad.set(nquad)
                 self.wframe.check()
 
+    @inlineCallbacks
     def check(self, *args):
         """
         Callback to check validity of instrument parameters.
@@ -717,15 +719,16 @@ class InstPars(tk.LabelFrame):
 
         # allow posting if parameters are OK. update count and SN estimates too
         if status:
+            run_active = yield isRunActive(g)
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
                     g.observe.start['state'] == 'disabled' and
-                    not isRunActive(g)):
+                    not run_active):
                 g.observe.start.enable()
             g.count.update()
         else:
             g.observe.start.disable()
 
-        return status
+        returnValue(status)
 
     def freeze(self):
         """
@@ -1548,6 +1551,7 @@ class RunType(w.Select):
         index = RunType.DVALS.index(value)
         w.Select.set(self, RunType.DTYPES[index])
 
+    @inlineCallbacks
     def check(self, *args):
         if self._checker is not None:
             self._checker()
@@ -1557,8 +1561,9 @@ class RunType(w.Select):
         else:
             self.start_button.run_type_set = True
             g = get_root(self).globals
+            run_active = yield isRunActive(g)
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
-                    g.observe.start['state'] == 'disabled' and not isRunActive(g)):
+                    g.observe.start['state'] == 'disabled' and not run_active):
                 self.start_button.enable()
             g.rpars.check()
 
@@ -1630,6 +1635,7 @@ class Start(w.ActButton):
         else:
             self.disable()
 
+    @inlineCallbacks
     def act(self):
         """
         Carries out action associated with start button
@@ -1652,34 +1658,34 @@ class Start(w.ActButton):
         # Check instrument pars are OK
         if not g.ipars.check():
             g.clog.warn('Invalid instrument parameters; save failed.')
-            return False
+            returnValue(False)
 
         # create JSON to post
-        data = createJSON(g)
+        data = yield createJSON(g)
 
         # POST
         try:
-            success = postJSON(g, data)
+            success = yield postJSON(g, data)
             if not success:
                 raise Exception('postJSON returned False')
         except Exception as err:
             g.clog.warn("Failed to post data to servers")
             g.clog.warn(str(err))
-            return False
+            returnValue(False)
 
         # START
         try:
-            success = execCommand(g, 'start')
+            success = yield execCommand(g, 'start')
             if not success:
                 raise Exception("Start command failed: check server response")
         except Exception as err:
             g.clog.warn('Failed to start run')
             g.clog.warn(str(err))
-            return False
+            returnValue(False)
 
         # Is nod enabled? Should we start GTC offsetter?
         try:
-            success = startNodding(g, data)
+            success = yield startNodding(g, data)
             if not success:
                 raise Exception('Failed to start dither: response was false')
         except Exception as err:
@@ -1687,7 +1693,7 @@ class Start(w.ActButton):
             g.clog.warn(str(err))
             g.clog.warn('Run may be paused indefinitely')
             g.clog.warn('use "ngcbCmd seq start" to fix')
-            return False
+            returnValue(False)
 
         # Run successfully started.
         # enable stop button, disable Start
@@ -1699,7 +1705,7 @@ class Start(w.ActButton):
         g.observe.stop.enable()
         g.info.timer.start()
         g.info.clear_tcs_table()
-        return True
+        returnValue(True)
 
 
 class Load(w.ActButton):
@@ -1756,6 +1762,7 @@ class Save(w.ActButton):
         """
         w.ActButton.__init__(self, master, width, text='Save')
 
+    @inlineCallbacks
     def act(self):
         """
         Carries out the action associated with the Save button
@@ -1766,17 +1773,17 @@ class Save(w.ActButton):
         # check instrument parameters
         if not g.ipars.check():
             g.clog.warn('Invalid instrument parameters; save failed.')
-            return False
+            returnValue(False)
 
         # check run parameters
         rok, msg = g.rpars.check()
         if not rok:
             g.clog.warn('Invalid run parameters; save failed.')
             g.clog.warn(msg)
-            return False
+            returnValue(False)
 
         # Get data to save
-        data = createJSON(g, full=False)
+        data = yield createJSON(g, full=False)
 
         # Save to disk
         if saveJSON(g, data):
@@ -1787,9 +1794,9 @@ class Save(w.ActButton):
             # unfreeze the instrument and run params
             g.ipars.unfreeze()
             g.rpars.unfreeze()
-            return True
+            returnValue(True)
         else:
-            return False
+            returnValue(False)
 
 
 class Unfreeze(w.ActButton):
@@ -1849,8 +1856,6 @@ class Observe(tk.LabelFrame):
         ]
 
     def on_telemetry(self, package):
-        telemetry = pickle.loads(package)
-
         self.stop.on_telemetry(package)
 
     def setExpertLevel(self):
