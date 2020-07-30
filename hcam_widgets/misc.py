@@ -15,6 +15,8 @@ from astropy.io import ascii
 from hcam_devices.wamp.utils import call
 from . import DriverError
 
+from twisted.internet.defer import inlineCallbacks, returnValue
+
 if not six.PY3:
     import tkFileDialog as filedialog
     from StringIO import StringIO
@@ -91,27 +93,37 @@ def overlap(xl1, yl1, nx1, ny1, xl2, yl2, nx2, ny2):
             yl2 < yl1+ny1 and yl2+ny2 > yl1)
 
 
+@inlineCallbacks
 def startNodding(g, data):
     nodPattern = data.get('appdata', {}).get('nodpattern', {})
     if g.cpars['telins_name'] == 'GTC' and nodPattern:
+        session = g.session
+        if session is None:
+            g.clog.warn('no WAMP session')
+            returnValue(False)
         try:
-            call('hipercam.gtc.rpc.gtc.start_nodding')
+            yield session.call('hipercam.gtc.rpc.gtc.start_nodding')
         except Exception as err:
             g.clog.warn('Failed to stop dither server')
             g.clog.warn(str(err))
-            return False
-    return True
+            returnValue(False)
+    returnValue(True)
 
 
+@inlineCallbacks
 def stopNodding(g):
     if g.cpars['telins_name'] == 'GTC':
+        session = g.session
+        if session is None:
+            g.clog.warn('no WAMP session')
+            returnValue(False)
         try:
-            call('hipercam.gtc.rpc.gtc.stop_nodding')
+            yield session.call('hipercam.gtc.rpc.gtc.stop_nodding')
         except Exception as err:
             g.clog.warn('Failed to stop dither server')
             g.clog.warn(str(err))
-            return False
-    return True
+            returnValue(False)
+    returnValue(True)
 
 
 def saveJSON(g, data, backup=False):
@@ -149,6 +161,7 @@ def saveJSON(g, data, backup=False):
     return True
 
 
+@inlineCallbacks
 def postJSON(g, data):
     """
     Posts the current setup to the camera and data servers.
@@ -160,17 +173,21 @@ def postJSON(g, data):
     The current setup in JSON compatible dictionary format.
     """
     g.clog.debug('Entering postJSON')
+    session = g.session
+    if session is None:
+        g.clog.warn('no WAMP session')
+        returnValue(False)
 
     ok = True
     try:
-        call('hipercam.ngc.rpc.load_setup', data)
+        yield session.call('hipercam.ngc.rpc.load_setup', data)
     except Exception as err:
         ok, status_msg = False, str(err)
 
     if not ok:
         g.clog.warn('Server response was not OK')
         g.rlog.warn('Error: ' + status_msg)
-        return False
+        returnValue(False)
 
     # now try to setup nodding server if appropriate
     nodpattern = data.get('appdata', {}).get('nodpattern', {})
@@ -178,7 +195,7 @@ def postJSON(g, data):
         try:
             ra_offsets = list(nodpattern['ra'])
             dec_offsets = list(nodpattern['dec'])
-            call('hipercam.gtc.rpc.load_nod_pattern', ra_offsets, dec_offsets)
+            yield session.call('hipercam.gtc.rpc.load_nod_pattern', ra_offsets, dec_offsets)
             ok = True
         except Exception as err:
             ok, status_msg = False, str(err)
@@ -186,12 +203,13 @@ def postJSON(g, data):
         if not ok:
             g.clog.warn('Offset Server response was not OK')
             g.rlog.warn('Error: ' + status_msg)
-            return False
+            returnValue(False)
 
     g.clog.debug('Leaving postJSON')
-    return True
+    returnValue(True)
 
 
+@inlineCallbacks
 def createJSON(g, full=True):
     """
     Create JSON compatible dictionary from current settings
@@ -206,6 +224,7 @@ def createJSON(g, full=True):
         data['gps_attached'] = 1
     else:
         data['gps_attached'] = 1 if g.cpars['gps_attached'] else 0
+
     data['appdata'] = g.ipars.dumpJSON()
     data['user'] = g.rpars.dumpJSON()
     if full:
@@ -213,12 +232,16 @@ def createJSON(g, full=True):
         data['tcs'] = g.info.dumpJSON()
 
         if g.cpars['telins_name'].lower() == 'gtc':
-            try:
-                telpars = call('hipercam.gtc.rpc.get_telescope_pars')
-                data['gtc_headers'] = telpars
-            except Exception:
-                g.clog.warn('cannot get GTC headers from telescope server')
-    return data
+            session = g.session
+            if session is None:
+                g.clog.warn('no WAMP session, not fetching telescope parameters')
+            else:
+                try:
+                    telpars = yield session.call('hipercam.gtc.rpc.get_telescope_pars')
+                    data['gtc_headers'] = telpars
+                except Exception:
+                    g.clog.warn('cannot get GTC headers from telescope server')
+    returnValue(data)
 
 
 def jsonFromFits(fname):
@@ -302,6 +325,7 @@ def jsonFromFits(fname):
     return json.dumps(setup_data)
 
 
+@inlineCallbacks
 def insertFITSHDU(g):
     """
     Uploads a table of TCS data to the servers, which is appended onto a run.
@@ -313,21 +337,28 @@ def insertFITSHDU(g):
     """
     if not g.cpars['hcam_server_on']:
         g.clog.warn('insertFITSHDU: servers are not active')
-        return False
+        returnValue(False)
 
-    run_number = getRunNumber(g)
+    session = g.session
+    if session is None:
+        g.clog.warn('no WAMP session')
+        returnValue(False)
+
+    run_number = yield getRunNumber(g)
     tcs_table = g.info.tcs_table
 
     g.clog.info('Adding TCS table data to run{:04d}.fits'.format(run_number))
     try:
         fd = StringIO()
         ascii.write(tcs_table, format='ecsv', output=fd)
-        call('hipercam.ngc.rpc.add_hdu', fd.getvalue(), run_number)
+        yield session.call('hipercam.ngc.rpc.add_hdu', fd.getvalue(), run_number)
     except Exception as err:
         g.clog.warn('insertFITSHDU failed')
         g.clog.warn(str(err))
+    returnValue(True)
 
 
+@inlineCallbacks
 def execCommand(g, command, timeout=10):
     """
     Executes a command by sending it to the rack server
@@ -353,10 +384,15 @@ def execCommand(g, command, timeout=10):
     """
     if not g.cpars['hcam_server_on']:
         g.clog.warn('execCommand: servers are not active')
-        return False
+        returnValue(False)
+
+    session = g.session
+    if session is None:
+        g.clog.warn('no WAMP session')
+        returnValue(False)
 
     try:
-        response = call('hipercam.ngc.rpc.{}'.format(command))
+        response = yield session.call('hipercam.ngc.rpc.{}'.format(command))
         if response is not None:
             msg, ok = response
         else:
@@ -366,25 +402,31 @@ def execCommand(g, command, timeout=10):
 
         if ok:
             g.clog.info('Response from server was OK')
-            return True
+            returnValue(True)
         else:
             g.clog.warn('Response from server was not OK')
             g.clog.warn('Reason: ' + msg)
-            return False
+            returnValue(False)
     except Exception as err:
         g.clog.warn('execCommand failed')
         g.clog.warn(str(err))
 
-    return False
+    returnValue(False)
 
 
+@inlineCallbacks
 def isRunActive(g):
     """
     Polls the data server to see if a run is active
     """
+    session = g.session
+    if session is None:
+        g.clog.warn('no WAMP session')
+        returnValue(False)
+
     if g.cpars['hcam_server_on']:
         try:
-            response = call('hipercam.ngc.rpc.summary')
+            response = yield session.call('hipercam.ngc.rpc.summary')
         except Exception as err:
             raise DriverError('isRunActive error reading NGC status: ' + str(err))
         tel = ReadNGCTelemetry(response)
@@ -392,82 +434,107 @@ def isRunActive(g):
         if not tel.ok:
             raise DriverError('isRunActive error: ' + str(tel.err))
         if tel.state == 'idle':
-            return False
+            returnValue(False)
         elif tel.state == 'active':
-            return True
+            returnValue(True)
         else:
             raise DriverError('isRunActive error, state = ' + tel.state)
     else:
         raise DriverError('isRunActive error: servers are not active')
 
 
+@inlineCallbacks
 def isPoweredOn(g):
+    session = g.session
+    if session is None:
+        g.clog.warn('no WAMP session')
+        returnValue(False)
+
     if g.cpars['hcam_server_on']:
         try:
-            response = call('hipercam.ngc.rpc.summary')
+            response = yield session.call('hipercam.ngc.rpc.summary')
         except Exception as err:
             raise DriverError('isPoweredOn error reading NGC status: ' + str(err))
+
         tel = ReadNGCTelemetry(response)
         if not tel.ok:
             raise DriverError('isPoweredOn error: ' + str(tel.err))
         if tel.clocks == 'enabled':
-            return True
+            returnValue(True)
         else:
-            return False
+            returnValue(False)
     else:
         raise DriverError('isPoweredOn error: servers are not active')
 
 
+@inlineCallbacks
 def isOnline(g):
     # checks if ESO Server is in ONLINE state
+    session = g.session
+    if session is None:
+        g.clog.warn('no WAMP session')
+        returnValue(False)
+
     if g.cpars['hcam_server_on']:
         try:
-            msg, ok = call('hipercam.ngc.rpc.status')
+            msg, ok = yield session.call('hipercam.ngc.rpc.status')
         except Exception as err:
             raise DriverError('isOnline error: ' + str(err))
 
         if not ok:
             raise DriverError('isOnline error: ' + msg)
         if msg.lower() == 'online':
-            return True
+            returnValue(True)
         else:
-            return False
+            returnValue(False)
     else:
         raise DriverError('isOnline error: hserver is not active')
 
 
+@inlineCallbacks
 def getFrameNumber(g):
     """
     Polls the data server to find the current frame number.
 
     Throws an exceotion if it cannot determine it.
     """
+    session = g.session
+    if session is None:
+        g.clog.warn('no WAMP session')
+        returnValue(False)
+
     if not g.cpars['hcam_server_on']:
         raise DriverError('getRunNumber error: servers are not active')
-    msg, ok = call('hipercam.ngc.rpc.status', 'DET.FRAM2.NO')
+    msg, ok = yield session.call('hipercam.ngc.rpc.status', 'DET.FRAM2.NO')
     if not ok:
         raise DriverError('getFrameNumber error: could not get frame number ' + msg)
     try:
         frame_no = int(msg)
     except ValueError:
         raise DriverError('getFrameNumber error: invalid msg ' + msg)
-    return frame_no
+    returnValue(frame_no)
 
 
+@inlineCallbacks
 def getRunNumber(g):
     """
     Polls the data server to find the current run number. Throws
     exceptions if it can't determine it.
     """
+    session = g.session
+    if session is None:
+        g.clog.warn('no WAMP session')
+        returnValue(False)
+
     if not g.cpars['hcam_server_on']:
         raise DriverError('getRunNumber error: servers are not active')
     try:
-        response = call('hipercam.ngc.rpc.summary')
+        response = yield session.call('hipercam.ngc.rpc.summary')
     except Exception as err:
         raise DriverError('isRunActive error reading NGC status: ' + str(err))
     tel = ReadNGCTelemetry(response)
     if tel.ok:
-        return tel.run
+        returnValue(tel.run)
     else:
         raise DriverError('getRunNumber error: ' + str(tel.err))
 

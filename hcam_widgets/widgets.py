@@ -16,7 +16,7 @@ from astropy import units as u
 from astropy.time import Time
 
 # twisted and async support
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.task import LoopingCall
 
 from hcam_devices.gtc.headers import (create_gtc_header_table,
@@ -1730,13 +1730,14 @@ class Stop(ActButton):
         g.info.timer.stop()
 
         try:
-            session = get_root(self).session
+            session = get_root(self).globals.session
             yield session.call('hipercam.ngc.rpc.abort')
             self.stopping = True
         except Exception as err:
             g.clog.warn('Run stop failed. Error = ' + str(err))
             self.stopping = False
 
+    @inlineCallbacks
     def on_telemetry(self, package):
         """
         Checks the status of the stop exposure command
@@ -1758,7 +1759,7 @@ class Stop(ActButton):
             # try and write FITS table before enabling start button, otherwise
             # a new start will clear table
             try:
-                insertFITSHDU(g)
+                yield insertFITSHDU(g)
             except Exception as err:
                 g.clog.warn('Could not add FITS Table to run')
                 g.clog.warn(str(err))
@@ -1776,7 +1777,7 @@ class Stop(ActButton):
             g.clog.info('Setting chips to idle')
             idle = {'appdata': {'app': 'Idle'}}
             try:
-                success = postJSON(g, idle)
+                success = yield postJSON(g, idle)
                 if not success:
                     raise Exception('postJSON returned false')
             except Exception as err:
@@ -1785,14 +1786,14 @@ class Stop(ActButton):
 
             g.clog.info('Stopping offsets (if running')
             try:
-                success = stopNodding(g)
+                success = yield stopNodding(g)
                 if not success:
                     raise Exception('Failed to stop dithering: response was false')
             except Exception as err:
                 g.clog.warn('Failed to stop GTC offset script')
                 g.clog.warn(str(err))
 
-            return True
+            returnValue(True)
 
         elif stopped and not self.stopping:
             # exposure is not running, but we haven't been pressed
@@ -2009,14 +2010,14 @@ class NGCReset(ActButton):
         root = get_root(self)
         g = root.globals
         g.clog.debug('NGC Reset pressed')
-        session = root.session
+        session = root.globals.session
         try:
             msg, ok = yield session.call('hipercam.ngc.rpc.reset')
             if not ok:
                 raise RuntimeError('reset command failed: ' + msg)
         except Exception:
             g.clog.warn('NGC Reset failed')
-            return False
+            returnValue(False)
         else:
             g.clog.info('NGC Reset succeeded')
 
@@ -2025,7 +2026,7 @@ class NGCReset(ActButton):
             g.observe.stop.disable()
             g.setup.cldcOn.disable()
             g.setup.cldcOff.disable()
-            return True
+            returnValue(True)
 
 
 class NGCStandby(ActButton):
@@ -2047,14 +2048,14 @@ class NGCStandby(ActButton):
         root = get_root(self)
         g = root.globals
         g.clog.debug('NGC Standby pressed')
-        session = root.session
+        session = root.globals.session
         try:
             msg, ok = yield session.call('hipercam.ngc.rpc.ngc_server.standby')
             if not ok:
                 raise RuntimeError('standby command failed: ' + msg)
         except Exception as err:
             g.clog.warn('NGC Standby failed: ' + str(err))
-            return False
+            returnValue(False)
         else:
             g.clog.info('Standby command successful')
             # alter buttons here
@@ -2062,7 +2063,7 @@ class NGCStandby(ActButton):
             g.observe.stop.disable()
             g.setup.cldcOn.disable()
             g.setup.cldcOff.disable()
-            return True
+            returnValue(True)
 
 
 class NGCOnline(ActButton):
@@ -2085,12 +2086,12 @@ class NGCOnline(ActButton):
         root = get_root(self)
         g = root.globals
         g.clog.debug('NGC Online pressed')
-        session = root.session
+        session = root.globals.session
         try:
             yield session.call('hipercam.ngc.rpc.ngc_server.online')
         except Exception as err:
             g.clog.warn("NGC Online failed: " + str(err))
-            return False
+            returnValue(False)
         else:
             g.clog.info('Online command successful')
             # alter buttons here
@@ -2098,7 +2099,7 @@ class NGCOnline(ActButton):
             g.observe.stop.disable()
             g.setup.cldcOn.enable()
             g.setup.cldcOff.disable()
-            return True
+            returnValue(True)
 
 
 class NGCOff(ActButton):
@@ -2123,12 +2124,12 @@ class NGCOff(ActButton):
         root = get_root(self)
         g = root.globals
         g.clog.debug('NGC Off pressed')
-        session = root.session
+        session = root.globals.session
         try:
             yield session.call('hipercam.ngc.rpc.ngc_server.offline')
         except Exception as err:
             g.clog.warn("NGC Off failed: " + str(err))
-            return False
+            returnValue(False)
         else:
             g.clog.info('off command successful; server in loaded state')
 
@@ -2137,7 +2138,7 @@ class NGCOff(ActButton):
             g.observe.stop.disable()
             g.setup.cldcOn.disable()
             g.setup.cldcOff.disable()
-            return True
+            returnValue(True)
 
 
 class SeqStart(ActButton):
@@ -2157,7 +2158,7 @@ class SeqStart(ActButton):
         root = get_root(self)
         g = root.globals
         g.clog.debug('Seq Start pressed')
-        session = root.session
+        session = root.globals.session
 
         try:
             msg, ok = yield session.call('hipercam.ngc.rpc.seq_start')
@@ -2165,7 +2166,7 @@ class SeqStart(ActButton):
                 raise RuntimeError('could not start sequencer: ' + msg)
         except Exception as err:
             g.clog.warn("Seq Start failed: " + str(err))
-            return False
+            returnValue(False)
         else:
             g.clog.info('seq start command successful; clocks powered on')
             # alter buttons here
@@ -2173,7 +2174,7 @@ class SeqStart(ActButton):
             g.observe.stop.enable()
             g.setup.seqStop.enable()
             self.disable()
-            return True
+            returnValue(True)
 
 
 class SeqStop(ActButton):
@@ -2193,7 +2194,7 @@ class SeqStop(ActButton):
         root = get_root(self)
         g = root.globals
         g.clog.debug('Seq Stop pressed')
-        session = root.session
+        session = root.globals.session
 
         try:
             msg, ok = yield session.call('hipercam.ngc.rpc.seq_stop')
@@ -2201,7 +2202,7 @@ class SeqStop(ActButton):
                 raise RuntimeError('could not stop sequencer: ' + msg)
         except Exception as err:
             g.clog.warn("Seq Stop failed: " + str(err))
-            return False
+            returnValue(False)
         else:
             g.clog.info('seq stop command successful')
             # alter buttons here
@@ -2209,7 +2210,7 @@ class SeqStop(ActButton):
             g.observe.stop.disable()
             g.setup.seqStart.enable()
             self.disable()
-            return True
+            returnValue(True)
 
 
 class CLDCOn(ActButton):
@@ -2229,9 +2230,10 @@ class CLDCOn(ActButton):
         root = get_root(self)
         g = root.globals
         g.clog.debug('CLDC On pressed')
-        session = root.session
+        session = root.globals.session
 
-        if isPoweredOn(g):
+        powered_on = yield isPoweredOn(g)
+        if powered_on:
             g.clog.info('clocks already on')
             return True
 
@@ -2241,7 +2243,7 @@ class CLDCOn(ActButton):
                 raise RuntimeError('could not power on clocks')
         except Exception as err:
             g.clog.warn("CLDC On failed: " + str(err))
-            return False
+            returnValue(False)
         else:
             g.clog.info('CLDC on command successful; clocks powered on')
             # alter buttons here
@@ -2250,7 +2252,7 @@ class CLDCOn(ActButton):
             g.setup.cldcOff.enable()
             g.setup.seqStart.enable()
             self.disable()
-            return True
+            returnValue(True)
 
 
 class CLDCOff(ActButton):
@@ -2270,7 +2272,7 @@ class CLDCOff(ActButton):
         root = get_root(self)
         g = root.globals
         g.clog.debug('CLDC Off pressed')
-        session = root.session
+        session = root.globals.session
 
         try:
             msg, ok = yield session.call('hipercam.ngc.rpc.poff')
@@ -2278,7 +2280,7 @@ class CLDCOff(ActButton):
                 raise RuntimeError('could not power off clocks')
         except Exception as err:
             g.clog.warn("CLDC Off failed: " + str(err))
-            return False
+            returnValue(False)
         else:
             g.clog.info('CLDC off command successful; clocks powered off')
 
@@ -2287,7 +2289,7 @@ class CLDCOff(ActButton):
             g.observe.stop.disable()
             g.setup.cldcOn.enable()
             self.disable()
-            return True
+            returnValue(True)
 
 
 class PowerOn(ActButton):
@@ -2311,7 +2313,7 @@ class PowerOn(ActButton):
         g = root.globals
         g.clog.debug('Power on pressed')
         try:
-            session = root.session
+            session = root.globals.session
             yield session.call('hipercam.ngc.rpc.ngc_server.online')
 
         except Exception as err:
@@ -2320,13 +2322,13 @@ class PowerOn(ActButton):
         else:
             g.clog.info('ESO server online')
             g.cpars['eso_server_online'] = True
-
-            if not isPoweredOn(g):
+            powered_on = yield isPoweredOn(g)
+            if not powered_on:
                 # TODO: make this async by making execCommand an inlineCallback
-                success = execCommand(g, 'pon')
+                success = yield execCommand(g, 'pon')
                 if not success:
                     g.clog.warn('Unable to power on CLDC')
-                    return False
+                    returnValue(False)
 
             # change other buttons
             self.disable()
@@ -2334,17 +2336,18 @@ class PowerOn(ActButton):
             g.observe.stop.disable()
             g.setup.powerOff.enable()
 
-            success = execCommand(g, 'seq_start')
+            success = yield execCommand(g, 'seq_start')
             if not success:
                 g.clog.warn('Failed to start sequencer after Power On.')
 
             try:
-                g.info.run.configure(text='{0:03d}'.format(getRunNumber(g)))
+                run = yield getRunNumber(g)
+                g.info.run.configure(text='{0:03d}'.format(run))
             except Exception as err:
                 g.clog.warn('Failed to determine run number at start of run')
                 g.clog.warn(str(err))
                 g.info.run.configure(text='UNDEF')
-            return True
+            returnValue(True)
 
 
 class PowerOff(ActButton):
@@ -2360,6 +2363,7 @@ class PowerOff(ActButton):
         ActButton.__init__(self, master, width, text='Power off')
         self.disable()
 
+    @inlineCallbacks
     def act(self):
         """
         Power off action
@@ -2368,12 +2372,13 @@ class PowerOff(ActButton):
         g = get_root(self).globals
         g.clog.debug('Power off pressed')
 
-        success = execCommand(g, 'poff')
+        success = yield execCommand(g, 'poff')
         if not success:
             g.clog.warn('Unable to power off CLDC')
-            return False
+            returnValue(False)
 
-        if execCommand(g, 'ngc_server.offline'):
+        success = yield execCommand(g, 'ngc_server.offline')
+        if success:
             g.clog.info('ESO server idle')
             g.cpars['eso_server_online'] = False
 
@@ -2382,10 +2387,10 @@ class PowerOff(ActButton):
             g.observe.start.disable()
             g.observe.stop.disable()
             g.setup.powerOn.enable()
-            return True
+            returnValue(True)
         else:
             g.clog.warn('Power off failed')
-            return False
+            returnValue(False)
 
 
 class InstSetup(tk.LabelFrame):
@@ -2667,6 +2672,7 @@ class Timer(tk.Label):
         self._loop = LoopingCall(self.tick)
         self._loop.start(0.1)
 
+    @inlineCallbacks
     def tick(self):
         """
         Updates @ 10Hz to give smooth running clock, checks
@@ -2679,12 +2685,13 @@ class Timer(tk.Label):
             self.configure(text='{0:<d} s'.format(delta))
 
             if self.count % 50 == 0:
-                if not isRunActive(g):
+                run_active = yield isRunActive(g)
+                if not run_active:
 
                     # try and write FITS table before enabling start button, otherwise
                     # a new start will clear table
                     try:
-                        insertFITSHDU(g)
+                        yield insertFITSHDU(g)
                     except Exception as err:
                         g.clog.warn('Could not add FITS Table to run')
                         g.clog.warn(str(err))
@@ -2706,7 +2713,7 @@ class Timer(tk.Label):
                     g.clog.info('Setting chips to idle')
                     idle = {'appdata': {'app': 'Idle'}}
                     try:
-                        success = postJSON(g, idle)
+                        success = yield postJSON(g, idle)
                         if not success:
                             raise Exception('postJSON returned false')
                     except Exception as err:
@@ -2715,7 +2722,7 @@ class Timer(tk.Label):
 
                     g.clog.info('Stopping offsets (if running')
                     try:
-                        success = stopNodding(g)
+                        success = yield stopNodding(g)
                         if not success:
                             raise Exception('failed to stop dithering')
                     except Exception as err:
@@ -2723,7 +2730,6 @@ class Timer(tk.Label):
                         g.clog.warn(str(err))
 
                     self.stop()
-                    return
 
         except Exception as err:
             if self.count % 100 == 0:
@@ -2873,7 +2879,7 @@ class InfoFrame(tk.LabelFrame):
         if not g.cpars['tcs_on'] or not g.cpars['telins_name'].lower() == 'gtc':
             return
         try:
-            session = root.session
+            session = root.globals.session
             telpars = yield session.call('hipercam.gtc.rpc.get_telescope_pars')
             add_gtc_header_table_row(self.tcs_table, telpars)
         except Exception as err:
