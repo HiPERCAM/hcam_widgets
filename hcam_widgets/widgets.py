@@ -3,7 +3,6 @@ from __future__ import print_function, unicode_literals, absolute_import, divisi
 from six.moves import urllib
 import time
 import socket
-import warnings
 from functools import reduce
 import numpy as np
 import six

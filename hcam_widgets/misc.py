@@ -12,7 +12,6 @@ import re
 from astropy.io import fits
 from astropy.io import ascii
 
-from hcam_devices.wamp.utils import call
 from . import DriverError
 
 from twisted.internet.defer import inlineCallbacks, returnValue
