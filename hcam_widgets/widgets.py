@@ -3236,7 +3236,7 @@ class AstroFrame(tk.LabelFrame):
             g.clog.warn('AstroFrame.update: error = ' + str(err))
 
         # run again after 100 milli-seconds
-        self.after(100, self.update)
+        self.after_id = self.after(100, self.update)
 
 
 class WinPairs(tk.Frame):

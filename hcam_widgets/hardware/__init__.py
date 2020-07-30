@@ -392,7 +392,7 @@ class CCDInfoWidget(tk.Toplevel):
         self.flow_frm.grid(row=4, column=0, padx=4, pady=4, sticky=tk.W)
         self.vac_frm.grid(row=5, column=0, padx=4, pady=4, sticky=tk.W)
 
-        self.after(10000, self.raise_if_nok)
+        self.after_id = self.after(10000, self.raise_if_nok)
 
     def _getVal(self, widg):
         """
@@ -434,7 +434,7 @@ class CCDInfoWidget(tk.Toplevel):
                 self.deiconify()
                 widget.raise_alarm()
 
-        self.after(10000, self.raise_if_nok)
+        self.after_id = self.after(10000, self.raise_if_nok)
 
     @property
     def telemetry_topics(self):

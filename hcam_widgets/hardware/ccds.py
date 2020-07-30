@@ -101,7 +101,6 @@ class CCDTempFrame(tk.LabelFrame):
             session = get_root(self).session
             topic = 'hipercam.ccd{}.setpoint'.format(ccd)
             yield session.publish(topic, int(val))
-            self.after(500, self.refresh_setpoints)
         except Exception:
             g.clog.warn('Unable to update setpoint for CCD{}'.format(ccd))
 
