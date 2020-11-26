@@ -418,7 +418,7 @@ def isRunActive(g):
     """
     Polls the data server to see if a run is active
     """
-    session = g.session
+    session = g.session if hasattr(g, 'session') else None
     if session is None:
         g.clog.warn('no WAMP session')
         returnValue(False)
