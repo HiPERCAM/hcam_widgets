@@ -12,6 +12,15 @@ from matplotlib import pyplot as plt
 from matplotlib import path, transforms, patches, colors
 from matplotlib.collections import PatchCollection
 
+# optional
+try:
+    from ginga import trcalc
+    from ginga.util import wcs
+    import ginga.canvas.types.all as ginga_types
+    has_ginga = True
+except Exception:
+    has_ginga = False
+
 flip_y = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
 
 # COMPO is only available on GTC, so these values are well-known
@@ -243,6 +252,45 @@ class InjectionArm:
 
         return [baffle, fov]
 
+    @u.quantity_input(theta=u.deg)
+    @u.quantity_input(ra_cen=u.deg)
+    @u.quantity_input(dec_cen=u.deg)
+    def to_ginga_object(self, theta, ra_cen, dec_cen, **params):
+        if not has_ginga:
+            raise RuntimeError('ginga not installed, cannot create Ginga object')
+
+        with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+            # centre w.r.t FoV
+            centre = self.position(theta)
+            # now Baffle
+            baffle_cart = Baffle().vertices
+            baffle_cart = baffle_cart.transform(rotation_matrix(-theta))
+            baffle_cart += centre
+            c = Chip()
+            if c.contains(centre):
+                baffle_cart = c.clip_shape(baffle_cart)
+
+            # convert to sky plane
+            centre = focal_plane_to_sky(centre)
+            baffle_cart = focal_plane_to_sky(baffle_cart)
+
+            # add centre of pointing
+            x, y = wcs.add_offset_radec(ra_cen.to_value(u.deg),
+                                        dec_cen.to_value(u.deg),
+                                        *centre.xyz[:2].to_value(u.deg))
+            fov = ginga_types.Circle(
+                x, y, MIRROR_SIZE.to_value(u.deg)/2, coord='wcs', **params
+            )
+            # add vignetting by baffle
+            corners = [
+                wcs.add_offset_radec(ra_cen.to_value(u.deg),
+                                     dec_cen.to_value(u.deg),
+                                     *p.xyz[:2].to_value(u.deg))
+                for p in baffle_cart
+            ]
+            vignetting = ginga_types.Polygon(corners, coord='wcs', **params)
+            return ginga_types.CompoundObject(vignetting, fov)
+
 
 class PickoffArm:
 
@@ -282,3 +330,45 @@ class PickoffArm:
             baffle = patches.Polygon(baffle_xy, closed=True)
 
         return [arc, baffle, pickoff]
+
+    @u.quantity_input(theta=u.deg)
+    @u.quantity_input(ra_cen=u.deg)
+    @u.quantity_input(dec_cen=u.deg)
+    def to_ginga_object(self, theta, ra_cen, dec_cen, **params):
+        if not has_ginga:
+            raise RuntimeError('ginga not installed, cannot create Ginga object')
+
+        with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
+            # centre w.r.t FoV
+            centre = self.position(theta)
+
+            # now Baffle
+            baffle_cart = Baffle().vertices
+            baffle_cart = baffle_cart.transform(rotation_matrix(-theta))
+            baffle_cart += centre
+            c = Chip()
+            if c.contains(centre):
+                baffle_cart = c.clip_shape(baffle_cart)
+
+            # convert to sky plane
+            centre = focal_plane_to_sky(centre)
+            baffle_cart = focal_plane_to_sky(baffle_cart)
+
+            # create Pickoff circle
+            x, y = wcs.add_offset_radec(ra_cen.to_value(u.deg),
+                                        dec_cen.to_value(u.deg),
+                                        *centre.xyz[:2].to_value(u.deg))
+            fov = ginga_types.Circle(
+                x, y, MIRROR_SIZE.to_value(u.deg)/2, coord='wcs', **params
+            )
+            # create vignetting by baffle
+            corners = [
+                wcs.add_offset_radec(ra_cen.to_value(u.deg),
+                                     dec_cen.to_value(u.deg),
+                                     *p.xyz[:2].to_value(u.deg))
+                for p in baffle_cart
+            ]
+            vignetting = ginga_types.Polygon(corners, coord='wcs', **params)
+
+            # TODO patrol arc.
+            return ginga_types.CompoundObject(vignetting, fov)
