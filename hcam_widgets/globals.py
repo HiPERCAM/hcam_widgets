@@ -99,6 +99,19 @@ class Container:
                     'z': 28.20
                     }
                 },
+            'TNT': {
+                'latitude':   18.574,   # latitude degrees, North positive
+                'longitude':  98.482,   # longitude degrees, East positive
+                'elevation':  2449.,     # Elevation above sea level, metres
+                'plateScale': 0.456,     # Arcsecs/unbinned pixel (WHT Collimator)
+                'zerop': {
+                    'u': 22.71,
+                    'g': 25.25,
+                    'r': 25.01,
+                    'i': 24.69,
+                    'z': 23.81
+                    }
+                },
             }
 
         # Sky brightness, mags/sq-arsec
