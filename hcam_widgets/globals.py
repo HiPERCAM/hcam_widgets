@@ -48,7 +48,7 @@ class Container:
     logfile : file to log messages
     """
 
-    def __init__(self):
+    def __init__(self, telescope_names=None):
         # Ratio of FWHM/sigma for a gaussian
         self.EFAC = 2.3548
 
@@ -113,6 +113,8 @@ class Container:
                     }
                 },
             }
+        if telescope_names is not None:
+            self.TINS = {k: self.TINS[k] for k in telescope_names}
 
         # Sky brightness, mags/sq-arsec
         self.SKY = {
