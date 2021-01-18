@@ -112,6 +112,19 @@ class Container:
                     'z': 23.81
                     }
                 },
+            'NTT_CUBE': {
+                'latitude': -29.256,   # latitude degrees, North positive
+                'longitude': -70.73,   # longitude degrees, East positive
+                'elevation': 2347.,     # Elevation above sea level, metres
+                'plateScale': 0.354,     # Arcsecs/unbinned pixel (WHT Collimator)
+                'zerop': {
+                    'u': 24.62,
+                    'g': 26.43,
+                    'r': 25.77,
+                    'i': 25.63,
+                    'z': 24.79
+                    }
+                },
             }
         if telescope_names is not None:
             self.TINS = {k: self.TINS[k] for k in telescope_names}

@@ -3249,9 +3249,8 @@ class WinPairs(tk.Frame):
     Class to define a frame of multiple window pairs,
     contained within a gridded block that can be easily position.
     """
-
     def __init__(self, master, xsls, xslmins, xslmaxs, xsrs, xsrmins, xsrmaxs,
-                 yss, ysmins, ysmaxs, nxs, nys, xbfac, ybfac, checker):
+                 yss, ysmins, ysmaxs, nxs, nys, xbfac, ybfac, checker, hcam=True):
         """
         Arguments:
 
@@ -3291,6 +3290,7 @@ class WinPairs(tk.Frame):
         It is assumed that the maximum X dimension is the same for both left
         and right windows and equal to xslmax-xslmin+1.
         """
+        self.is_hcam = hcam
         npair = len(xsls)
         checks = (xsls, xslmins, xslmaxs, xsrs, xsrmins, xsrmaxs,
                   yss, ysmins, ysmaxs, nxs, nys)
@@ -3319,7 +3319,7 @@ class WinPairs(tk.Frame):
         xyframe.grid(row=0, column=1, sticky=tk.W)
 
         row = 1
-        allowed_pairs = (1,)
+        allowed_pairs = (1, 2, 3)
         ap = [pairnum for pairnum in allowed_pairs if pairnum <= npair]
         self.npair = ListInt(top, ap[0], ap, checker, width=2)
         if npair > 1:
@@ -3426,7 +3426,7 @@ class WinPairs(tk.Frame):
             if nx is None or nx % xbin != 0:
                 nxw.config(bg=g.COL['error'])
                 status = False
-            elif (nx // xbin) % 4 != 0:
+            elif self.is_hcam and (nx // xbin) % 4 != 0:
                 """
                 The NGC collects pixel data in chunks before transmission.
                 As a result, to avoid loss of data from frames, the binned
@@ -3595,6 +3595,13 @@ class WinPairs(tk.Frame):
         self.xbin.enable()
         self.ybin.enable()
         self.sbutt.enable()
+
+    def params(self, n):
+        """
+        return xsl, xsr, ys, nx, ny for this pair
+        """
+        return (self.xsl[n].value(), self.xsr[n].value(),
+                self.ys[n].value(), self.nx[n].value(), self.ny[n].value())
 
     def __iter__(self):
         """
