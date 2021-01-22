@@ -149,7 +149,7 @@ class InstPars(tk.LabelFrame):
         xbfac = (1, 2, 3, 4, 5, 6, 8)
         ybfac = (1, 2, 3, 4, 5, 6, 8)
         self.wframe = w.Windows(rhs, xs, xsmin, xsmax, ys, ysmin, ysmax,
-                                nx, ny, xbfac, ybfac, self.check, hcam=False)
+                                nx, ny, xbfac, ybfac, self.check)
         self.wframe.grid(row=2, column=0, columnspan=3, sticky=tk.W+tk.N)
 
         # drift mode frame (just one pair)
@@ -168,7 +168,7 @@ class InstPars(tk.LabelFrame):
         ybfac = (1, 2, 3, 4, 5, 6, 8)
         self.pframe = w.WinPairs(rhs, xsl, xslmin, xslmax, xsr, xsrmin,
                                  xsrmax, ys, ysmin, ysmax, nx, ny,
-                                 xbfac, ybfac, self.check)
+                                 xbfac, ybfac, self.check, hcam=False)
 
         # Pack two halfs
         lhs.pack(side=tk.LEFT, anchor=tk.N, padx=5)
