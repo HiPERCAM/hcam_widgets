@@ -488,7 +488,7 @@ class InstPars(tk.LabelFrame):
         # LED setting
         self.led.set(data.get('led_flsh', 0))
         # Dummy output enabled
-        self.dummy.set(data.get('dummy_out', 0))
+        self.dummy.set(data.get('dummy_out', 1))
         # Fast clocking option?
         self.fastClk.set(data.get('fast_clks', 0))
         # readout speed
