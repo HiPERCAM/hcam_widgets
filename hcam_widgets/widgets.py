@@ -2616,7 +2616,10 @@ class Timer(tk.Label):
                     g.clog.info('Timer detected stopped run')
 
                     warn_cmd = '/usr/bin/ssh observer@192.168.1.1 spd-say "\'exposure finished\'"'
-                    subprocess.check_output(warn_cmd, shell=True, stderr=subprocess.PIPE)
+                    try:
+                        subprocess.check_output(warn_cmd, shell=True, stderr=subprocess.PIPE)
+                    except:
+                        pass
 
                     # enable idle mode now run has stopped
                     g.clog.info('Setting chips to idle')
