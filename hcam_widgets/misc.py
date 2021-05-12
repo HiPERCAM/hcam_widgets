@@ -72,6 +72,8 @@ class ReadNGCTelemetry(object):
             elif exposure_state == "aborted":
                 # We use abort instead of end. Don't know why
                 self.run = run_number
+            elif exposure_state == 'inactive':
+                self.run = run_number
             elif exposure_state == "integrating":
                 self.run = run_number + 1
             else:
