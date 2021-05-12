@@ -67,12 +67,7 @@ class ReadNGCTelemetry(object):
         pattern = '\D*(\d*).*.fits'
         try:
             run_number = int(re.match(pattern, newDataFileName).group(1))
-            if exposure_state == "success":
-                self.run = run_number
-            elif exposure_state == "aborted":
-                # We use abort instead of end. Don't know why
-                self.run = run_number
-            elif exposure_state == 'inactive':
+            if exposure_state in ["success", "aborted", 'inactive', 'failure']:
                 self.run = run_number
             elif exposure_state == "integrating":
                 self.run = run_number + 1
