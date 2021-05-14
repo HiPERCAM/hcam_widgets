@@ -2929,7 +2929,7 @@ class InfoFrame(tk.LabelFrame):
             lon = g.astro.obs.lon
             lst = now.sidereal_time(kind='mean',
                                     longitude=lon)
-            ha = coo.ra.hourangle*u.hourangle - lst
+            ha = lst - coo.ra.hourangle*u.hourangle
             hatxt = ha.wrap_at(12*u.hourangle).to_string(sep=':', precision=0)
             self.ha.configure(text=hatxt)
 
