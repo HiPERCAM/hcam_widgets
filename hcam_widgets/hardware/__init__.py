@@ -99,7 +99,7 @@ class HardwareDisplayWidget(tk.Frame):
 
             if errmsg is None and val <= self.upper_limit and val >= self.lower_limit:
                 self.ok = True
-            elif np.isnan(val) and errmsg is None:
+            elif not isinstance(val, str) and np.isnan(val) and errmsg is None:
                 # no error and nan returned means checking disabled
                 self.ok = True
             else:
