@@ -172,7 +172,8 @@ class MeerstetterWidget(HardwareDisplayWidget):
             else:
                 raise ValueError('unknown kind: {}'.format(self.kind))
         else:
-            return np.nan, None
+            value = '??' if self.kind == 'status' else np.nan
+            return value, None
 
 
 class ChillerWidget(HardwareDisplayWidget):
