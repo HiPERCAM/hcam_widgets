@@ -104,6 +104,7 @@ class HardwareDisplayWidget(tk.Frame):
                 self.ok = True
             elif isinstance(val, str) and val == '??':
                 # checking disabled
+                self.ok = True
             else:
                 self.ok = False
 
