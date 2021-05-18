@@ -102,6 +102,8 @@ class HardwareDisplayWidget(tk.Frame):
             elif not isinstance(val, str) and np.isnan(val) and errmsg is None:
                 # no error and nan returned means checking disabled
                 self.ok = True
+            elif isinstance(val, str) and val == '??':
+                # checking disabled
             else:
                 self.ok = False
 
