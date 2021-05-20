@@ -1793,12 +1793,10 @@ class Stop(ActButton):
                 g.clog.warn(str(err))
 
             returnValue(True)
-
         elif stopped and not self.stopping:
             # exposure is not running, but we haven't been pressed
             g.observe.start.enable()
             self.disable()
-
         elif self.stopping:
             # Exposure in process of stopping
             # Disable lots of buttons
@@ -1806,7 +1804,7 @@ class Stop(ActButton):
             g.observe.start.disable()
             g.setup.powerOn.disable()
             g.setup.powerOff.disable()
-        else:
+        elif res.state == 'active':
             # exposure is underway
             self.enable()
             g.observe.start.disable()
@@ -2440,7 +2438,8 @@ class InstSetup(tk.LabelFrame):
                 self.cldcOn.enable()
                 self.cldcOff.disable()
             # power on/off
-            if res.clocks == 'enabled' and 'online' in ngc_status:
+            if (res.state != 'error' and res.clocks == 'enabled'
+                    and 'online' in ngc_status):
                 self.powerOff.enable()
                 self.powerOn.disable()
             else:
