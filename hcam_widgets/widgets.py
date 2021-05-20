@@ -2323,17 +2323,10 @@ class PowerOn(ActButton):
             g.cpars['eso_server_online'] = True
             powered_on = yield isPoweredOn(g)
             if not powered_on:
-                # TODO: make this async by making execCommand an inlineCallback
                 success = yield execCommand(g, 'pon')
                 if not success:
                     g.clog.warn('Unable to power on CLDC')
                     returnValue(False)
-
-            # change other buttons
-            self.disable()
-            g.observe.start.enable()
-            g.observe.stop.disable()
-            g.setup.powerOff.enable()
 
             success = yield execCommand(g, 'seq_start')
             if not success:
@@ -2346,6 +2339,12 @@ class PowerOn(ActButton):
                 g.clog.warn('Failed to determine run number at start of run')
                 g.clog.warn(str(err))
                 g.info.run.configure(text='UNDEF')
+
+            # change other buttons
+            self.disable()
+            g.observe.start.enable()
+            g.observe.stop.disable()
+            g.setup.powerOff.enable()
             returnValue(True)
 
 
@@ -2367,7 +2366,6 @@ class PowerOff(ActButton):
         """
         Power off action
         """
-        # TODO: make this asynchronous by making execCommand likewise
         g = get_root(self).globals
         g.clog.debug('Power off pressed')
 
