@@ -70,11 +70,12 @@ class CCDTempFrame(tk.LabelFrame):
         ]
 
     def on_telemetry(self, ms, data):
+        g = get_root(self).globals
         try:
             telemetry = pickle.loads(data)
         except Exception as err:
-            g = get_root(self).globals
-            g.clog.warn('could not parse telemetry from Meerstetter 1: ' + str(err))
+            wrn = 'cannot parse telemetry from Meerstetter {}: {}'
+            g.clog.warn(wrn.format(ms, str(err)))
         else:
             if ms == 1:
                 widget_numbers = (1, 2, 3)
@@ -100,7 +101,8 @@ class CCDTempFrame(tk.LabelFrame):
         try:
             session = get_root(self).globals.session
             topic = 'hipercam.ccd{}.setpoint'.format(ccd)
-            yield session.publish(topic, int(val))
+            g.clog.info('publishing to topic ' + topic)
+            yield session.publish(topic, float(val))
         except Exception:
             g.clog.warn('Unable to update setpoint for CCD{}'.format(ccd))
 
