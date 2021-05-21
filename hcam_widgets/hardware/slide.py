@@ -151,8 +151,8 @@ class SlideFrame(tk.LabelFrame, Mimic):
         case is just matter of hiding or revealing the LED option
         and changing the lower limit on the exposure button.
         """
-        level = 1
-
+        g = get_root(self).globals
+        level = g.cpars['expert_level']
         if level == 0:
             self.reset.grid_forget()
             self.enable.grid_forget()
