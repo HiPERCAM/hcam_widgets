@@ -13,7 +13,6 @@ from astropy.io import fits
 from astropy.io import ascii
 
 from . import DriverError
-from hcam_devices.gtc.headers import create_header_from_telpars
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -236,7 +235,7 @@ def createJSON(g, full=True):
             else:
                 try:
                     telpars = yield session.call('hipercam.gtc.rpc.get_telescope_pars')
-                    data['gtc_headers'] = create_header_from_telpars(telpars)
+                    data['gtc_headers'] = telpars
                 except Exception:
                     g.clog.warn('cannot get GTC headers from telescope server')
     returnValue(data)
