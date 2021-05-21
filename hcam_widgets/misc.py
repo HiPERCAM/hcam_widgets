@@ -176,7 +176,7 @@ def postJSON(g, data):
 
     ok = True
     try:
-        ok, msg = yield session.call('hipercam.ngc.rpc.load_setup', data)
+        ok, status_msg = yield session.call('hipercam.ngc.rpc.load_setup', data)
     except Exception as err:
         ok, status_msg = False, str(err)
 
