@@ -12,7 +12,8 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    'astropy', 'requests'
+    'astropy', 'requests', 'twisted', 'hcam_devices', 'matplotlib',
+    'scipy', 'autobahn'
 ]
 
 test_requirements = [
@@ -25,19 +26,21 @@ scripts = [fname for fname in glob.glob(os.path.join('scripts', '*'))
 
 setup(
     name='hcam_widgets',
-    version='0.7.0',
+    version='0.8.2',
     description="Common Tkinter widgets for HiPerCAM",
     long_description=readme + '\n\n' + history,
     author="Stuart Littlefair",
     author_email='s.littlefair@shef.ac.uk',
     url='https://github.com/HiPERCAM/hcam_widgets',
-    download_url='https://github.com/HiPERCAM/hcam_widgets/archive/v0.7.0.tar.gz',
+    download_url='https://github.com/HiPERCAM/hcam_widgets/archive/v0.8.2.tar.gz',
     packages=[
         'hcam_widgets',
-        'hcam_widgets.gtc'
+        'hcam_widgets.compo',
+        'hcam_widgets.hardware'
     ],
     package_dir={'hcam_widgets':
                  'hcam_widgets'},
+    include_package_data=True,
     install_requires=requirements,
     license="MIT license",
     zip_safe=False,

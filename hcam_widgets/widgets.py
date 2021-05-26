@@ -1,15 +1,12 @@
 # general purpose widgets
 from __future__ import print_function, unicode_literals, absolute_import, division
 from six.moves import urllib
-import sys
-import traceback
-import threading
 import time
 import socket
-import warnings
 from functools import reduce
 import numpy as np
 import six
+import pickle
 import subprocess
 
 # astropy utilities
@@ -17,22 +14,26 @@ from astropy import coordinates as coord
 from astropy import units as u
 from astropy.time import Time
 
+# twisted and async support
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.task import LoopingCall
+
+from hcam_devices.gtc.headers import (create_gtc_header_table,
+                                      add_gtc_header_table_row)
+
 # internal
-from . import DriverError, tcs
-from .gtc.headers import create_gtc_header_table, add_gtc_header_table_row
+from . import DriverError
 from .tkutils import get_root
 from .logs import Logger, GuiHandler
 from .astro import calc_riseset
 from .misc import (execCommand, checkSimbad, isRunActive, stopNodding,
-                   getRunNumber, postJSON, getFrameNumber, insertFITSHDU,
-                   isPoweredOn)
+                   getRunNumber, postJSON, insertFITSHDU,
+                   isPoweredOn, ReadNGCTelemetry)
 
 if not six.PY3:
     import Tkinter as tk
-    from Queue import Queue, Empty
 else:
     import tkinter as tk
-    from queue import Queue, Empty
 
 
 # GENERAL UI WIDGETS
@@ -136,7 +137,7 @@ class IntegerEntry(tk.Entry):
         """
         try:
             return int(self._value)
-        except:
+        except ValueError:
             return None
 
     def set(self, num):
@@ -152,7 +153,7 @@ class IntegerEntry(tk.Entry):
         """
         try:
             val = self.value() + num
-        except:
+        except Exception:
             val = num
         self.set(val)
 
@@ -162,7 +163,7 @@ class IntegerEntry(tk.Entry):
         """
         try:
             val = self.value() - num
-        except:
+        except Exception:
             val = -num
         self.set(val)
 
@@ -173,7 +174,7 @@ class IntegerEntry(tk.Entry):
         try:
             int(self._value)
             return True
-        except:
+        except ValueError:
             return False
 
     def enable(self):
@@ -450,7 +451,7 @@ class PosInt (IntegerEntry):
         """
         try:
             val = self.value() + num
-        except:
+        except Exception:
             val = num
         self.set(max(0, val))
 
@@ -460,7 +461,7 @@ class PosInt (IntegerEntry):
         """
         try:
             val = self.value() - num
-        except:
+        except Exception:
             val = -num
         self.set(max(0, val))
 
@@ -474,7 +475,7 @@ class PosInt (IntegerEntry):
                 return False
             else:
                 return True
-        except:
+        except Exception:
             return False
 
 
@@ -540,7 +541,7 @@ class RangedInt(IntegerEntry):
         """
         try:
             val = self.value() + num
-        except:
+        except Exception:
             val = num
         self.set(min(self.imax, max(self.imin, val)))
 
@@ -550,7 +551,7 @@ class RangedInt(IntegerEntry):
         """
         try:
             val = self.value() - num
-        except:
+        except Exception:
             val = -num
         self.set(min(self.imax, max(self.imin, val)))
 
@@ -564,7 +565,7 @@ class RangedInt(IntegerEntry):
                 return False
             else:
                 return True
-        except:
+        except Exception:
             return False
 
 
@@ -611,7 +612,7 @@ class RangedMint(RangedInt):
         """
         try:
             val = self.value() + num
-        except:
+        except Exception:
             val = num
 
         chunk = self.mfac.value()
@@ -631,7 +632,7 @@ class RangedMint(RangedInt):
         """
         try:
             val = self.value() - num
-        except:
+        except Exception:
             val = -num
 
         chunk = self.mfac.value()
@@ -655,7 +656,7 @@ class RangedMint(RangedInt):
                 return False
             else:
                 return True
-        except:
+        except Exception:
             return False
 
     def _min(self):
@@ -828,7 +829,7 @@ class FloatEntry(tk.Entry):
         """
         try:
             return float(self._value)
-        except:
+        except Exception:
             return None
 
     def set(self, num):
@@ -844,7 +845,7 @@ class FloatEntry(tk.Entry):
         """
         try:
             val = self.value() + num
-        except:
+        except Exception:
             val = num
         self.set(val)
 
@@ -854,7 +855,7 @@ class FloatEntry(tk.Entry):
         """
         try:
             val = self.value() - num
-        except:
+        except Exception:
             val = -num
         self.set(val)
 
@@ -865,7 +866,7 @@ class FloatEntry(tk.Entry):
         try:
             float(self._value)
             return True
-        except:
+        except Exception:
             return False
 
     def enable(self):
@@ -1026,7 +1027,7 @@ class RangedFloat(FloatEntry):
         """
         try:
             val = self.value() + num
-        except:
+        except Exception:
             val = num
         self.set(min(self.fmax, max(self.fmin, val)))
 
@@ -1036,7 +1037,7 @@ class RangedFloat(FloatEntry):
         """
         try:
             val = self.value() - num
-        except:
+        except Exception:
             val = -num
         self.set(min(self.fmax, max(self.fmin, val)))
 
@@ -1050,7 +1051,7 @@ class RangedFloat(FloatEntry):
                 return False
             else:
                 return True
-        except:
+        except Exception:
             return False
 
 
@@ -1196,7 +1197,7 @@ class Expose(RangedFloat):
         """
         try:
             return int(round(100000*float(self._value)))
-        except:
+        except Exception:
             return None
 
     def set_min(self, fmin):
@@ -1541,7 +1542,7 @@ class Sexagesimal(tk.Entry):
         """
         try:
             return self._value.deg
-        except:
+        except Exception:
             return None
 
     def set(self, num):
@@ -1675,7 +1676,6 @@ class Stop(ActButton):
         self.config(bg=g.COL['stop'])
 
         # flags to help with stopping in background
-        self.stopped_ok = True
         self.stopping = False
 
     def enable(self):
@@ -1716,52 +1716,49 @@ class Stop(ActButton):
         else:
             self.disable()
 
+    @inlineCallbacks
     def act(self):
         """
         Carries out the action associated with Stop button
         """
         g = get_root(self).globals
-        g.clog.debug('Stop pressed')
+        g.clog.info('Stop pressed')
 
         # Stop exposure meter
         # do this first, so timer doesn't also try to enable idle mode
         g.info.timer.stop()
 
-        def stop_in_background():
-            try:
-                self.stopping = True
-                if execCommand(g, 'abort'):
-                    self.stopped_ok = True
-                else:
-                    g.clog.warn('Failed to stop run')
-                    self.stopped_ok = False
-                self.stopping = False
-            except Exception as err:
-                g.clog.warn('Failed to stop run. Error = ' + str(err))
-                self.stopping = False
-                self.stopped_ok = False
+        try:
+            session = get_root(self).globals.session
+            yield session.call('hipercam.ngc.rpc.abort')
+            self.stopping = True
+        except Exception as err:
+            g.clog.warn('Run stop failed. Error = ' + str(err))
+            self.stopping = False
 
-        # stopping can take a while during which the GUI freezes so run in
-        # background.
-        t = threading.Thread(target=stop_in_background)
-        t.daemon = True
-        t.start()
-        self.after(500, self.check)
-
-    def check(self):
+    @inlineCallbacks
+    def on_telemetry(self, package):
         """
         Checks the status of the stop exposure command
-        This is run in background and can take a few seconds
+        This is run every time a telemetry packet comes in from NGC.
+
+        It is the responsibility of an implementing GUI to subscribe to the
+        NGC telemetry topic with this function as the callback.
         """
+        telemetry = pickle.loads(package)
+
         g = get_root(self).globals
-        if self.stopped_ok:
+        res = ReadNGCTelemetry(telemetry)
+        stopped = res.state == 'idle'
+
+        if stopped and self.stopping:
             # Exposure stopped OK; modify buttons
             self.disable()
 
             # try and write FITS table before enabling start button, otherwise
             # a new start will clear table
             try:
-                insertFITSHDU(g)
+                yield insertFITSHDU(g)
             except Exception as err:
                 g.clog.warn('Could not add FITS Table to run')
                 g.clog.warn(str(err))
@@ -1769,15 +1766,17 @@ class Stop(ActButton):
             g.observe.start.enable()
             g.setup.powerOn.disable()
             g.setup.powerOff.enable()
+            self.disable()
 
             # Report that run has stopped
             g.clog.info('Run stopped')
+            self.stopping = False
 
             # enable idle mode now run has stopped
             g.clog.info('Setting chips to idle')
             idle = {'appdata': {'app': 'Idle'}}
             try:
-                success = postJSON(g, idle)
+                success = yield postJSON(g, idle)
                 if not success:
                     raise Exception('postJSON returned false')
             except Exception as err:
@@ -1786,15 +1785,18 @@ class Stop(ActButton):
 
             g.clog.info('Stopping offsets (if running')
             try:
-                success = stopNodding(g)
+                success = yield stopNodding(g)
                 if not success:
                     raise Exception('Failed to stop dithering: response was false')
             except Exception as err:
                 g.clog.warn('Failed to stop GTC offset script')
                 g.clog.warn(str(err))
 
-            return True
-
+            returnValue(True)
+        elif stopped and not self.stopping:
+            # exposure is not running, but we haven't been pressed
+            g.observe.start.enable()
+            self.disable()
         elif self.stopping:
             # Exposure in process of stopping
             # Disable lots of buttons
@@ -1802,18 +1804,12 @@ class Stop(ActButton):
             g.observe.start.disable()
             g.setup.powerOn.disable()
             g.setup.powerOff.disable()
-
-            # wait a second before trying again
-            self.after(500, self.check)
-
-        else:
+        elif res.state == 'active':
+            # exposure is underway
             self.enable()
             g.observe.start.disable()
             g.setup.powerOn.disable()
             g.setup.powerOff.disable()
-            # Start exposure meter
-            g.info.timer.start()
-            return False
 
 
 class ProgramID(tk.Frame):
@@ -1829,7 +1825,7 @@ class ProgramID(tk.Frame):
         check = master.check if hasattr(master, 'check') else None
         self.progid = TextEntry(self, 20, check)
         self.obid = PosInt(self, 1, check, True, width=4)
-    
+
         self.progid.pack(side=tk.LEFT, anchor=tk.W)
         tk.Label(self, text='/').pack(side=tk.LEFT, anchor=tk.W, padx=2)
         self.obid.pack(side=tk.LEFT, anchor=tk.W, padx=2)
@@ -2003,14 +1999,23 @@ class NGCReset(ActButton):
         """
         ActButton.__init__(self, master, width, text='NGC Reset')
 
+    @inlineCallbacks
     def act(self):
         """
         Carries out the action associated with the System Reset
         """
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('NGC Reset pressed')
-
-        if execCommand(g, 'reset'):
+        session = root.globals.session
+        try:
+            msg, ok = yield session.call('hipercam.ngc.rpc.reset')
+            if not ok:
+                raise RuntimeError('reset command failed: ' + msg)
+        except Exception:
+            g.clog.warn('NGC Reset failed')
+            returnValue(False)
+        else:
             g.clog.info('NGC Reset succeeded')
 
             # alter buttons here
@@ -2018,10 +2023,7 @@ class NGCReset(ActButton):
             g.observe.stop.disable()
             g.setup.cldcOn.disable()
             g.setup.cldcOff.disable()
-            return True
-        else:
-            g.clog.warn('NGC Reset failed')
-            return False
+            returnValue(True)
 
 
 class NGCStandby(ActButton):
@@ -2038,22 +2040,27 @@ class NGCStandby(ActButton):
         """
         ActButton.__init__(self, master, width, text='NGC Standby')
 
+    @inlineCallbacks
     def act(self):
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('NGC Standby pressed')
-
-        if execCommand(g, 'standby'):
+        session = root.globals.session
+        try:
+            msg, ok = yield session.call('hipercam.ngc.rpc.ngc_server.standby')
+            if not ok:
+                raise RuntimeError('standby command failed: ' + msg)
+        except Exception as err:
+            g.clog.warn('NGC Standby failed: ' + str(err))
+            returnValue(False)
+        else:
             g.clog.info('Standby command successful')
-
             # alter buttons here
             g.observe.start.disable()
             g.observe.stop.disable()
             g.setup.cldcOn.disable()
             g.setup.cldcOff.disable()
-            return True
-        else:
-            g.clog.warn("NGC Standby failed")
-            return False
+            returnValue(True)
 
 
 class NGCOnline(ActButton):
@@ -2071,22 +2078,25 @@ class NGCOnline(ActButton):
         """
         ActButton.__init__(self, master, width, text='NGC Online')
 
+    @inlineCallbacks
     def act(self):
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('NGC Online pressed')
-
-        if execCommand(g, 'online'):
+        session = root.globals.session
+        try:
+            yield session.call('hipercam.ngc.rpc.ngc_server.online')
+        except Exception as err:
+            g.clog.warn("NGC Online failed: " + str(err))
+            returnValue(False)
+        else:
             g.clog.info('Online command successful')
-
             # alter buttons here
             g.observe.start.disable()
             g.observe.stop.disable()
             g.setup.cldcOn.enable()
             g.setup.cldcOff.disable()
-            return True
-        else:
-            g.clog.warn("NGC Online failed")
-            return False
+            returnValue(True)
 
 
 class NGCOff(ActButton):
@@ -2106,22 +2116,26 @@ class NGCOff(ActButton):
         """
         ActButton.__init__(self, master, width, text='NGC Off')
 
+    @inlineCallbacks
     def act(self):
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('NGC Off pressed')
-
-        if execCommand(g, 'offline'):
-            g.clog.info('Off command successful; server in loaded state')
+        session = root.globals.session
+        try:
+            yield session.call('hipercam.ngc.rpc.ngc_server.offline')
+        except Exception as err:
+            g.clog.warn("NGC Off failed: " + str(err))
+            returnValue(False)
+        else:
+            g.clog.info('off command successful; server in loaded state')
 
             # alter buttons here
             g.observe.start.disable()
             g.observe.stop.disable()
             g.setup.cldcOn.disable()
             g.setup.cldcOff.disable()
-            return True
-        else:
-            g.clog.warn("NGC Off failed")
-            return False
+            returnValue(True)
 
 
 class SeqStart(ActButton):
@@ -2136,27 +2150,33 @@ class SeqStart(ActButton):
         ActButton.__init__(self, master, width, text='Seq Start')
         self.disable()
 
+    @inlineCallbacks
     def act(self):
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('Seq Start pressed')
+        session = root.globals.session
 
-        if execCommand(g, 'seqStart'):
+        try:
+            msg, ok = yield session.call('hipercam.ngc.rpc.seq_start')
+            if not ok:
+                raise RuntimeError('could not start sequencer: ' + msg)
+        except Exception as err:
+            g.clog.warn("Seq Start failed: " + str(err))
+            returnValue(False)
+        else:
             g.clog.info('seq start command successful; clocks powered on')
-
             # alter buttons here
             g.observe.start.enable()
             g.observe.stop.enable()
             g.setup.seqStop.enable()
             self.disable()
-            return True
-        else:
-            g.clog.warn("Seq Start failed")
-            return False
+            returnValue(True)
 
 
 class SeqStop(ActButton):
     """
-    Class defining the button to start sequencers.
+    Class defining the button to stop sequencers.
     """
     def __init__(self, master, width):
         """
@@ -2166,22 +2186,28 @@ class SeqStop(ActButton):
         ActButton.__init__(self, master, width, text='Seq Stop')
         self.disable()
 
+    @inlineCallbacks
     def act(self):
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('Seq Stop pressed')
+        session = root.globals.session
 
-        if execCommand(g, 'seqStop'):
-            g.clog.info('seq stop command successful; clocks powered on')
-
+        try:
+            msg, ok = yield session.call('hipercam.ngc.rpc.seq_stop')
+            if not ok:
+                raise RuntimeError('could not stop sequencer: ' + msg)
+        except Exception as err:
+            g.clog.warn("Seq Stop failed: " + str(err))
+            returnValue(False)
+        else:
+            g.clog.info('seq stop command successful')
             # alter buttons here
-            g.observe.start.enable()
-            g.observe.stop.enable()
+            g.observe.start.disable()
+            g.observe.stop.disable()
             g.setup.seqStart.enable()
             self.disable()
-            return True
-        else:
-            g.clog.warn("Seq Stop failed")
-            return False
+            returnValue(True)
 
 
 class CLDCOn(ActButton):
@@ -2196,25 +2222,34 @@ class CLDCOn(ActButton):
         ActButton.__init__(self, master, width, text='CLDC On')
         self.disable()
 
+    @inlineCallbacks
     def act(self):
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('CLDC On pressed')
-        if isPoweredOn(g):
+        session = root.globals.session
+
+        powered_on = yield isPoweredOn(g)
+        if powered_on:
             g.clog.info('clocks already on')
             return True
 
-        if execCommand(g, 'pon'):
+        try:
+            msg, ok = yield session.call('hipercam.ngc.rpc.pon')
+            if not ok:
+                raise RuntimeError('could not power on clocks')
+        except Exception as err:
+            g.clog.warn("CLDC On failed: " + str(err))
+            returnValue(False)
+        else:
             g.clog.info('CLDC on command successful; clocks powered on')
-
             # alter buttons here
             g.observe.start.enable()
             g.observe.stop.enable()
             g.setup.cldcOff.enable()
+            g.setup.seqStart.enable()
             self.disable()
-            return True
-        else:
-            g.clog.warn("CLDC On failed")
-            return False
+            returnValue(True)
 
 
 class CLDCOff(ActButton):
@@ -2229,11 +2264,21 @@ class CLDCOff(ActButton):
         ActButton.__init__(self, master, width, text='CLDC Off')
         self.disable()
 
+    @inlineCallbacks
     def act(self):
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('CLDC Off pressed')
+        session = root.globals.session
 
-        if execCommand(g, 'poff'):
+        try:
+            msg, ok = yield session.call('hipercam.ngc.rpc.poff')
+            if not ok:
+                raise RuntimeError('could not power off clocks')
+        except Exception as err:
+            g.clog.warn("CLDC Off failed: " + str(err))
+            returnValue(False)
+        else:
             g.clog.info('CLDC off command successful; clocks powered off')
 
             # alter buttons here
@@ -2241,10 +2286,7 @@ class CLDCOff(ActButton):
             g.observe.stop.disable()
             g.setup.cldcOn.enable()
             self.disable()
-            return True
-        else:
-            g.clog.warn("CLDC Off failed")
-            return False
+            returnValue(True)
 
 
 class PowerOn(ActButton):
@@ -2259,43 +2301,49 @@ class PowerOn(ActButton):
         """
         ActButton.__init__(self, master, width, text='Power on')
 
+    @inlineCallbacks
     def act(self):
         """
         Power on action
         """
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         g.clog.debug('Power on pressed')
+        try:
+            session = root.globals.session
+            yield session.call('hipercam.ngc.rpc.ngc_server.online')
 
-        if execCommand(g, 'online'):
+        except Exception as err:
+            g.clog.warn('Failed to bring server online: ' + str(err))
+            return False
+        else:
             g.clog.info('ESO server online')
             g.cpars['eso_server_online'] = True
-
-            if not isPoweredOn(g):
-                success = execCommand(g, 'pon')
+            powered_on = yield isPoweredOn(g)
+            if not powered_on:
+                success = yield execCommand(g, 'pon')
                 if not success:
                     g.clog.warn('Unable to power on CLDC')
-                    return False
+                    returnValue(False)
+
+            success = yield execCommand(g, 'seq_start')
+            if not success:
+                g.clog.warn('Failed to start sequencer after Power On.')
+
+            try:
+                run = yield getRunNumber(g)
+                g.info.run.configure(text='{0:03d}'.format(run))
+            except Exception as err:
+                g.clog.warn('Failed to determine run number at start of run')
+                g.clog.warn(str(err))
+                g.info.run.configure(text='UNDEF')
 
             # change other buttons
             self.disable()
             g.observe.start.enable()
             g.observe.stop.disable()
             g.setup.powerOff.enable()
-
-            success = execCommand(g, 'seqStart')
-            if not success:
-                g.clog.warn('Failed to start sequencer after Power On.')
-
-            try:
-                g.info.run.configure(text='{0:03d}'.format(getRunNumber(g)))
-            except Exception as err:
-                g.clog.warn('Failed to determine run number at start of run')
-                g.clog.warn(str(err))
-                g.info.run.configure(text='UNDEF')
-            return True
-        else:
-            g.clog.warn('Failed to bring server online')
-            return False
+            returnValue(True)
 
 
 class PowerOff(ActButton):
@@ -2311,6 +2359,7 @@ class PowerOff(ActButton):
         ActButton.__init__(self, master, width, text='Power off')
         self.disable()
 
+    @inlineCallbacks
     def act(self):
         """
         Power off action
@@ -2318,12 +2367,13 @@ class PowerOff(ActButton):
         g = get_root(self).globals
         g.clog.debug('Power off pressed')
 
-        success = execCommand(g, 'poff')
+        success = yield execCommand(g, 'poff')
         if not success:
             g.clog.warn('Unable to power off CLDC')
-            return False
+            returnValue(False)
 
-        if execCommand(g, 'offline'):
+        success = yield execCommand(g, 'ngc_server.offline')
+        if success:
             g.clog.info('ESO server idle')
             g.cpars['eso_server_online'] = False
 
@@ -2332,10 +2382,10 @@ class PowerOff(ActButton):
             g.observe.start.disable()
             g.observe.stop.disable()
             g.setup.powerOn.enable()
-            return True
+            returnValue(True)
         else:
             g.clog.warn('Power off failed')
-            return False
+            returnValue(False)
 
 
 class InstSetup(tk.LabelFrame):
@@ -2369,6 +2419,34 @@ class InstSetup(tk.LabelFrame):
                             self.powerOn, self.powerOff, self.seqStart, self.seqStop]
         # set which buttons are presented and where they go
         self.setExpertLevel()
+        self.telemetry_topics = [
+            ('hipercam.ngc.telemetry', self.on_telemetry)
+        ]
+
+    def on_telemetry(self, package):
+        g = get_root(self).globals
+        try:
+            telemetry = pickle.loads(package)
+            ngc_status = telemetry['state']['ngc_server']
+            res = ReadNGCTelemetry(telemetry)
+            # clocks
+            if res.clocks == 'enabled':
+                self.cldcOn.disable()
+                self.cldcOff.enable()
+                self.seqStart.enable()
+            else:
+                self.cldcOn.enable()
+                self.cldcOff.disable()
+            # power on/off
+            if (res.clocks == 'enabled'
+                    and 'online' in ngc_status):
+                self.powerOff.enable()
+                self.powerOn.disable()
+            else:
+                self.powerOn.enable()
+                self.powerOff.disable()
+        except Exception:
+            g.clog.warn('could not decode NGC telemetry')
 
     def setExpertLevel(self):
         """
@@ -2566,15 +2644,19 @@ class ExpertMenu(tk.Menu):
 
 class Timer(tk.Label):
     """
-    Run Timer class. Updates @10Hz, checks
-    run status @1Hz. Switches button statuses
-    when the run stops.
+    Run Timer class.
+
+    Responsible for monitoring a started run. If a run reaches the end without
+    Stop being pressed, this class will make sure that button statuses are
+    updated and Idle mode is engaged.
+
+    Updates @10Hz, checks run status @1Hz.
     """
     def __init__(self, master):
         tk.Label.__init__(self, master, text='{0:<d} s'.format(0))
         g = get_root(self).globals
         self.config(font=g.ENTRY_FONT)
-        self.id = None
+        self._loop = None
         self.count = 0
 
     def start(self):
@@ -2583,9 +2665,11 @@ class Timer(tk.Label):
         """
         self.startTime = time.time()
         self.configure(text='{0:<d} s'.format(0))
-        self.update()
+        self._loop = LoopingCall(self.tick)
+        self._loop.start(0.1)
 
-    def update(self):
+    @inlineCallbacks
+    def tick(self):
         """
         Updates @ 10Hz to give smooth running clock, checks
         run status @0.2Hz to reduce load on servers.
@@ -2597,12 +2681,13 @@ class Timer(tk.Label):
             self.configure(text='{0:<d} s'.format(delta))
 
             if self.count % 50 == 0:
-                if not isRunActive(g):
+                run_active = yield isRunActive(g)
+                if not run_active:
 
                     # try and write FITS table before enabling start button, otherwise
                     # a new start will clear table
                     try:
-                        insertFITSHDU(g)
+                        yield insertFITSHDU(g)
                     except Exception as err:
                         g.clog.warn('Could not add FITS Table to run')
                         g.clog.warn(str(err))
@@ -2615,13 +2700,16 @@ class Timer(tk.Label):
                     g.clog.info('Timer detected stopped run')
 
                     warn_cmd = '/usr/bin/ssh observer@192.168.1.1 spd-say "\'exposure finished\'"'
-                    subprocess.check_output(warn_cmd, shell=True, stderr=subprocess.PIPE)
+                    try:
+                        subprocess.check_output(warn_cmd, shell=True, stderr=subprocess.PIPE)
+                    except Exception:
+                        pass
 
                     # enable idle mode now run has stopped
                     g.clog.info('Setting chips to idle')
                     idle = {'appdata': {'app': 'Idle'}}
                     try:
-                        success = postJSON(g, idle)
+                        success = yield postJSON(g, idle)
                         if not success:
                             raise Exception('postJSON returned false')
                     except Exception as err:
@@ -2630,7 +2718,7 @@ class Timer(tk.Label):
 
                     g.clog.info('Stopping offsets (if running')
                     try:
-                        success = stopNodding(g)
+                        success = yield stopNodding(g)
                         if not success:
                             raise Exception('failed to stop dithering')
                     except Exception as err:
@@ -2638,18 +2726,15 @@ class Timer(tk.Label):
                         g.clog.warn(str(err))
 
                     self.stop()
-                    return
 
         except Exception as err:
             if self.count % 100 == 0:
                 g.clog.warn('Timer.update: error = ' + str(err))
 
-        self.id = self.after(100, self.update)
-
     def stop(self):
-        if self.id is not None:
-            self.after_cancel(self.id)
-        self.id = None
+        if hasattr(self, '_loop') and self._loop is not None:
+            self._loop.stop()
+        self._loop = None
 
 
 class InfoFrame(tk.LabelFrame):
@@ -2736,14 +2821,21 @@ class InfoFrame(tk.LabelFrame):
         self.count = 0
         self.update()
 
-        # queue for filling TCS info
-        self.tcs_data_queue = Queue()
-        # start checking TCS info
-        self.after(20000, self.update_tcs)
-        self.after(20000, self.update_tcs_table)
-        # queue for slide position info
-        self.slide_pos_queue = Queue()
-        self.after(20000, self.update_slidepos)
+        # an implementing GUI must subscribe this widget to the
+        # following topics, with the given callbacks
+        self.telemetry_topics = [
+            ('hipercam.slide.telemetry', self.update_slidepos),
+            ('hipercam.gtc.telemetry', self.update_tcs),
+            ('hipercam.ccd1.telemetry', self.update_ccd),
+            ('hipercam.ccd2.telemetry', self.update_ccd),
+            ('hipercam.ccd3.telemetry', self.update_ccd),
+            ('hipercam.ccd4.telemetry', self.update_ccd),
+            ('hipercam.ccd5.telemetry', self.update_ccd),
+            ('hipercam.ngc.telemetry', self.update_runstatus)
+        ]
+
+        self._update_tcs_table_loop = LoopingCall(self.update_tcs_table)
+        self._update_tcs_table_loop.start(60)
 
     def _getVal(self, widg):
         return -99.0 if widg['text'] == 'UNDEF' else float(widg['text'])
@@ -2771,224 +2863,183 @@ class InfoFrame(tk.LabelFrame):
         """
         self.tcs_table = create_gtc_header_table()
 
+    @inlineCallbacks
     def update_tcs_table(self):
         """
         Periodically update a table of info from the TCS.
 
-        Only works at GTC
+        Only works at GTC. Called every 60s.
         """
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
         if not g.cpars['tcs_on'] or not g.cpars['telins_name'].lower() == 'gtc':
-            self.after(60000, self.update_tcs_table)
             return
-
         try:
-            tel_server = tcs.get_telescope_server()
-            telpars = tel_server.getTelescopeParams()
+            session = root.globals.session
+            telpars = yield session.call('hipercam.gtc.rpc.get_telescope_pars')
             add_gtc_header_table_row(self.tcs_table, telpars)
         except Exception as err:
-            g.clog.warn('Could not update table of TCS info')
+            g.clog.warn('Could not update table of TCS info: ' + str(err))
 
-        # schedule next call for 60s later
-        self.after(60000, self.update_tcs_table)
-
-    def update_tcs(self):
+    def update_tcs(self, packet):
         """
-        Periodically update TCS info.
+        Update TCS data.
 
-        A long running process, so run in a thread and fill a queue
+        This is a callback to be used with subscription to the GTC telemetry
+        topic.
+
+        Parameters
+        ----------
+        packet: bytes
+            a pickled serialisation of the telemetry packet
         """
         g = get_root(self).globals
-
-        if not g.cpars['tcs_on']:
-            self.after(20000, self.update_tcs)
-            return
-
-        if g.cpars['telins_name'] == 'WHT':
-            tcsfunc = tcs.getWhtTcs
-        elif g.cpars['telins_name'] == 'GTC':
-            tcsfunc = tcs.getGtcTcs
+        try:
+            telemetry = pickle.loads(packet)
+            header = telemetry['telpars']
+        except Exception as err:
+            g.clog.warn('Could not parse telemetry from TCS: ' + str(err))
         else:
-            g.clog.debug('TCS error: could not recognise ' +
-                         g.cpars['telins_name'])
-            return
+            ra = float(header['RADEG'])
+            dec = float(header['DECDEG'])
+            pa = float(header['INSTRPA'])
+            focus = float(header['M2UZ'])
+            # format ra, dec as HMS
+            coo = coord.SkyCoord(ra, dec, unit=(u.deg, u.deg))
+            ratxt = coo.ra.to_string(sep=':', unit=u.hour, precision=0)
+            dectxt = coo.dec.to_string(sep=':', unit=u.deg,
+                                       alwayssign=True,
+                                       precision=0)
+            self.ra.configure(text=ratxt)
+            self.dec.configure(text=dectxt)
 
-        def tcs_threaded_update():
-            try:
-                ra, dec, pa, focus = tcsfunc()
-                self.tcs_data_queue.put((ra, dec, pa, focus))
-            except Exception as err:
-                t, v, tb = sys.exc_info()
-                error = traceback.format_exception_only(t, v)[0].strip()
-                tback = 'TCS Traceback (most recent call last):\n' + \
-                        ''.join(traceback.format_tb(tb))
-                g.FIFO.put(('TCS', error, tback))
+            # wrap pa from 0 to 360
+            pa = coord.Longitude(pa*u.deg)
+            self.pa.configure(text='{0:6.2f}'.format(pa.value))
 
-        t = threading.Thread(target=tcs_threaded_update)
-        t.start()
-        self.after(20000, self.update_tcs)
+            # set focus
+            self.focus.configure(text='{0:+5.2f}'.format(focus))
 
-    def update_slidepos(self):
+            # Calculate most of the
+            # stuff that we don't get from the telescope
+            now = Time.now()
+            lon = g.astro.obs.lon
+            lst = now.sidereal_time(kind='mean',
+                                    longitude=lon)
+            ha = lst - coo.ra.hourangle*u.hourangle
+            hatxt = ha.wrap_at(12*u.hourangle).to_string(sep=':', precision=0)
+            self.ha.configure(text=hatxt)
+
+            altaz_frame = coord.AltAz(obstime=now, location=g.astro.obs)
+            altaz = coo.transform_to(altaz_frame)
+            self.alt.configure(text='{0:<4.1f}'.format(altaz.alt.value))
+            self.az.configure(text='{0:<5.1f}'.format(altaz.az.value))
+            # set airmass
+            self.airmass.configure(text='{0:<4.2f}'.format(altaz.secz))
+
+            # distance to the moon. Warn if too close
+            # (configurable) to it.
+            md = coord.get_moon(now, g.astro.obs).separation(coo)
+            self.mdist.configure(text='{0:<7.2f}'.format(md.value))
+            if md < g.cpars['mdist_warn']*u.deg:
+                self.mdist.configure(bg=g.COL['warn'])
+            else:
+                self.mdist.configure(bg=g.COL['main'])
+
+    def update_ccd(self, packet):
         """
-        Periodically update the slide position.
+        Update the CCD label.
 
-        Also farmed out to a thread to avoid hanging GUI main thread
+        This routine is a callback to be called whenever a telemetry message
+        from a CCD is received.
+
+        Parameters
+        ----------
+        packet: bytes
+            a pickled serialisation of the telemetry packet
+        """
+        g = get_root(self).globals
+        try:
+            telemetry = pickle.loads(packet)
+        except Exception as err:
+            g.clog.warn('could not decode CCD telemetry: ' + str(err))
+            self.ccd_temps.configure(text='UNDEF')
+            self.ccd_temps.configure(bg=g.COL['warn'])
+        else:
+            if telemetry['state'] == 'OK':
+                self.ccd_temps.configure(text='OK')
+                self.ccd_temps.configure(bg=g.COL['main'])
+            else:
+                self.ccd_temps.configure(text='ERR')
+                self.ccd_temps.configure(bg=g.COL['warn'])
+
+    def update_slidepos(self, packet):
+        """
+        Update the slide position.
+
+        This routine is a callback to be called whenever a telemetry message
+        from the slide is received.
+
+        Parameters
+        ----------
+        packet: bytes
+            a pickled serialisation of the telemetry packet
         """
         g = get_root(self).globals
         if not g.cpars['focal_plane_slide_on']:
-            self.after(20000, self.update_slidepos)
-            return
-
-        def slide_threaded_update():
-            try:
-                (pos_ms, pos_mm, pos_px), msg = g.fpslide.slide.return_position()
-                self.slide_pos_queue.put((pos_ms, pos_mm, pos_px))
-            except Exception as err:
-                t, v, tb = sys.exc_info()
-                error = traceback.format_exception_only(t, v)[0].strip()
-                tback = 'Slide Traceback (most recent call last):\n' + \
-                        ''.join(traceback.format_tb(tb))
-                g.FIFO.put(('Slide', error, tback))
-
-        t = threading.Thread(target=slide_threaded_update)
-        t.start()
-        self.after(20000, self.update_slidepos)
-
-    def update(self):
-        """
-        Updates run & tel status window. Runs
-        once every 2 seconds.
-        """
-        g = get_root(self).globals
-
-        if g.astro is None or g.fpslide is None:
-            self.after(100, self.update)
             return
 
         try:
-            if g.cpars['tcs_on']:
-
-                try:
-                    # Poll TCS for ra,dec etc.
-                    ra, dec, pa, focus = self.tcs_data_queue.get(block=False)
-
-                    # format ra, dec as HMS
-                    coo = coord.SkyCoord(ra, dec, unit=(u.deg, u.deg))
-                    ratxt = coo.ra.to_string(sep=':', unit=u.hour, precision=0)
-                    dectxt = coo.dec.to_string(sep=':', unit=u.deg,
-                                               alwayssign=True,
-                                               precision=0)
-                    self.ra.configure(text=ratxt)
-                    self.dec.configure(text=dectxt)
-
-                    # wrap pa from 0 to 360
-                    pa = coord.Longitude(pa*u.deg)
-                    self.pa.configure(text='{0:6.2f}'.format(pa.value))
-
-                    # set focus
-                    self.focus.configure(text='{0:+5.2f}'.format(focus))
-
-                    # Calculate most of the
-                    # stuff that we don't get from the telescope
-                    now = Time.now()
-                    with warnings.catch_warnings():
-                        warnings.simplefilter('ignore')
-                        # ignore astropy deprecation warnings
-                        lon = g.astro.obs.longitude
-                    lst = now.sidereal_time(kind='mean',
-                                            longitude=lon)
-                    ha = coo.ra.hourangle*u.hourangle - lst
-                    hatxt = ha.wrap_at(12*u.hourangle).to_string(sep=':', precision=0)
-                    self.ha.configure(text=hatxt)
-
-                    altaz_frame = coord.AltAz(obstime=now, location=g.astro.obs)
-                    altaz = coo.transform_to(altaz_frame)
-                    self.alt.configure(text='{0:<4.1f}'.format(altaz.alt.value))
-                    self.az.configure(text='{0:<5.1f}'.format(altaz.az.value))
-                    # set airmass
-                    self.airmass.configure(text='{0:<4.2f}'.format(altaz.secz))
-
-                    # distance to the moon. Warn if too close
-                    # (configurable) to it.
-                    md = coord.get_moon(now, g.astro.obs).separation(coo)
-                    self.mdist.configure(text='{0:<7.2f}'.format(md.value))
-                    if md < g.cpars['mdist_warn']*u.deg:
-                        self.mdist.configure(bg=g.COL['warn'])
-                    else:
-                        self.mdist.configure(bg=g.COL['main'])
-                except Empty:
-                    # silently do nothing if queue is empty
-                    pass
-                except Exception as err:
-                    self.ra.configure(text='UNDEF')
-                    self.dec.configure(text='UNDEF')
-                    self.pa.configure(text='UNDEF')
-                    self.ha.configure(text='UNDEF')
-                    self.alt.configure(text='UNDEF')
-                    self.az.configure(text='UNDEF')
-                    self.airmass.configure(text='UNDEF')
-                    self.mdist.configure(text='UNDEF')
-                    g.clog.warn('TCS error: ' + str(err))
-
-            if g.cpars['hcam_server_on'] and \
-               g.cpars['eso_server_online']:
-
-                # get run number (set by the 'Start' button')
-                try:
-                    # get run number from hipercam server
-                    run = getRunNumber(g)
-                    self.run.configure(text='{0:03d}'.format(run))
-
-                    # Find the number of frames in this run
-                    try:
-                        frame_no = getFrameNumber(g)
-                        self.frame.configure(text='{0:04d}'.format(frame_no))
-                    except Exception as err:
-                        if err.code == 404:
-                            self.frame.configure(text='0')
-                        else:
-                            g.clog.debug('Error occurred trying to set frame')
-                            self.frame.configure(text='UNDEF')
-
-                except Exception as err:
-                    g.clog.debug('Error trying to set run: ' + str(err))
-
-            # get the slide position
-            # poll at 5x slower rate than the frame
-            if self.count % 5 == 0 and g.cpars['focal_plane_slide_on']:
-                try:
-                    pos_ms, pos_mm, pos_px = self.slide_pos_queue.get(block=False)
-                    self.fpslide.configure(text='{0:d}'.format(
-                        int(round(pos_px))))
-                    if pos_px < 1050.:
-                        self.fpslide.configure(bg=g.COL['warn'])
-                    else:
-                        self.fpslide.configure(bg=g.COL['main'])
-                except Exception as err:
-                    pass
-
-            # get the CCD temperature poll at 5x slower rate than the frame
-            if self.count % 5 == 0:
-                try:
-                    if g.ccd_hw is not None and g.ccd_hw.ok:
-                        self.ccd_temps.configure(text='OK')
-                        self.ccd_temps.configure(bg=g.COL['main'])
-                    else:
-                        self.ccd_temps.configure(text='ERR')
-                        self.ccd_temps.configure(bg=g.COL['warn'])
-                except Exception as err:
-                    g.clog.warn(str(err))
-                    self.ccd_temps.configure(text='UNDEF')
-                    self.ccd_temps.configure(bg=g.COL['warn'])
-
+            telemetry = pickle.loads(packet)
         except Exception as err:
-            # this is a safety catchall trap as it is important
-            # that this routine keeps going
-            g.clog.warn('Unexpected error: ' + str(err))
+            g.clog.warn('could not decode slide telemetry: ' + str(err))
+        else:
+            # get positions, dealing with the fact that sometimes it has units
+            try:
+                pos = telemetry['position']['current']
+                targ = telemetry['position']['target']
+                pos = pos.value if hasattr(pos, 'value') else pos
+                targ = targ.value if hasattr(targ, 'value') else targ
+                state = telemetry['state']
+                if 'error' in state['connection'] or 'offline' in state['connection']:
+                    self.fpslide.configure(bg=g.COL['warn'])
+                    g.clog.warn('slide in error state')
 
-        # run every 2 seconds
-        self.count += 1
-        self.after(2000, self.update)
+                self.fpslide.configure(text='{0:d}'.format(
+                        int(round(pos))))
+                if pos < 1050. or abs(pos-targ) > 3:
+                    self.fpslide.configure(bg=g.COL['warn'])
+                else:
+                    self.fpslide.configure(bg=g.COL['main'])
+            except Exception as err:
+                g.clog.warn('unable to process slide telemetry: ') + str(err)
+
+    def update_runstatus(self, packet):
+        """
+        Updates run status widgets.
+
+        This routine is a callback to be called whenever a telemetry message
+        from the NGC is received.
+
+        Parameters
+        ----------
+        packet: bytes
+            a pickled serialisation of the telemetry packet
+        """
+        g = get_root(self).globals
+        if not (g.cpars['hcam_server_on'] and g.cpars['eso_server_online']):
+            return
+
+        try:
+            telemetry = pickle.loads(packet)
+            status = ReadNGCTelemetry(telemetry)
+            run = status.run
+            frame_no = int(telemetry['exposure.frame'])
+        except Exception as err:
+            g.clog.warn('failed to parse NGC telemetry: ' + str(err))
+        else:
+            self.run.configure(text='{0:03d}'.format(run))
+            self.frame.configure(text='{0:04d}'.format(frame_no))
 
 
 class AstroFrame(tk.LabelFrame):
@@ -3075,16 +3126,14 @@ class AstroFrame(tk.LabelFrame):
         self.lastAstro = Time.now()
         self.counter = 0
 
-        # start
+        # start loop. Updates @ 10Hz to give smooth running clock
         self.update()
 
     def update(self):
         """
-        Updates @ 10Hz to give smooth running clock.
+        Update astro widgets
         """
-
         try:
-
             # update counter
             self.counter += 1
             g = get_root(self).globals
@@ -3095,10 +3144,7 @@ class AstroFrame(tk.LabelFrame):
             # configure times
             self.utc.configure(text=now.datetime.strftime('%H:%M:%S'))
             self.mjd.configure(text='{0:11.5f}'.format(now.mjd))
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore')
-                # ignore astropy deprecation warnings
-                lon = self.obs.longitude
+            lon = self.obs.lon
             lst = now.sidereal_time(kind='mean', longitude=lon)
             self.lst.configure(text=lst.to_string(sep=':', precision=0))
 
@@ -3192,7 +3238,7 @@ class AstroFrame(tk.LabelFrame):
             g.clog.warn('AstroFrame.update: error = ' + str(err))
 
         # run again after 100 milli-seconds
-        self.after(100, self.update)
+        self.after_id = self.after(100, self.update)
 
 
 class WinPairs(tk.Frame):
@@ -3200,9 +3246,8 @@ class WinPairs(tk.Frame):
     Class to define a frame of multiple window pairs,
     contained within a gridded block that can be easily position.
     """
-
     def __init__(self, master, xsls, xslmins, xslmaxs, xsrs, xsrmins, xsrmaxs,
-                 yss, ysmins, ysmaxs, nxs, nys, xbfac, ybfac, checker):
+                 yss, ysmins, ysmaxs, nxs, nys, xbfac, ybfac, checker, hcam=True):
         """
         Arguments:
 
@@ -3242,6 +3287,7 @@ class WinPairs(tk.Frame):
         It is assumed that the maximum X dimension is the same for both left
         and right windows and equal to xslmax-xslmin+1.
         """
+        self.is_hcam = hcam
         npair = len(xsls)
         checks = (xsls, xslmins, xslmaxs, xsrs, xsrmins, xsrmaxs,
                   yss, ysmins, ysmaxs, nxs, nys)
@@ -3270,7 +3316,7 @@ class WinPairs(tk.Frame):
         xyframe.grid(row=0, column=1, sticky=tk.W)
 
         row = 1
-        allowed_pairs = (1,)
+        allowed_pairs = (1, 2, 3)
         ap = [pairnum for pairnum in allowed_pairs if pairnum <= npair]
         self.npair = ListInt(top, ap[0], ap, checker, width=2)
         if npair > 1:
@@ -3377,7 +3423,7 @@ class WinPairs(tk.Frame):
             if nx is None or nx % xbin != 0:
                 nxw.config(bg=g.COL['error'])
                 status = False
-            elif (nx // xbin) % 4 != 0:
+            elif self.is_hcam and (nx // xbin) % 4 != 0:
                 """
                 The NGC collects pixel data in chunks before transmission.
                 As a result, to avoid loss of data from frames, the binned
@@ -3546,6 +3592,13 @@ class WinPairs(tk.Frame):
         self.xbin.enable()
         self.ybin.enable()
         self.sbutt.enable()
+
+    def params(self, n):
+        """
+        return xsl, xsr, ys, nx, ny for this pair
+        """
+        return (self.xsl[n].value(), self.xsr[n].value(),
+                self.ys[n].value(), self.nx[n].value(), self.ny[n].value())
 
     def __iter__(self):
         """
@@ -3867,6 +3920,7 @@ class WinQuads(tk.Frame):
                 ys = ybin*((ys-1)//ybin)+1
                 self.ys[n].set(ys)
 
+        g = get_root(self).globals
         self.sbutt.config(bg=g.COL['main'])
         self.sbutt.config(state='disable')
 
@@ -4113,14 +4167,6 @@ class Windows(tk.Frame):
             if nx is None or nx % xbin != 0:
                 nxw.config(bg=g.COL['error'])
                 status = False
-            elif (nx // xbin) % 4 != 0:
-                """
-                The NGC collects pixel data in chunks before transmission.
-                As a result, to avoid loss of data from frames, the binned
-                x-size must be a multiple of 4.
-                """
-                nxw.config(bg=g.COL['error'])
-                status = False
 
             if ny is None or ny % ybin != 0:
                 nyw.config(bg=g.COL['error'])
@@ -4133,11 +4179,10 @@ class Windows(tk.Frame):
             # "synced" because the purpose of this is to enable
             # / disable the sync button and we don't want it to be
             # enabled just because xs or ys are not set.
-            if (xs is not None and ys is not None and nx is not None and
-                ny is not None):
-                    if (xs < 1025 and ((xs - 1) % xbin != 0 or (ys - 1) % ybin != 0)
+            if (xs is not None and ys is not None and nx is not None and ny is not None):
+                if (xs < 1025 and ((xs - 1) % xbin != 0 or (ys - 1) % ybin != 0)
                         or ((xs-1025) % xbin != 0 or (ys - 1) % ybin != 0)):
-                        synced = False
+                    synced = False
 
             # Range checks
             if xs is None or nx is None or xs + nx - 1 > xsw.imax:
@@ -4199,6 +4244,8 @@ class Windows(tk.Frame):
                 self.ys[n].set(ys)
 
             n += 1
+
+        g = get_root(self).globals
         self.sbutt.config(bg=g.COL['main'])
         self.sbutt.config(state='disable')
 

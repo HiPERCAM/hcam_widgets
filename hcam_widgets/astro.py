@@ -70,10 +70,7 @@ def _astropy_time_from_LST(t, LST, location, prev_next):
     raSun = coord.get_sun(t).ra
 
     # calculate Greenwich Apparent Solar Time, which we will use as ~UTC for now
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        # ignore astropy deprecation warnings
-        lon = location.longitude
+    lon = location.lon
     solarTime = LST - raSun + 12*u.hourangle - lon
 
     # assume this is on the same day as supplied time, and fix later
@@ -134,10 +131,7 @@ def _rise_set_trig(t, target, location, prev_next, rise_set):
         Time of rise/set
     """
     dec = target.transform_to(coord.ICRS).dec
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        # ignore astropy deprecation warnings
-        lat = location.latitude
+    lat = location.lat
     cosHA = -np.tan(dec)*np.tan(lat.radian)
     # find the absolute value of the hour Angle
     HA = coord.Longitude(np.fabs(np.arccos(cosHA)))
