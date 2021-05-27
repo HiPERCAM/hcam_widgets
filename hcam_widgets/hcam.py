@@ -1168,7 +1168,7 @@ class RunPars(tk.LabelFrame):
                 ok = False
                 msg += 'Target name field cannot be blank\n'
 
-            if dtype == 'data caution' or \
+            if dtype == 'acquisition' or \
                dtype == 'data' or dtype == 'technical':
 
                 if self.prog_ob.ok():
@@ -1223,7 +1223,7 @@ class RunPars(tk.LabelFrame):
         g = get_root(self).globals
         self.filter.configure(state='normal')
         dtype = g.observe.rtype()
-        if dtype == 'data caution' or dtype == 'data' or dtype == 'technical':
+        if dtype == 'acquisition' or dtype == 'data' or dtype == 'technical':
             self.prog_ob.configure(state='normal')
             self.pi.configure(state='normal')
             self.target.enable()
@@ -1535,7 +1535,7 @@ class RunType(w.Select):
     Start button should be disabled until an option is made from this dropdown.
     """
     DTYPES = ('', 'data', 'acquire', 'bias', 'flat', 'dark', 'tech')
-    DVALS = ('', 'data', 'data caution', 'bias', 'flat', 'dark', 'technical')
+    DVALS = ('', 'data', 'acquisition', 'bias', 'flat', 'dark', 'technical')
 
     def __init__(self, master, start_button, checker=None):
         w.Select.__init__(self, master, 0, RunType.DTYPES, self.check)
