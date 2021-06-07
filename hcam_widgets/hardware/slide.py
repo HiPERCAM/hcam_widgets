@@ -192,6 +192,10 @@ class SlideFrame(tk.LabelFrame, Mimic):
             yield session.call(topic)
         except SerializationError:
             pass
+        except Exception as err:
+            g = get_root(self).globals
+            g.clog.warn('error in slide command:' + str(err))
+
 
     def set_slide_target_position(self, pos):
         topic = "hipercam.slide.target_position"
