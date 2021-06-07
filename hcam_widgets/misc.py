@@ -102,7 +102,7 @@ def startNodding(g, data):
             yield session.call('hipercam.gtc.rpc.gtc.start_nodding')
         except Exception as err:
             g.clog.warn('Failed to stop dither server')
-            g.clog.warn(str(err))
+            g.clog.warn(err.error_message())
             returnValue(False)
     returnValue(True)
 
@@ -118,7 +118,7 @@ def stopNodding(g):
             yield session.call('hipercam.gtc.rpc.gtc.stop_nodding')
         except Exception as err:
             g.clog.warn('Failed to stop dither server')
-            g.clog.warn(str(err))
+            g.clog.warn(err.error_message())
             returnValue(False)
     returnValue(True)
 
@@ -179,7 +179,7 @@ def postJSON(g, data):
     try:
         ok, status_msg = yield session.call('hipercam.ngc.rpc.load_setup', data)
     except Exception as err:
-        ok, status_msg = False, str(err)
+        ok, status_msg = False, err.error_message()
 
     if not ok:
         g.clog.warn('Server response was not OK')
@@ -195,7 +195,7 @@ def postJSON(g, data):
             yield session.call('hipercam.gtc.rpc.load_nod_pattern', ra_offsets, dec_offsets)
             ok = True
         except Exception as err:
-            ok, status_msg = False, str(err)
+            ok, status_msg = False, err.error_message()
 
         if not ok:
             g.clog.warn('Offset Server response was not OK')
@@ -236,8 +236,9 @@ def createJSON(g, full=True):
                 try:
                     telpars = yield session.call('hipercam.gtc.rpc.get_telescope_pars')
                     data['gtc_headers'] = telpars
-                except Exception:
+                except Exception as err:
                     g.clog.warn('cannot get GTC headers from telescope server')
+                    g.clog.warn(err.error_message())
     returnValue(data)
 
 
@@ -351,7 +352,7 @@ def insertFITSHDU(g):
         yield session.call('hipercam.ngc.rpc.add_hdu', fd.getvalue(), run_number)
     except Exception as err:
         g.clog.warn('insertFITSHDU failed')
-        g.clog.warn(str(err))
+        g.clog.warn(err.error_message())
     returnValue(True)
 
 
@@ -406,7 +407,7 @@ def execCommand(g, command, timeout=10):
             returnValue(False)
     except Exception as err:
         g.clog.warn('execCommand failed')
-        g.clog.warn(str(err))
+        g.clog.warn(err.error_message())
 
     returnValue(False)
 
@@ -425,7 +426,7 @@ def isRunActive(g):
         try:
             response = yield session.call('hipercam.ngc.rpc.summary')
         except Exception as err:
-            raise DriverError('isRunActive error reading NGC status: ' + str(err))
+            raise DriverError('isRunActive error reading NGC status: ' + err.error_message())
         tel = ReadNGCTelemetry(response)
 
         if not tel.ok:
@@ -451,7 +452,7 @@ def isPoweredOn(g):
         try:
             response = yield session.call('hipercam.ngc.rpc.summary')
         except Exception as err:
-            raise DriverError('isPoweredOn error reading NGC status: ' + str(err))
+            raise DriverError('isPoweredOn error reading NGC status: ' + err.error_message())
 
         tel = ReadNGCTelemetry(response)
         if not tel.ok:
@@ -476,7 +477,7 @@ def isOnline(g):
         try:
             msg, ok = yield session.call('hipercam.ngc.rpc.status')
         except Exception as err:
-            raise DriverError('isOnline error: ' + str(err))
+            raise DriverError('isOnline error: ' + err.error_message())
 
         if not ok:
             raise DriverError('isOnline error: ' + msg)
@@ -528,7 +529,7 @@ def getRunNumber(g):
     try:
         response = yield session.call('hipercam.ngc.rpc.summary')
     except Exception as err:
-        raise DriverError('isRunActive error reading NGC status: ' + str(err))
+        raise DriverError('isRunActive error reading NGC status: ' + err.error_message())
     tel = ReadNGCTelemetry(response)
     if tel.ok:
         returnValue(tel.run)

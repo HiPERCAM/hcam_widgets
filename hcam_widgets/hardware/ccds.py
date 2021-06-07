@@ -118,5 +118,6 @@ class CCDTempFrame(tk.LabelFrame):
             rpc = 'hipercam.meerstetter{}.rpc.reset'.format(ms)
             session = get_root(self).globals.session
             yield session.call(rpc, address)
-        except Exception:
+        except Exception as err:
             g.clog.warn('Unable to reset TEC {}'.format(ccd))
+            g.clog.warn(err.error_message())
