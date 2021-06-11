@@ -2047,10 +2047,7 @@ class NGCStandby(ActButton):
         g.clog.debug('NGC Standby pressed')
         session = root.globals.session
         try:
-            msg, ok = yield session.call('hipercam.ngc.rpc.ngc_server.standby')
-            if not ok:
-                g.clog.warn('standby command failed: ' + msg)
-                returnValue(False)
+            yield session.call('hipercam.ngc.rpc.ngc_server.standby')
         except Exception as err:
             g.clog.warn('NGC Standby failed: ' + str(err))
             returnValue(False)
