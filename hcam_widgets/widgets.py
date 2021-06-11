@@ -2052,7 +2052,7 @@ class NGCStandby(ActButton):
                 g.clog.warn('standby command failed: ' + msg)
                 returnValue(False)
         except Exception as err:
-            g.clog.warn('NGC Standby failed: ' + err.error_message())
+            g.clog.warn('NGC Standby failed: ' + str(err))
             returnValue(False)
         else:
             g.clog.info('Standby command successful')
