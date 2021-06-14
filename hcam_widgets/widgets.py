@@ -2231,11 +2231,15 @@ class CLDCOn(ActButton):
         g = root.globals
         g.clog.debug('CLDC On pressed')
         session = root.globals.session
+        try:
+            powered_on = yield isPoweredOn(g)
+        except Exception as err:
+            g.clog.warn(str(err))
+            returnValue(False)
 
-        powered_on = yield isPoweredOn(g)
         if powered_on:
             g.clog.info('clocks already on')
-            return True
+            returnValue(True)
 
         try:
             msg, ok = yield session.call('hipercam.ngc.rpc.pon')
@@ -2325,7 +2329,14 @@ class PowerOn(ActButton):
         else:
             g.clog.info('ESO server online')
             g.cpars['eso_server_online'] = True
-            powered_on = yield isPoweredOn(g)
+            try:
+                powered_on = yield isPoweredOn(g)
+            except Exception as err:
+                g.clog.warn('cannot determine if CLDC is already on')
+                msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+                g.clog.warn(msg)
+                returnValue(False)
+
             if not powered_on:
                 success = yield execCommand(g, 'pon')
                 if not success:
@@ -2687,7 +2698,10 @@ class Timer(tk.Label):
             self.configure(text='{0:<d} s'.format(delta))
 
             if self.count % 50 == 0:
-                run_active = yield isRunActive(g)
+                try:
+                    run_active = yield isRunActive(g)
+                except Exception as err:
+                    g.clog.warn(str(err))
                 if not run_active:
 
                     # try and write FITS table before enabling start button, otherwise

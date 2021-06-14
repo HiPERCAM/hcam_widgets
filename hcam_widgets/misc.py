@@ -443,6 +443,12 @@ def isRunActive(g):
             returnValue(False)
         elif tel.state == 'active':
             returnValue(True)
+        elif tel.state == 'error':
+            msg = """
+            NGC is in error state.
+            Try resetting it using 'start_hicam' and 'Power On'
+            """
+            raise DriverError('isRunActive error\n' + msg)
         else:
             raise DriverError('isRunActive error, state = ' + tel.state)
     else:

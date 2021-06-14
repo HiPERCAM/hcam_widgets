@@ -718,7 +718,10 @@ class InstPars(tk.LabelFrame):
 
         # allow posting if parameters are OK. update count and SN estimates too
         if status:
-            run_active = yield isRunActive(g)
+            try:
+                run_active = yield isRunActive(g)
+            except Exception as err:
+                g.clog.warn(str(err))
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
                     g.observe.start['state'] == 'disabled' and
                     not run_active):
@@ -1560,7 +1563,10 @@ class RunType(w.Select):
         else:
             self.start_button.run_type_set = True
             g = get_root(self).globals
-            run_active = yield isRunActive(g)
+            try:
+                run_active = yield isRunActive(g)
+            except Exception as err:
+                g.clog.warn(str(err))
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
                     g.observe.start['state'] == 'disabled' and not run_active):
                 self.start_button.enable()
