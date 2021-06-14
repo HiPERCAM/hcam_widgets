@@ -194,7 +194,8 @@ class SlideFrame(tk.LabelFrame, Mimic):
             pass
         except Exception as err:
             g = get_root(self).globals
-            g.clog.warn('error in slide command:' + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn('error in slide command:' + msg)
 
     def set_slide_target_position(self, pos):
         topic = "hipercam.slide.target_position"

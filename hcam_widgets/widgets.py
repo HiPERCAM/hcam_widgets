@@ -1733,7 +1733,8 @@ class Stop(ActButton):
             yield session.call('hipercam.ngc.rpc.abort')
             self.stopping = True
         except Exception as err:
-            g.clog.warn('Run stop failed. Error = ' + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn('Run stop failed. Error = ' + msg)
             self.stopping = False
 
     @inlineCallbacks
@@ -2085,7 +2086,8 @@ class NGCOnline(ActButton):
         try:
             yield session.call('hipercam.ngc.rpc.ngc_server.online')
         except Exception as err:
-            g.clog.warn("NGC Online failed: " + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn("NGC Online failed: " + msg)
             returnValue(False)
         else:
             g.clog.info('Online command successful')
@@ -2123,7 +2125,8 @@ class NGCOff(ActButton):
         try:
             yield session.call('hipercam.ngc.rpc.ngc_server.offline')
         except Exception as err:
-            g.clog.warn("NGC Off failed: " + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn("NGC Off failed: " + msg)
             returnValue(False)
         else:
             g.clog.info('off command successful; server in loaded state')
@@ -2160,7 +2163,8 @@ class SeqStart(ActButton):
             if not ok:
                 raise RuntimeError('could not start sequencer: ' + msg)
         except Exception as err:
-            g.clog.warn("Seq Start failed: " + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn("Seq Start failed: " + msg)
             returnValue(False)
         else:
             g.clog.info('seq start command successful; clocks powered on')
@@ -2196,7 +2200,8 @@ class SeqStop(ActButton):
             if not ok:
                 raise RuntimeError('could not stop sequencer: ' + msg)
         except Exception as err:
-            g.clog.warn("Seq Stop failed: " + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn("Seq Stop failed: " + msg)
             returnValue(False)
         else:
             g.clog.info('seq stop command successful')
@@ -2237,7 +2242,8 @@ class CLDCOn(ActButton):
             if not ok:
                 raise RuntimeError('could not power on clocks')
         except Exception as err:
-            g.clog.warn("CLDC On failed: " + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn("CLDC On failed: " + msg)
             returnValue(False)
         else:
             g.clog.info('CLDC on command successful; clocks powered on')
@@ -2274,7 +2280,8 @@ class CLDCOff(ActButton):
             if not ok:
                 raise RuntimeError('could not power off clocks')
         except Exception as err:
-            g.clog.warn("CLDC Off failed: " + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn("CLDC Off failed: " + msg)
             returnValue(False)
         else:
             g.clog.info('CLDC off command successful; clocks powered off')
@@ -2312,7 +2319,8 @@ class PowerOn(ActButton):
             yield session.call('hipercam.ngc.rpc.ngc_server.online')
 
         except Exception as err:
-            g.clog.warn('Failed to bring server online: ' + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn('Failed to bring server online: ' + msg)
             return False
         else:
             g.clog.info('ESO server online')
@@ -2877,7 +2885,8 @@ class InfoFrame(tk.LabelFrame):
             telpars = yield session.call('hipercam.gtc.rpc.get_telescope_pars')
             add_gtc_header_table_row(self.tcs_table, telpars)
         except Exception as err:
-            g.clog.warn('Could not update table of TCS info: ' + err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn('Could not update table of TCS info: ' + msg)
 
     def update_tcs(self, packet):
         """

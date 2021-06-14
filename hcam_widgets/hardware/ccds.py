@@ -120,4 +120,5 @@ class CCDTempFrame(tk.LabelFrame):
             yield session.call(rpc, address)
         except Exception as err:
             g.clog.warn('Unable to reset TEC {}'.format(ccd))
-            g.clog.warn(err.error_message())
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn(msg)
