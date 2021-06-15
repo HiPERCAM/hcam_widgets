@@ -13,7 +13,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from . import widgets as w
 from . import DriverError
 from .tkutils import get_root
-from .misc import (createJSON, saveJSON, postJSON, startNodding,
+from .misc import (createJSON, isPoweredOn, saveJSON, postJSON, startNodding,
                    execCommand, isRunActive, jsonFromFits)
 
 if not six.PY3:
@@ -720,11 +720,12 @@ class InstPars(tk.LabelFrame):
         if status:
             try:
                 run_active = yield isRunActive(g)
+                powered_on = yield isPoweredOn(g)
             except Exception as err:
                 g.clog.warn(str(err))
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
                     g.observe.start['state'] == 'disabled' and
-                    not run_active):
+                    not run_active and powered_on):
                 g.observe.start.enable()
             g.count.update()
         else:
@@ -1565,10 +1566,12 @@ class RunType(w.Select):
             g = get_root(self).globals
             try:
                 run_active = yield isRunActive(g)
+                powered_on = yield isPoweredOn(g)
             except Exception as err:
                 g.clog.warn(str(err))
             if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
-                    g.observe.start['state'] == 'disabled' and not run_active):
+                    g.observe.start['state'] == 'disabled' 
+                    and not run_active and powered_on):
                 self.start_button.enable()
             g.rpars.check()
 
