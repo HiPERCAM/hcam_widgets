@@ -3,7 +3,7 @@ from __future__ import print_function, unicode_literals, absolute_import, divisi
 
 __author__ = """Stuart Littlefair"""
 __email__ = 's.littlefair@shef.ac.uk'
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 
 class DriverError(Exception):
