@@ -4,6 +4,7 @@ import math
 import json
 import six
 from os.path import expanduser
+import pickle
 
 # non-standard imports
 import numpy as np
@@ -14,7 +15,7 @@ from . import widgets as w
 from . import DriverError
 from .tkutils import get_root
 from .misc import (createJSON, isPoweredOn, saveJSON, postJSON, startNodding,
-                   execCommand, isRunActive, jsonFromFits)
+                   execCommand, isRunActive, jsonFromFits, ReadNGCTelemetry)
 
 if not six.PY3:
     import Tkinter as tk
@@ -1644,6 +1645,26 @@ class Start(w.ActButton):
             self.disable()
 
     @inlineCallbacks
+    def on_telemetry(self, package):
+        """
+        This is run every time a telemetry packet comes in from NGC.
+
+        It is the responsibility of an implementing GUI to subscribe to the
+        NGC telemetry topic with this function as the callback. 
+        """
+        telemetry = pickle.loads(package)
+
+        g = get_root(self).globals
+        res = ReadNGCTelemetry(telemetry)
+        if not res.ok:
+            raise DriverError('cannot read NGC telemetry: ' + str(res.err))
+        if res.clocks != 'enabled':
+            # NGC voltages are not powered on, cannot start runs
+            self.disable()
+        else:
+            self.enable()
+
+    @inlineCallbacks
     def act(self):
         """
         Carries out action associated with start button
@@ -1865,6 +1886,7 @@ class Observe(tk.LabelFrame):
 
     def on_telemetry(self, package):
         self.stop.on_telemetry(package)
+        self.start.on_telemetry(package)
 
     def setExpertLevel(self):
         """
