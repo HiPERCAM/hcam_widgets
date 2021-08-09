@@ -2455,7 +2455,7 @@ class InstSetup(tk.LabelFrame):
                 self.cldcOff.disable()
             # power on/off
             if (res.clocks == 'enabled'
-                    and ngc_status.lower == 'online'):
+                    and ngc_status.lower() == 'online'):
                 self.powerOff.enable()
                 self.powerOn.disable()
             else:
