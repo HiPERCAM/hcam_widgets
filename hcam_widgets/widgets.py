@@ -2326,10 +2326,10 @@ class PowerOn(ActButton):
             # we will try to power on CLDC before the server is online
             online = False
             waited = 0
-            while (not online) or (waited < 0.5):
+            while (not online) or (waited < 1.0):
                 online = yield isOnline(g)
-                yield async_sleep(0.02)
-                waited += 0.02
+                yield async_sleep(0.1)
+                waited += 0.1
             if not online:
                 raise RuntimeError('failed to move to online status')
 
