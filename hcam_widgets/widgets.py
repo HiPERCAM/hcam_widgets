@@ -26,9 +26,9 @@ from . import DriverError
 from .tkutils import get_root
 from .logs import Logger, GuiHandler
 from .astro import calc_riseset
-from .misc import (execCommand, checkSimbad, isRunActive, stopNodding,
+from .misc import (execCommand, checkSimbad, isOnline, isRunActive, stopNodding,
                    getRunNumber, postJSON, insertFITSHDU,
-                   isPoweredOn, ReadNGCTelemetry)
+                   isPoweredOn, ReadNGCTelemetry, async_sleep)
 
 if not six.PY3:
     import Tkinter as tk
@@ -2321,6 +2321,17 @@ class PowerOn(ActButton):
         try:
             session = root.globals.session
             yield session.call('hipercam.ngc.rpc.ngc_server.online')
+            # this will queue the transition to online state, but
+            # will return immediately, so unless we wait here,
+            # we will try to power on CLDC before the server is online
+            online = False
+            waited = 0
+            while (not online) or (waited < 0.5):
+                online = yield isOnline(g)
+                yield async_sleep(0.02)
+                waited += 0.02
+            if not online:
+                raise RuntimeError('failed to move to online status')
 
         except Exception as err:
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)

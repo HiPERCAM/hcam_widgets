@@ -15,6 +15,8 @@ from astropy.io import ascii
 from . import DriverError
 
 from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet import reactor
+from twisted.internet.task import deferLater
 
 
 if not six.PY3:
@@ -23,6 +25,10 @@ if not six.PY3:
 else:
     from tkinter import filedialog
     from io import StringIO
+
+
+def async_sleep(secs):
+    return deferLater(reactor, secs, lambda: None)
 
 
 class ReadNGCTelemetry(object):
