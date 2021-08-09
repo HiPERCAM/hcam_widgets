@@ -1653,8 +1653,6 @@ class Start(w.ActButton):
         NGC telemetry topic with this function as the callback. 
         """
         telemetry = pickle.loads(package)
-
-        g = get_root(self).globals
         res = ReadNGCTelemetry(telemetry)
         if not res.ok:
             raise DriverError('cannot read NGC telemetry: ' + str(res.err))
