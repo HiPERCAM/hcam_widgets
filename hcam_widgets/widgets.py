@@ -2320,7 +2320,9 @@ class PowerOn(ActButton):
         g.clog.debug('Power on pressed')
         try:
             session = root.globals.session
-            yield session.call('hipercam.ngc.rpc.online')
+            msg, ok = yield session.call('hipercam.ngc.rpc.online')
+            if not ok:
+                raise RuntimeError(msg)
         except Exception as err:
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
             g.clog.warn('Failed to bring server online: ' + msg)
