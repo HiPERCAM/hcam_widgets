@@ -12,7 +12,7 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    'astropy', 'requests', 'twisted', 'hcam_devices>=0.2.4', 'matplotlib',
+    'astropy', 'requests', 'twisted', 'hcam_devices>=0.3.0', 'matplotlib',
     'scipy', 'autobahn'
 ]
 
