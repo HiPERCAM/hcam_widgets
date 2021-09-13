@@ -26,13 +26,13 @@ scripts = [fname for fname in glob.glob(os.path.join('scripts', '*'))
 
 setup(
     name='hcam_widgets',
-    version='1.0.2',
+    version='1.0.3',
     description="Common Tkinter widgets for HiPerCAM",
     long_description=readme + '\n\n' + history,
     author="Stuart Littlefair",
     author_email='s.littlefair@shef.ac.uk',
     url='https://github.com/HiPERCAM/hcam_widgets',
-    download_url='https://github.com/HiPERCAM/hcam_widgets/archive/v1.0.2.tar.gz',
+    download_url='https://github.com/HiPERCAM/hcam_widgets/archive/v1.0.3.tar.gz',
     packages=[
         'hcam_widgets',
         'hcam_widgets.compo',
