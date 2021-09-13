@@ -2048,7 +2048,7 @@ class NGCStandby(ActButton):
         g.clog.debug('NGC Standby pressed')
         session = root.globals.session
         try:
-            yield session.call('hipercam.ngc.rpc.ngc_server.standby')
+            yield session.call('hipercam.ngc.rpc.standby')
         except Exception as err:
             g.clog.warn('NGC Standby failed: ' + str(err))
             returnValue(False)
@@ -2084,7 +2084,7 @@ class NGCOnline(ActButton):
         g.clog.debug('NGC Online pressed')
         session = root.globals.session
         try:
-            yield session.call('hipercam.ngc.rpc.ngc_server.online')
+            yield session.call('hipercam.ngc.rpc.online')
         except Exception as err:
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
             g.clog.warn("NGC Online failed: " + msg)
@@ -2123,7 +2123,7 @@ class NGCOff(ActButton):
         g.clog.debug('NGC Off pressed')
         session = root.globals.session
         try:
-            yield session.call('hipercam.ngc.rpc.ngc_server.offline')
+            yield session.call('hipercam.ngc.rpc.offline')
         except Exception as err:
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
             g.clog.warn("NGC Off failed: " + msg)
@@ -2320,19 +2320,9 @@ class PowerOn(ActButton):
         g.clog.debug('Power on pressed')
         try:
             session = root.globals.session
-            yield session.call('hipercam.ngc.rpc.ngc_server.online')
-            # this will queue the transition to online state, but
-            # will return immediately, so unless we wait here,
-            # we will try to power on CLDC before the server is online
-            online = False
-            waited = 0
-            while (not online) or (waited < 1.0):
-                online = yield isOnline(g)
-                yield async_sleep(0.1)
-                waited += 0.1
-            if not online:
-                raise RuntimeError('failed to move to online status')
-
+            msg, ok = yield session.call('hipercam.ngc.rpc.online')
+            if not ok:
+                raise RuntimeError(msg)
         except Exception as err:
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
             g.clog.warn('Failed to bring server online: ' + msg)
@@ -2400,7 +2390,7 @@ class PowerOff(ActButton):
             g.clog.warn('Unable to power off CLDC')
             returnValue(False)
 
-        success = yield execCommand(g, 'ngc_server.offline')
+        success = yield execCommand(g, 'offline')
         if success:
             g.clog.info('ESO server idle')
             g.cpars['eso_server_online'] = False
@@ -2455,7 +2445,7 @@ class InstSetup(tk.LabelFrame):
         g = get_root(self).globals
         try:
             telemetry = pickle.loads(package)
-            ngc_status = telemetry['state']['ngc_server']
+            ngc_status = telemetry.get('system.stateName', 'unknown')
             res = ReadNGCTelemetry(telemetry)
             # clocks
             if res.clocks == 'enabled':
@@ -2467,7 +2457,7 @@ class InstSetup(tk.LabelFrame):
                 self.cldcOff.disable()
             # power on/off
             if (res.clocks == 'enabled'
-                    and 'online' in ngc_status):
+                    and ngc_status.lower() == 'online'):
                 self.powerOff.enable()
                 self.powerOn.disable()
             else:

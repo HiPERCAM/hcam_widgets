@@ -371,7 +371,7 @@ def insertFITSHDU(g):
 @inlineCallbacks
 def execCommand(g, command, timeout=10):
     """
-    Executes a command by sending it to the rack server
+    Executes a command by sending it to the NGC server
 
     Arguments:
       g : hcam_drivers.globals.Container
@@ -384,10 +384,10 @@ def execCommand(g, command, timeout=10):
       start              : starts a run
       stop               : stops a run
       abort              : aborts a run
-      ngc_server.online  : bring ESO control server online and power up hardware
-      ngc_server.offline : put ESO control server in idle state and power down
-      ngc_server.standby : server can communicate, but child processes disabled
-      reset   : resets the NGC controller front end
+      online             : bring ESO control server online and connect it to hardware
+      offline            : put ESO control server in idle state and power down
+      standby            : server can communicate, but child processes disabled
+      reset              : resets the NGC controller front end
 
     Returns True/False according to whether the command
     succeeded or not.
