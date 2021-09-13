@@ -1659,7 +1659,7 @@ class Start(w.ActButton):
         if res.clocks != 'enabled':
             # NGC voltages are not powered on, cannot start runs
             self.disable()
-        if res.state == 'active':
+        elif res.state == 'active':
             # run is underway - cannot start runs
             self.disable()
         else:
