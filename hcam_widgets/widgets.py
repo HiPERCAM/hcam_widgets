@@ -1,6 +1,7 @@
 # general purpose widgets
 from __future__ import print_function, unicode_literals, absolute_import, division
 from six.moves import urllib
+from functools import partial
 import time
 import socket
 from functools import reduce
@@ -1126,6 +1127,16 @@ class Choice(tk.OptionMenu):
         if self.checker is not None:
             self.val.trace('w', self.checker)
         self.options = options
+
+    def update(self, new_options):
+        """
+        Update option list with new options
+        """
+        menu = self['menu']
+        # clear the menu
+        menu.delete(0, 'end')
+        for option in new_options:
+            menu.add_command(label=option, command=partial(self.val.set, option))
 
     def value(self):
         return self.val.get()
