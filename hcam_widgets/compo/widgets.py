@@ -242,7 +242,6 @@ class COMPOControlWidget(tk.Toplevel):
             self.session.publish(topic, msg)
 
     def print_message(self, msg):
-        print(msg)
         self.label.delete(1.0, tk.END)
         self.label.insert(tk.END, msg+'\n')
 
@@ -349,6 +348,7 @@ class COMPOControlWidget(tk.Toplevel):
             self.print_message(str)
             self.update_mimic(telemetry)
         except Exception as err:
+            print('error handling COMPO telemetry')
             print(traceback.format_exc())
 
 
