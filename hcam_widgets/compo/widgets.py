@@ -1,5 +1,6 @@
 import six
 import pickle
+import traceback
 import itertools
 from astropy import units as u
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -302,49 +303,53 @@ class COMPOControlWidget(tk.Toplevel):
         return pos, targ
 
     def on_telemetry(self, package_data):
-        telemetry = pickle.loads(package_data)
-        state = telemetry['state']
+        try:
+            telemetry = pickle.loads(package_data)
+            state = telemetry['state']
 
-        # check for error status
-        g = get_root(self).globals
-        # extract connection states from telemetry state package
-        # and join into one long list for both arms and lens
-        connection_states = list(
-            itertools.chain(*[s['connection'] for s in state.values()])
-        )
-        if 'error' in connection_states:
-            self.lens_status.config(text='ERROR',
-                                    bg=g.COL['critical'])
-            self.pickoff_status.config(text='ERROR',
-                                       bg=g.COL['critical'])
-            self.injection_status.config(text='ERROR',
-                                         bg=g.COL['critical'])
-            self.conn.config(text='Connect')
-        elif 'offline' in connection_states:
-            self.lens_status.config(text='DISCONN',
-                                    bg=g.COL['critical'])
-            self.pickoff_status.config(text='DISCONN',
-                                       bg=g.COL['critical'])
-            self.injection_status.config(text='DISCONN',
-                                         bg=g.COL['critical'])
-            self.conn.config(text='Connect')
-        else:
-            self.conn.config(text='Disconnect')
-            for stage in ('injection', 'pickoff', 'lens'):
-                self.set_stage_status(stage, telemetry)
+            # check for error status
+            g = get_root(self).globals
+            # extract connection states from telemetry state package
+            # and join into one long list for both arms and lens
+            connection_states = list(
+                itertools.chain(*[s['connection'] for s in state.values()])
+            )
+            if 'error' in connection_states:
+                self.lens_status.config(text='ERROR',
+                                        bg=g.COL['critical'])
+                self.pickoff_status.config(text='ERROR',
+                                        bg=g.COL['critical'])
+                self.injection_status.config(text='ERROR',
+                                            bg=g.COL['critical'])
+                self.conn.config(text='Connect')
+            elif 'offline' in connection_states:
+                self.lens_status.config(text='DISCONN',
+                                        bg=g.COL['critical'])
+                self.pickoff_status.config(text='DISCONN',
+                                        bg=g.COL['critical'])
+                self.injection_status.config(text='DISCONN',
+                                            bg=g.COL['critical'])
+                self.conn.config(text='Connect')
+            else:
+                self.conn.config(text='Disconnect')
+                for stage in ('injection', 'pickoff', 'lens'):
+                    self.set_stage_status(stage, telemetry)
 
-        str = f"{telemetry['timestamp'].iso}:\n"
-        for key, stage, pos_str in zip(
-                ('arms_state', 'arms_state', 'lens_state'),
-                ('injection', 'pickoff', 'lens'),
-                ('injection_angle', 'pickoff_angle', 'lens_position')):
-            pos, targ = self.get_stage_position(telemetry, pos_str)
+            str = f"{telemetry['timestamp'].iso}:\n"
+            for key, stage, pos_str in zip(
+                    ('arms_state', 'arms_state', 'lens_state'),
+                    ('injection', 'pickoff', 'lens'),
+                    ('injection_angle', 'pickoff_angle', 'lens_position')):
+                pos, targ = self.get_stage_position(telemetry, pos_str)
 
-            status = '/'.join(state[key][stage][4:])
-            str += f"{stage}: curr={pos:.2f}, targ={targ:.2f}\n{status}\n\n"
+                status = '/'.join(state[key][stage][4:])
+                str += f"{stage}: curr={pos:.2f}, targ={targ:.2f}\n{status}\n\n"
 
-        self.print_message(str)
-        self.update_mimic(telemetry)
+            self.print_message(str)
+            self.update_mimic(telemetry)
+        except Exception as err:
+            print(traceback.format_exc())
+
 
     def dumpJSON(self):
         """
