@@ -246,7 +246,7 @@ class COMPOControlWidget(tk.Toplevel):
 
     def set_stage_status(self, stage, telemetry):
         if stage == 'lens':
-            state = telemetry['state']['lens_state'][stage]
+            state = telemetry['state']['lens_state']['stage']
         else:
             state = telemetry['state']['arms_state'][stage]
         
