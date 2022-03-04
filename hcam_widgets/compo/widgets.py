@@ -1,5 +1,6 @@
 import six
 import pickle
+import itertools
 from astropy import units as u
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -169,18 +170,26 @@ class COMPOControlWidget(tk.Toplevel):
             self.print_message('no session')
             return
 
+        rpc_templates = [
+            'hipercam.compo_lens.rpc.connection.{}',
+            'hipercam.compo_arms.rpc.connection.{}'
+        ]
         if self.conn['text'].lower() == 'disconnect':
-            rpc = 'hipercam.compo.rpc.connection.disconnect'
+            rpcs = [template.format('disconnect') for template in rpc_templates]
         else:
-            rpc = 'hipercam.compo.rpc.connection.connect'
-        yield self.session.call(rpc)
+            rpcs = [template.format('connect') for template in rpc_templates]
+        for rpc in rpcs:
+            yield self.session.call(rpc)
 
     @inlineCallbacks
     def home_stage(self, stage):
         if not self.session:
             self.print_message('no session')
             return
-        rpc = "hipercam.compo.rpc.{}.home".format(stage)
+        if stage == 'lens':
+            rpc = 'hipercam.compo_lens.rpc.stage.home':
+        else:
+            rpc = "hipercam.compo_arms.rpc.{}.home".format(stage)
         yield self.session.call(rpc)
 
     @inlineCallbacks
@@ -193,9 +202,10 @@ class COMPOControlWidget(tk.Toplevel):
         if not self.session:
             self.print_message('no session')
             return
-        for stage in ('injection', 'pickoff', 'lens'):
-            rpc = "hipercam.compo.rpc.{}.stop".format(stage)
+        for stage in ('injection', 'pickoff'):
+            rpc = "hipercam.compo_lens.rpc.{}.stop".format(stage)
             yield self.session.call(rpc)
+        yield self.session.call('hipercam.compo_arms.rpc.stage.stop')
 
     @inlineCallbacks
     def move(self):
@@ -222,9 +232,9 @@ class COMPOControlWidget(tk.Toplevel):
         self.session.publish('hipercam.compo.target_injection_angle',
                              ia.to_value(u.deg))
         self.session.publish('hipercam.compo.target_lens_position', lens)
-        yield self.session.call('hipercam.compo.rpc.pickoff.move')
-        yield self.session.call('hipercam.compo.rpc.injection.move')
-        yield self.session.call('hipercam.compo.rpc.lens.move')
+        yield self.session.call('hipercam.compo_arms.rpc.pickoff.move')
+        yield self.session.call('hipercam.compo_arms.rpc.injection.move')
+        yield self.session.call('hipercam.compo_len.rpc.stage.move')
 
     def send_message(self, topic, msg):
         if self.session:
@@ -235,7 +245,11 @@ class COMPOControlWidget(tk.Toplevel):
         self.label.insert(tk.END, msg+'\n')
 
     def set_stage_status(self, stage, telemetry):
-        state = telemetry['state'][stage]
+        if stage == 'lens':
+            state = telemetry['state']['lens_state'][stage]
+        else:
+            state = telemetry['state']['arms_state'][stage]
+        
         if stage == 'injection':
             widget = self.injection_status
         elif stage == 'pickoff':
@@ -293,7 +307,12 @@ class COMPOControlWidget(tk.Toplevel):
 
         # check for error status
         g = get_root(self).globals
-        if 'error' in state['connection']:
+        # extract connection states from telemetry state package
+        # and join into one long list for both arms and lens
+        connection_states = list(
+            itertools.chain(*[s['connection'] for s in state.values()])
+        )
+        if 'error' in connection_states:
             self.lens_status.config(text='ERROR',
                                     bg=g.COL['critical'])
             self.pickoff_status.config(text='ERROR',
@@ -301,7 +320,7 @@ class COMPOControlWidget(tk.Toplevel):
             self.injection_status.config(text='ERROR',
                                          bg=g.COL['critical'])
             self.conn.config(text='Connect')
-        elif 'offline' in state['connection']:
+        elif 'offline' in connection_states:
             self.lens_status.config(text='DISCONN',
                                     bg=g.COL['critical'])
             self.pickoff_status.config(text='DISCONN',
@@ -315,12 +334,13 @@ class COMPOControlWidget(tk.Toplevel):
                 self.set_stage_status(stage, telemetry)
 
         str = f"{telemetry['timestamp'].iso}:\n"
-        for stage, pos_str in zip(
+        for key, stage, pos_str in zip(
+                ('arms_state', 'arms_state', 'lens_state'),
                 ('injection', 'pickoff', 'lens'),
                 ('injection_angle', 'pickoff_angle', 'lens_position')):
             pos, targ = self.get_stage_position(telemetry, pos_str)
 
-            status = '/'.join(state[stage][4:])
+            status = '/'.join(state[key][stage][4:])
             str += f"{stage}: curr={pos:.2f}, targ={targ:.2f}\n{status}\n\n"
 
         self.print_message(str)
