@@ -234,7 +234,7 @@ class COMPOControlWidget(tk.Toplevel):
         self.session.publish('hipercam.compo.target_lens_position', lens)
         yield self.session.call('hipercam.compo_arms.rpc.pickoff.move')
         yield self.session.call('hipercam.compo_arms.rpc.injection.move')
-        yield self.session.call('hipercam.compo_len.rpc.stage.move')
+        yield self.session.call('hipercam.compo_lens.rpc.stage.move')
 
     def send_message(self, topic, msg):
         if self.session:
