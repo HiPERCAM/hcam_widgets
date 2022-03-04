@@ -187,7 +187,7 @@ class COMPOControlWidget(tk.Toplevel):
             self.print_message('no session')
             return
         if stage == 'lens':
-            rpc = 'hipercam.compo_lens.rpc.stage.home':
+            rpc = 'hipercam.compo_lens.rpc.stage.home'
         else:
             rpc = "hipercam.compo_arms.rpc.{}.home".format(stage)
         yield self.session.call(rpc)
