@@ -204,9 +204,9 @@ class COMPOControlWidget(tk.Toplevel):
             self.print_message('no session')
             return
         for stage in ('injection', 'pickoff'):
-            rpc = "hipercam.compo_lens.rpc.{}.stop".format(stage)
+            rpc = "hipercam.compo_arms.rpc.{}.stop".format(stage)
             yield self.session.call(rpc)
-        yield self.session.call('hipercam.compo_arms.rpc.stage.stop')
+        yield self.session.call('hipercam.compo_lens.rpc.stage.stop')
 
     @inlineCallbacks
     def move(self):
