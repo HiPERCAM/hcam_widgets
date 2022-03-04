@@ -339,7 +339,7 @@ class COMPOControlWidget(tk.Toplevel):
             str = f"{telemetry['timestamp'].iso}:\n"
             for key, stage, pos_str in zip(
                     ('arms_state', 'arms_state', 'lens_state'),
-                    ('injection', 'pickoff', 'lens'),
+                    ('injection', 'pickoff', 'stage'),
                     ('injection_angle', 'pickoff_angle', 'lens_position')):
                 pos, targ = self.get_stage_position(telemetry, pos_str)
 
