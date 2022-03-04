@@ -242,6 +242,7 @@ class COMPOControlWidget(tk.Toplevel):
             self.session.publish(topic, msg)
 
     def print_message(self, msg):
+        print(msg)
         self.label.delete(1.0, tk.END)
         self.label.insert(tk.END, msg+'\n')
 
