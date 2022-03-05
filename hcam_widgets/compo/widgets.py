@@ -35,11 +35,11 @@ class COMPOSetupFrame(tk.Frame):
 
         # create control widgets
         tk.Label(self, text='Injection Position').grid(row=0, column=0, pady=4, padx=4, sticky=tk.W)
-        self.injection_side = w.Radio(self, ('L', 'R', 'G'), 3, None, initial=1)
+        self.injection_side = w.Radio(self, ('L', 'R', 'G', 'P'), 4, None, initial=1)
         self.injection_side.grid(row=0, column=1, pady=2, stick=tk.W)
 
         tk.Label(self, text='Pickoff Angle').grid(row=1, column=0, pady=4, padx=4, sticky=tk.W)
-        self.pickoff_angle = w.RangedFloat(self, 0.0, -80, 80, None, False,
+        self.pickoff_angle = w.RangedFloat(self, 0.0, -67, 67, None, False,
                                            allowzero=True, width=4)
         self.pickoff_angle.grid(row=1, column=1, pady=2, stick=tk.W)
 
@@ -314,7 +314,7 @@ class COMPOControlWidget(tk.Toplevel):
 
         injection_angle -= NOMINAL_INJECTOR_ZERO
         pickoff_angle -= NOMINAL_PICKOFF_ZERO
-        
+
         self.ax.clear()
         _ = plot_compo(pickoff_angle, injection_angle, self.ax)
         self.ax.set_xlim(-250, 250)
