@@ -41,7 +41,7 @@ X = u.Quantity([0.0, 0.476, 0.949, 1.414, 1.868, 2.309, 2.731, 3.133,
 Y = u.Quantity([0.0, 0.021, 0.083, 0.186, 0.329, 0.512, 0.732, 0.988,
                 1.278, 1.600, 1.951, 2.329, 2.731, 3.154], unit=u.arcmin)
 
-# Vital statistics from FDR
+# Vital statistics for COMPO (mostly from FDR)
 PARK_POSITION = -60*u.deg
 MAX_ANGLE = 55*u.deg
 PICKOFF_SIZE = 26.73*u.arcsec  # 330 pixels
@@ -49,7 +49,9 @@ MIRROR_SIZE = 24.3*u.arcsec  # 20 mm
 SHADOW_X = 40*u.mm  # extent of vignetting by injector arm
 SHADOW_Y = 49*u.mm  # extent of vignetting by injector arm (~739 pix)
 INJECTOR_THETA = 13.04*u.deg  # angle of injector arm when in position
-LENS_REF_POSITION = 20 * u.mm  # TODO: this is made up, replace with true value
+LENS_REF_POSITION = 0 * u.mm  # TODO: this is made up, replace with true value
+NOMINAL_INJECTOR_ZERO = 0.1583 * u.deg  # value of stage encoder when arm centred
+NOMINAL_PICKOFF_ZERO = -0.135 * u.deg  # value of stage encoder when arm centred
 
 # interpolated functions for X and Y positions - not unit aware
 x_func = interp1d(THETA, X, kind='cubic', bounds_error=False, fill_value='extrapolate')

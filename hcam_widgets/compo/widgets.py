@@ -11,6 +11,8 @@ from twisted.internet.defer import inlineCallbacks
 from ..mimic import Mimic
 from ..tkutils import addStyle, get_root
 from .utils import (plot_compo, INJECTOR_THETA,
+                    NOMINAL_PICKOFF_ZERO,
+                    NOMINAL_INJECTOR_ZERO,
                     target_lens_position, PARK_POSITION)
 from .. import widgets as w
 
@@ -237,18 +239,21 @@ class COMPOControlWidget(tk.Toplevel):
             return
 
         if self.setup_frame.injection_side.value() == 'L':
-            ia = INJECTOR_THETA
+            ia = INJECTOR_THETA + NOMINAL_INJECTOR_ZERO
         elif self.setup_frame.injection_side.value() == 'R':
-            ia = -INJECTOR_THETA
+            ia = -INJECTOR_THETA + NOMINAL_INJECTOR_ZERO
         else:
-            ia = PARK_POSITION
+            ia = PARK_POSITION + NOMINAL_INJECTOR_ZERO
+
+        poa = self.setup_frame.pickoff_angle.value() * u.deg 
+        poa += NOMINAL_PICKOFF_ZERO
 
         lens = target_lens_position(
             self.setup_frame.pickoff_angle.value() * u.deg,
             False  # guiding
         ).to_value(u.mm)
         self.session.publish('hipercam.compo.target_pickoff_angle',
-                             self.setup_frame.pickoff_angle.value())
+                             poa.to_value(u.deg))
         self.session.publish('hipercam.compo.target_injection_angle',
                              ia.to_value(u.deg))
         self.session.publish('hipercam.compo.target_lens_position', lens)
@@ -307,6 +312,9 @@ class COMPOControlWidget(tk.Toplevel):
         injection_angle, _ = self.get_stage_position(telemetry, 'injection_angle') * u.deg
         pickoff_angle, _ = self.get_stage_position(telemetry, 'pickoff_angle') * u.deg
 
+        injection_angle -= NOMINAL_INJECTOR_ZERO
+        pickoff_angle -= NOMINAL_PICKOFF_ZERO
+        
         self.ax.clear()
         _ = plot_compo(pickoff_angle, injection_angle, self.ax)
         self.ax.set_xlim(-250, 250)
