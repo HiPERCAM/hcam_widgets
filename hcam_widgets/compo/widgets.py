@@ -177,10 +177,17 @@ class COMPOControlWidget(tk.Toplevel):
         ]
         if self.conn['text'].lower() == 'disconnect':
             rpcs = [template.format('disconnect') for template in rpc_templates]
+            action = 'disconnect'
         else:
             rpcs = [template.format('connect') for template in rpc_templates]
-        for rpc in rpcs:
-            yield self.session.call(rpc)
+            action = 'connect'
+        try:
+            for rpc in rpcs:
+                yield self.session.call(rpc)
+        except Exception as err:
+            g = get_root(self).globals
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn(f"Failed to {action} to COMPO: {err}")
 
     @inlineCallbacks
     def home_stage(self, stage):
@@ -191,7 +198,12 @@ class COMPOControlWidget(tk.Toplevel):
             rpc = 'hipercam.compo_lens.rpc.stage.home'
         else:
             rpc = "hipercam.compo_arms.rpc.{}.home".format(stage)
-        yield self.session.call(rpc)
+        try:
+            yield self.session.call(rpc)
+        except Exception as err:
+            g = get_root(self).globals
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn(f"Failed to home {stage} in COMPO: {err}")
 
     @inlineCallbacks
     def home_all(self):
@@ -203,10 +215,17 @@ class COMPOControlWidget(tk.Toplevel):
         if not self.session:
             self.print_message('no session')
             return
-        for stage in ('injection', 'pickoff'):
-            rpc = "hipercam.compo_arms.rpc.{}.stop".format(stage)
-            yield self.session.call(rpc)
-        yield self.session.call('hipercam.compo_lens.rpc.stage.stop')
+        try:
+            for stage in ('injection', 'pickoff', 'lens'):
+                rpc = "hipercam.compo_arms.rpc.{}.stop".format(stage)
+                if stage == 'lens':
+                    rpc = 'hipercam.compo_lens.rpc.stage.stop'
+
+                yield self.session.call(rpc)
+        except Exception as err:
+            g = get_root(self).globals
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn(f"Failed to stop {stage} in COMPO: {err}")
 
     @inlineCallbacks
     def move(self):
@@ -233,9 +252,14 @@ class COMPOControlWidget(tk.Toplevel):
         self.session.publish('hipercam.compo.target_injection_angle',
                              ia.to_value(u.deg))
         self.session.publish('hipercam.compo.target_lens_position', lens)
-        yield self.session.call('hipercam.compo_arms.rpc.pickoff.move')
-        yield self.session.call('hipercam.compo_arms.rpc.injection.move')
-        yield self.session.call('hipercam.compo_lens.rpc.stage.move')
+        try:
+            yield self.session.call('hipercam.compo_arms.rpc.pickoff.move')
+            yield self.session.call('hipercam.compo_arms.rpc.injection.move')
+            yield self.session.call('hipercam.compo_lens.rpc.stage.move')
+        except Exception as err:
+            g = get_root(self).globals
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn(f"Failed to move stages in COMPO: {err}")
 
     def send_message(self, topic, msg):
         if self.session:
