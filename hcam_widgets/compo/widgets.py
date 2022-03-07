@@ -8,6 +8,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from twisted.internet.defer import inlineCallbacks
 
 # internal imports
+from ..misc import async_sleep
 from ..mimic import Mimic
 from ..tkutils import addStyle, get_root
 from .utils import (plot_compo, INJECTOR_THETA,
@@ -257,6 +258,8 @@ class COMPOControlWidget(tk.Toplevel):
         self.session.publish('hipercam.compo.target_injection_angle',
                              ia.to_value(u.deg))
         self.session.publish('hipercam.compo.target_lens_position', lens)
+        # allow time for statemachines to step forward (don't know if this is needed)
+        yield async_sleep(1.5)
         try:
             yield self.session.call('hipercam.compo_arms.rpc.pickoff.move')
             yield self.session.call('hipercam.compo_arms.rpc.injection.move')
