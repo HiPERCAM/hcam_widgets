@@ -291,7 +291,7 @@ class COMPOControlWidget(tk.Toplevel):
 
         g = get_root(self).globals
         colours = {'inpos': g.COL['start'], 'moving': g.COL['warn'], 'stopped': g.COL['warn'],
-                   'init': g.COL['warn'], 'homing': g.COL['warn']}
+                   'init': g.COL['warn'], 'homing': g.COL['warn'], 'disabled': g.COL['warn']}
         matched_state = set(state).intersection(colours.keys())
         if not matched_state:
             print('unhandled state ' + '/'.join(state))
