@@ -570,4 +570,4 @@ class COMPOManualWidget(CompoWidget):
         # mimic (not shown)
         mimic_width = 350
         Mimic.__init__(self, height=int(mimic_width/2.5), width=mimic_width)
-        mimic_frame = tk.LabelFrame(right, text='mimic')
+        
