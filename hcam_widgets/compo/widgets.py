@@ -503,7 +503,7 @@ class COMPOManualWidget(CompoWidget):
 
         # injection arm 
         row = 2
-        tk.Label(self, text='Pickoff Angle (deg)').grid(row=row, column=0, pady=4, 
+        tk.Label(self, text='Injection Angle (deg)').grid(row=row, column=0, pady=4, 
                                                   padx=4, sticky=tk.W)
         self.injection_angle = w.RangedFloat(self, 0.0, -67, 67, None, False,
                                              allowzero=True, width=4)
@@ -565,9 +565,14 @@ class COMPOManualWidget(CompoWidget):
         self.label = tk.Text(tel_frame, height=10, width=40, bg=g.COL['log'])
         self.label.configure(state=tk.NORMAL, font=g.ENTRY_FONT)
         self.label.pack(fill=tk.Y)
-        tel_frame.grid(row=5, column=0, columnspan=4)
+        tel_frame.grid(row=5, column=0, columnspan=4, pady=4, padx=4, sticky=tk.N)
 
         # mimic (not shown)
         mimic_width = 350
         Mimic.__init__(self, height=int(mimic_width/2.5), width=mimic_width)
-        
+        mimic_frame = tk.LabelFrame(self, text='mimic')
+        self.canvas = FigureCanvasTkAgg(self.figure, mimic_frame)
+
+    @property
+    def setup_frame(self):
+        return self
