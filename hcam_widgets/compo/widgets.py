@@ -129,7 +129,7 @@ class CompoWidget(tk.Toplevel):
         except Exception as err:
             g = get_root(self).globals
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn(f"Failed to {action} to COMPO: {err}")    
+            g.clog.warn(f"Failed to {action} to COMPO: {msg}")    
 
     @inlineCallbacks
     def home_stage(self, stage):
@@ -145,7 +145,7 @@ class CompoWidget(tk.Toplevel):
         except Exception as err:
             g = get_root(self).globals
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn(f"Failed to home {stage} in COMPO: {err}")
+            g.clog.warn(f"Failed to home {stage} in COMPO: {msg}")
 
     @inlineCallbacks
     def move_stage(self, stage):
@@ -450,7 +450,7 @@ class COMPOControlWidget(CompoWidget):
         except Exception as err:
             g = get_root(self).globals
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn(f"Failed to move stages in COMPO: {err}")
+            g.clog.warn(f"Failed to move stages in COMPO: {msg}")
 
     def dumpJSON(self):
         """
