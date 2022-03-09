@@ -2,6 +2,7 @@ import six
 import pickle
 import traceback
 import itertools
+from functools import partial
 from astropy import units as u
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
@@ -84,22 +85,15 @@ class COMPOSetupWidget(tk.Toplevel):
         raise NotImplementedError
 
 
-class COMPOControlWidget(tk.Toplevel):
+class CompoWidget(tk.Toplevel):
     """
-    A child window to control the COMPO pickoff arms.
-
-    This is a more advanced window that adds widgets to monitor the state of COMPO
-    and allow user control of the hardware.
-
-    Normally this window is hidden, but can be revealed from the main GUIs menu
-    or by clicking on a "use COMPO" widget in the main GUI.
+    Parent class for COMPO widgets.
     """
     def __init__(self, parent):
         tk.Toplevel.__init__(self, parent)
         self.transient(parent)
         self.parent = parent
 
-        g = get_root(self).globals
         addStyle(self)
         self.title("COMPO setup")
 
@@ -108,61 +102,6 @@ class COMPOControlWidget(tk.Toplevel):
 
         # dont destroy when we click the close button
         self.protocol('WM_DELETE_WINDOW', self.withdraw)
-
-        # frames for sections
-        left = tk.Frame(self)
-        right = tk.Frame(self)
-
-        self.setup_frame = COMPOSetupFrame(left)
-        self.setup_frame.grid(row=1, column=0, columnspan=2, pady=2, sticky=tk.W)
-
-        # buttons
-        self.go = w.ActButton(left, width=12, callback=self.move, text='Move')
-        self.conn = w.ActButton(left, width=12, callback=self.handle_connection, text='Connect')
-        self.stop = w.ActButton(left, width=12, callback=self.stop_all, text='Stop')
-        self.home = w.ActButton(left, width=12, callback=self.home_all, text='Home')
-
-        self.conn.grid(row=2, column=0, pady=2, sticky=tk.E)
-        self.home.grid(row=2, column=1, pady=2, sticky=tk.W)
-        self.stop.grid(row=3, column=1, pady=2, sticky=tk.W)
-        self.go.grid(row=3, column=0, pady=2, sticky=tk.E)
-
-        # create status widgets
-        status = tk.LabelFrame(left, text='status')
-        status.grid(row=4, column=0, columnspan=2, pady=4, padx=4, sticky=tk.N)
-
-        tk.Label(status, text='Injection Arm').grid(row=0, column=0, sticky=tk.W)
-        self.injection_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
-        self.injection_status.config(bg=g.COL['warn'])
-        self.injection_status.grid(row=0, column=1, sticky=tk.W, pady=2, padx=2)
-
-        tk.Label(status, text='Pickoff Arm').grid(row=1, column=0, sticky=tk.W)
-        self.pickoff_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
-        self.pickoff_status.config(bg=g.COL['warn'])
-        self.pickoff_status.grid(row=1, column=1, sticky=tk.W, pady=2, padx=2)
-
-        tk.Label(status, text='Lens Position').grid(row=2, column=0, sticky=tk.W)
-        self.lens_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
-        self.lens_status.config(bg=g.COL['warn'])
-        self.lens_status.grid(row=2, column=1, sticky=tk.W, pady=2, padx=2)
-
-        # telemetry
-        tel_frame = tk.LabelFrame(right, text='telemetry')
-        self.label = tk.Text(tel_frame, height=10, width=40, bg=g.COL['log'])
-        self.label.configure(state=tk.NORMAL, font=g.ENTRY_FONT)
-        self.label.pack(fill=tk.Y)
-        tel_frame.grid(row=0, column=0, columnspan=1)
-
-        # mimic
-        mimic_width = 350
-        Mimic.__init__(self, height=int(mimic_width/2.5), width=mimic_width)
-        mimic_frame = tk.LabelFrame(right, text='mimic')
-        self.canvas = FigureCanvasTkAgg(self.figure, mimic_frame)
-        self.canvas.get_tk_widget().pack()
-        mimic_frame.grid(row=1, column=0, padx=4, pady=4)
-
-        left.pack(pady=2, side=tk.LEFT, fill=tk.Y)
-        right.pack(pady=2, side=tk.LEFT, fill=tk.Y)
 
     @property
     def session(self):
@@ -190,7 +129,7 @@ class COMPOControlWidget(tk.Toplevel):
         except Exception as err:
             g = get_root(self).globals
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn(f"Failed to {action} to COMPO: {err}")
+            g.clog.warn(f"Failed to {action} to COMPO: {err}")    
 
     @inlineCallbacks
     def home_stage(self, stage):
@@ -209,29 +148,7 @@ class COMPOControlWidget(tk.Toplevel):
             g.clog.warn(f"Failed to home {stage} in COMPO: {err}")
 
     @inlineCallbacks
-    def home_all(self):
-        for stage in ('injection', 'pickoff', 'lens'):
-            yield self.home_stage(stage)
-
-    @inlineCallbacks
-    def stop_all(self):
-        if not self.session:
-            self.print_message('no session')
-            return
-        try:
-            for stage in ('injection', 'pickoff', 'lens'):
-                rpc = "hipercam.compo_arms.rpc.{}.stop".format(stage)
-                if stage == 'lens':
-                    rpc = 'hipercam.compo_lens.rpc.stage.stop'
-
-                yield self.session.call(rpc)
-        except Exception as err:
-            g = get_root(self).globals
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn(f"Failed to stop {stage} in COMPO: {err}")
-
-    @inlineCallbacks
-    def move(self):
+    def move_stage(self, stage):
         """
         Send commands to COMPO
         """
@@ -239,35 +156,57 @@ class COMPOControlWidget(tk.Toplevel):
             self.print_message('no session')
             return
 
-        if self.setup_frame.injection_side.value() == 'L':
-            ia = INJECTOR_THETA + NOMINAL_INJECTOR_ZERO
-        elif self.setup_frame.injection_side.value() == 'R':
-            ia = -INJECTOR_THETA + NOMINAL_INJECTOR_ZERO
+        if stage == 'lens':
+            position = self.lens_position.value()
+            self.session.publish('hipercam.compo.target_lens_position', position)
+        elif stage == 'pickoff':
+            position = self.setup_frame.pickoff_angle.value()
+            self.session.publish('hipercam.compo.target_pickoff_angle', position)
+        elif stage == 'injection':
+            position = self.setup_frame.injection_angle.value()
+            self.session.publish('hipercam.compo.target_injection_angle', position)
         else:
-            ia = PARK_POSITION + NOMINAL_INJECTOR_ZERO
+            print(f'unrecognised stage: {stage}')
+            return
 
-        poa = self.setup_frame.pickoff_angle.value() * u.deg 
-        poa += NOMINAL_PICKOFF_ZERO
-
-        lens = target_lens_position(
-            self.setup_frame.pickoff_angle.value() * u.deg,
-            False  # guiding
-        ).to_value(u.mm)
-        self.session.publish('hipercam.compo.target_pickoff_angle',
-                             poa.to_value(u.deg))
-        self.session.publish('hipercam.compo.target_injection_angle',
-                             ia.to_value(u.deg))
-        self.session.publish('hipercam.compo.target_lens_position', lens)
-        # allow time for statemachines to step forward (don't know if this is needed)
-        yield async_sleep(1.5)
+        # allow time for statemachines to step forward (don't know why this is needed)
+        yield async_sleep(1.0)
+        if stage == 'lens':
+            rpc = 'hipercam.compo_lens.rpc.stage.move'
+        else:
+            rpc = f"hipercam.compo_arms.rpc.{stage}.move"
         try:
-            yield self.session.call('hipercam.compo_arms.rpc.pickoff.move')
-            yield self.session.call('hipercam.compo_arms.rpc.injection.move')
-            yield self.session.call('hipercam.compo_lens.rpc.stage.move')
+            yield self.session.call(rpc)
         except Exception as err:
             g = get_root(self).globals
             msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn(f"Failed to move stages in COMPO: {err}")
+            g.clog.warn(f"Failed to move {stage} in COMPO: {err}")
+
+    @inlineCallbacks
+    def stop_stage(self, stage):
+        if not self.session:
+            self.print_message('no session')
+            return
+        if stage == 'lens':
+            rpc = 'hipercam.compo_lens.rpc.stage.stop'
+        else:
+            rpc = "hipercam.compo_arms.rpc.{}.stop".format(stage)
+        try:
+            yield self.session.call(rpc)
+        except Exception as err:
+            g = get_root(self).globals
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn(f"Failed to stop {stage} in COMPO: {msg}")
+
+    @inlineCallbacks
+    def home_all(self):
+        for stage in ('injection', 'pickoff', 'lens'):
+            yield self.home_stage(stage)
+
+    @inlineCallbacks
+    def stop_all(self):
+        for stage in ('injection', 'pickoff', 'lens'):
+            yield self.stop_stage(stage)
 
     def send_message(self, topic, msg):
         if self.session:
@@ -381,11 +320,14 @@ class COMPOControlWidget(tk.Toplevel):
                 str += f"{stage}: curr={pos:.2f}, targ={targ:.2f}\n{status}\n\n"
 
             self.print_message(str)
-            self.update_mimic(telemetry)
+            try:
+                self.update_mimic(telemetry)
+            except ValueError:
+                # can sometimes fail if we are missing one or more angles
+                pass
         except Exception as err:
             print('error handling COMPO telemetry')
-            print(traceback.format_exc())
-
+            print(traceback.format_exc())    
 
     def dumpJSON(self):
         """
@@ -398,3 +340,228 @@ class COMPOControlWidget(tk.Toplevel):
         Sets widget values from JSON data
         """
         raise NotImplementedError
+
+
+class COMPOControlWidget(CompoWidget):
+    """
+    A child window to control the COMPO pickoff arms.
+
+    This is a more advanced window that adds widgets to monitor the state of COMPO
+    and allow user control of the hardware.
+
+    Normally this window is hidden, but can be revealed from the main GUIs menu
+    or by clicking on a "use COMPO" widget in the main GUI.
+    """
+    def __init__(self, parent):
+        CompoWidget.__init__(self, parent)
+
+        g = get_root(self).globals
+        # frames for sections
+        left = tk.Frame(self)
+        right = tk.Frame(self)
+
+        self.setup_frame = COMPOSetupFrame(left)
+        self.setup_frame.grid(row=1, column=0, columnspan=2, pady=2, sticky=tk.W)
+
+        # buttons
+        self.go = w.ActButton(left, width=12, callback=self.move, text='Move')
+        self.conn = w.ActButton(left, width=12, callback=self.handle_connection, text='Connect')
+        self.stop = w.ActButton(left, width=12, callback=self.stop_all, text='Stop')
+        self.home = w.ActButton(left, width=12, callback=self.home_all, text='Home')
+
+        self.conn.grid(row=2, column=0, pady=2, sticky=tk.E)
+        self.home.grid(row=2, column=1, pady=2, sticky=tk.W)
+        self.stop.grid(row=3, column=1, pady=2, sticky=tk.W)
+        self.go.grid(row=3, column=0, pady=2, sticky=tk.E)
+
+        # create status widgets
+        status = tk.LabelFrame(left, text='status')
+        status.grid(row=4, column=0, columnspan=2, pady=4, padx=4, sticky=tk.N)
+
+        tk.Label(status, text='Injection Arm').grid(row=0, column=0, sticky=tk.W)
+        self.injection_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
+        self.injection_status.config(bg=g.COL['warn'])
+        self.injection_status.grid(row=0, column=1, sticky=tk.W, pady=2, padx=2)
+
+        tk.Label(status, text='Pickoff Arm').grid(row=1, column=0, sticky=tk.W)
+        self.pickoff_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
+        self.pickoff_status.config(bg=g.COL['warn'])
+        self.pickoff_status.grid(row=1, column=1, sticky=tk.W, pady=2, padx=2)
+
+        tk.Label(status, text='Lens Position').grid(row=2, column=0, sticky=tk.W)
+        self.lens_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
+        self.lens_status.config(bg=g.COL['warn'])
+        self.lens_status.grid(row=2, column=1, sticky=tk.W, pady=2, padx=2)
+
+        # telemetry
+        tel_frame = tk.LabelFrame(right, text='telemetry')
+        self.label = tk.Text(tel_frame, height=10, width=40, bg=g.COL['log'])
+        self.label.configure(state=tk.NORMAL, font=g.ENTRY_FONT)
+        self.label.pack(fill=tk.Y)
+        tel_frame.grid(row=0, column=0, columnspan=1)
+
+        # mimic
+        mimic_width = 350
+        Mimic.__init__(self, height=int(mimic_width/2.5), width=mimic_width)
+        mimic_frame = tk.LabelFrame(right, text='mimic')
+        self.canvas = FigureCanvasTkAgg(self.figure, mimic_frame)
+        self.canvas.get_tk_widget().pack()
+        mimic_frame.grid(row=1, column=0, padx=4, pady=4)
+
+        left.pack(pady=2, side=tk.LEFT, fill=tk.Y)
+        right.pack(pady=2, side=tk.LEFT, fill=tk.Y)
+
+    @inlineCallbacks
+    def move(self):
+        """
+        Send commands to COMPO. 
+        
+        This is more efficient than calling CompoWidget.move_stage for each stage
+        """
+        if not self.session:
+            self.print_message('no session')
+            return
+
+        if self.setup_frame.injection_side.value() == 'L':
+            ia = INJECTOR_THETA + NOMINAL_INJECTOR_ZERO
+        elif self.setup_frame.injection_side.value() == 'R':
+            ia = -INJECTOR_THETA + NOMINAL_INJECTOR_ZERO
+        else:
+            ia = PARK_POSITION + NOMINAL_INJECTOR_ZERO
+
+        poa = self.setup_frame.pickoff_angle.value() * u.deg 
+        poa += NOMINAL_PICKOFF_ZERO
+
+        lens = target_lens_position(
+            self.setup_frame.pickoff_angle.value() * u.deg,
+            False  # guiding
+        ).to_value(u.mm)
+        self.session.publish('hipercam.compo.target_pickoff_angle',
+                             poa.to_value(u.deg))
+        self.session.publish('hipercam.compo.target_injection_angle',
+                             ia.to_value(u.deg))
+        self.session.publish('hipercam.compo.target_lens_position', lens)
+        # allow time for statemachines to step forward (don't know if this is needed)
+        yield async_sleep(1.5)
+        try:
+            yield self.session.call('hipercam.compo_arms.rpc.pickoff.move')
+            yield self.session.call('hipercam.compo_arms.rpc.injection.move')
+            yield self.session.call('hipercam.compo_lens.rpc.stage.move')
+        except Exception as err:
+            g = get_root(self).globals
+            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            g.clog.warn(f"Failed to move stages in COMPO: {err}")
+
+    def dumpJSON(self):
+        """
+        Encodes current COMPO setup data to JSON compatible dictionary
+        """
+        raise NotImplementedError
+
+    def loadJSON(self, data):
+        """
+        Sets widget values from JSON data
+        """
+        raise NotImplementedError
+
+
+class COMPOManualWidget(CompoWidget):
+    """
+    This is a child window to manually control COMPO.
+
+    This window just allows you to manually set the positions of the arms and slide.
+    It also allows independent homing/stopping of each device.
+    """
+    def __init__(self, parent):
+        CompoWidget.__init__(self, parent)
+        g = get_root(self).globals
+
+        # connection button
+        self.conn = w.ActButton(self, width=12, callback=self.handle_connection, text='Connect')
+        self.conn.grid(row=0, column=0, columnspan=2, pady=2, sticky=tk.E)
+
+        # pickoff 
+        row = 1
+        tk.Label(self, text='Pickoff Angle (deg)').grid(row=row, column=0, pady=4, 
+                                                  padx=4, sticky=tk.W)
+        self.pickoff_angle = w.RangedFloat(self, 0.0, -67, 67, None, False,
+                                           allowzero=True, width=4)
+        self.pickoff_angle.grid(row=row, column=1, pady=2, stick=tk.W)
+        self.pickoff_home = w.ActButton(self, width=12, 
+                                        callback=partial(self.home_stage, 'pickoff'), 
+                                        text='Home')
+        self.pickoff_home.grid(row=row, column=2, pady=2, stick=tk.W) 
+        self.pickoff_move = w.ActButton(self, width=12, 
+                                        callback=partial(self.move_stage, 'pickoff'), 
+                                        text='Move')
+        self.pickoff_move.grid(row=row, column=2, pady=2, stick=tk.W)  
+        self.pickoff_stop = w.ActButton(self, width=12, 
+                                        callback=partial(self.stop_stage, 'pickoff'), 
+                                        text='Stop')
+        self.pickoff_stop.grid(row=row, column=3, pady=2, stick=tk.W)   
+
+        # injection arm 
+        row = 2
+        tk.Label(self, text='Pickoff Angle (deg)').grid(row=row, column=0, pady=4, 
+                                                  padx=4, sticky=tk.W)
+        self.injection_angle = w.RangedFloat(self, 0.0, -67, 67, None, False,
+                                             allowzero=True, width=4)
+        self.injection_angle.grid(row=row, column=1, pady=2, stick=tk.W)
+        self.injection_home = w.ActButton(self, width=12, 
+                                          callback=partial(self.home_stage, 'injection'), 
+                                          text='Home')
+        self.injection_home.grid(row=row, column=2, pady=2, stick=tk.W) 
+        self.injection_move = w.ActButton(self, width=12, 
+                                          callback=partial(self.move_stage, 'injection'), 
+                                          text='Move')
+        self.injection_move.grid(row=row, column=2, pady=2, stick=tk.W)  
+        self.injection_stop = w.ActButton(self, width=12, 
+                                          callback=partial(self.stop_stage, 'injection'), 
+                                          text='Stop')
+        self.injection_stop.grid(row=row, column=3, pady=2, stick=tk.W)
+
+        # lens 
+        row = 3
+        tk.Label(self, text='Lens (mm)').grid(row=row, column=0, pady=4, 
+                                              padx=4, sticky=tk.W)
+        self.lens_position = w.RangedFloat(self, 0.0, 0, 25, None, False,
+                                           allowzero=True, width=4)
+        self.lens_position.grid(row=row, column=1, pady=2, stick=tk.W)
+        self.lens_home = w.ActButton(self, width=12, 
+                                     callback=partial(self.home_stage, 'lens'), 
+                                     text='Home')
+        self.lens_home.grid(row=row, column=2, pady=2, stick=tk.W) 
+        self.lens_move = w.ActButton(self, width=12, 
+                                     callback=partial(self.move_stage, 'lens'), 
+                                     text='Move')
+        self.lens_move.grid(row=row, column=2, pady=2, stick=tk.W)  
+        self.lens_stop = w.ActButton(self, width=12, 
+                                     callback=partial(self.stop_stage, 'lens'), 
+                                     text='Stop')
+        self.lens_stop.grid(row=row, column=3, pady=2, stick=tk.W)
+
+        # create status widgets
+        status = tk.LabelFrame(self, text='status')
+        status.grid(row=4, column=0, columnspan=4, pady=4, padx=4, sticky=tk.N)
+
+        tk.Label(status, text='Injection Arm').grid(row=0, column=0, sticky=tk.W)
+        self.injection_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
+        self.injection_status.config(bg=g.COL['warn'])
+        self.injection_status.grid(row=0, column=1, sticky=tk.W, pady=2, padx=2)
+
+        tk.Label(status, text='Pickoff Arm').grid(row=row, column=0, sticky=tk.W)
+        self.pickoff_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
+        self.pickoff_status.config(bg=g.COL['warn'])
+        self.pickoff_status.grid(row=row, column=1, sticky=tk.W, pady=2, padx=2)
+
+        tk.Label(status, text='Lens Position').grid(row=2, column=0, sticky=tk.W)
+        self.lens_status = w.Ilabel(status, text='INIT', width=10, anchor=tk.W)
+        self.lens_status.config(bg=g.COL['warn'])
+        self.lens_status.grid(row=2, column=1, sticky=tk.W, pady=2, padx=2)
+
+        # telemetry
+        tel_frame = tk.LabelFrame(self, text='telemetry')
+        self.label = tk.Text(tel_frame, height=10, width=40, bg=g.COL['log'])
+        self.label.configure(state=tk.NORMAL, font=g.ENTRY_FONT)
+        self.label.pack(fill=tk.Y)
+        tel_frame.grid(row=5, column=0, columnspan=4)
