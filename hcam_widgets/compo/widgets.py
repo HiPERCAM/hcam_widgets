@@ -98,7 +98,7 @@ class CompoWidget(tk.Toplevel):
         self.title("COMPO setup")
 
         # do not display on creation
-        self.withdraw()
+        # self.withdraw()
 
         # dont destroy when we click the close button
         self.protocol('WM_DELETE_WINDOW', self.withdraw)
@@ -354,7 +354,8 @@ class COMPOControlWidget(CompoWidget):
     """
     def __init__(self, parent):
         CompoWidget.__init__(self, parent)
-
+        self.withdraw()
+        
         g = get_root(self).globals
         # frames for sections
         left = tk.Frame(self)
