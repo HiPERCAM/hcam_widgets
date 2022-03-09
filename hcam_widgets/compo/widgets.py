@@ -355,7 +355,7 @@ class COMPOControlWidget(CompoWidget):
     def __init__(self, parent):
         CompoWidget.__init__(self, parent)
         self.withdraw()
-        
+
         g = get_root(self).globals
         # frames for sections
         left = tk.Frame(self)
@@ -495,11 +495,11 @@ class COMPOManualWidget(CompoWidget):
         self.pickoff_move = w.ActButton(self, width=12, 
                                         callback=partial(self.move_stage, 'pickoff'), 
                                         text='Move')
-        self.pickoff_move.grid(row=row, column=2, pady=2, stick=tk.W)  
+        self.pickoff_move.grid(row=row, column=3, pady=2, stick=tk.W)  
         self.pickoff_stop = w.ActButton(self, width=12, 
                                         callback=partial(self.stop_stage, 'pickoff'), 
                                         text='Stop')
-        self.pickoff_stop.grid(row=row, column=3, pady=2, stick=tk.W)   
+        self.pickoff_stop.grid(row=row, column=4, pady=2, stick=tk.W)   
 
         # injection arm 
         row = 2
@@ -515,11 +515,11 @@ class COMPOManualWidget(CompoWidget):
         self.injection_move = w.ActButton(self, width=12, 
                                           callback=partial(self.move_stage, 'injection'), 
                                           text='Move')
-        self.injection_move.grid(row=row, column=2, pady=2, stick=tk.W)  
+        self.injection_move.grid(row=row, column=3, pady=2, stick=tk.W)  
         self.injection_stop = w.ActButton(self, width=12, 
                                           callback=partial(self.stop_stage, 'injection'), 
                                           text='Stop')
-        self.injection_stop.grid(row=row, column=3, pady=2, stick=tk.W)
+        self.injection_stop.grid(row=row, column=4, pady=2, stick=tk.W)
 
         # lens 
         row = 3
@@ -535,11 +535,11 @@ class COMPOManualWidget(CompoWidget):
         self.lens_move = w.ActButton(self, width=12, 
                                      callback=partial(self.move_stage, 'lens'), 
                                      text='Move')
-        self.lens_move.grid(row=row, column=2, pady=2, stick=tk.W)  
+        self.lens_move.grid(row=row, column=3, pady=2, stick=tk.W)  
         self.lens_stop = w.ActButton(self, width=12, 
                                      callback=partial(self.stop_stage, 'lens'), 
                                      text='Stop')
-        self.lens_stop.grid(row=row, column=3, pady=2, stick=tk.W)
+        self.lens_stop.grid(row=row, column=4, pady=2, stick=tk.W)
 
         # create status widgets
         status = tk.LabelFrame(self, text='status')
@@ -566,3 +566,8 @@ class COMPOManualWidget(CompoWidget):
         self.label.configure(state=tk.NORMAL, font=g.ENTRY_FONT)
         self.label.pack(fill=tk.Y)
         tel_frame.grid(row=5, column=0, columnspan=4)
+
+        # mimic (not shown)
+        mimic_width = 350
+        Mimic.__init__(self, height=int(mimic_width/2.5), width=mimic_width)
+        mimic_frame = tk.LabelFrame(right, text='mimic')
