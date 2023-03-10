@@ -521,7 +521,8 @@ class COMPOManualWidget(CompoWidget):
     This is a child window to manually control COMPO.
 
     This window just allows you to manually set the positions of the arms and slide.
-    It also allows independent homing/stopping of each device.
+    It also allows independent homing/stopping of each device. It is used by the
+    bespoke COMPO GUI script in hcam_drivers, which is designed for full manual control.
 
     It has `injection_angle`, `pickoff_angle`, and `lens_position` widgets that
     are w.RangedFloats. This allows the widget to be used as duck-typed drop-in for
