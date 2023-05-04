@@ -85,7 +85,9 @@ class COMPOSetupFrame(tk.Frame):
         to set it manually.
         """
         guiding = True if self.injection_side.value() == "G" else False
-        return target_lens_position(self.pickoff_angle.value(), guiding).to(u.mm)
+        return target_lens_position(self.pickoff_angle.value() * u.deg, guiding).to(
+            u.mm
+        )
 
 
 class COMPOSetupWidget(tk.Toplevel):
@@ -153,7 +155,7 @@ class CompoWidget(tk.Toplevel):
         self.title("COMPO setup")
 
         # do not display on creation
-        self.withdraw()
+        # self.withdraw()
 
         # dont destroy when we click the close button
         self.protocol("WM_DELETE_WINDOW", self.withdraw)
@@ -161,6 +163,35 @@ class CompoWidget(tk.Toplevel):
     @property
     def session(self):
         return get_root(self).globals.session
+
+    def get_value(self, thing, units):
+        """
+        Get a value either from a TK widget or a astropy unit
+
+        This is a convenience function for getting values from either a
+        tk widget or an astropy unit. We need it because attributes like
+        lens_position or pickoff_angle can be either.
+
+        Tk widgets have a "value" callable, whilst astropy units have a
+        value attribute.
+
+        Parameters
+        ----------
+        thing : object
+            The object to get the value from
+        units : astropy.units.Unit
+            The units to convert to.
+
+        Returns
+        -------
+        value : `astropy.units.Quantity`
+            The value of the thing as an astropy quantity
+        """
+        try:
+            value = thing.value() * units
+        except TypeError:
+            value = thing.to(units)
+        return value
 
     @inlineCallbacks
     def handle_connection(self):
@@ -214,13 +245,13 @@ class CompoWidget(tk.Toplevel):
             return
 
         if stage == "lens":
-            position = self.setup_frame.lens_position.value()
+            position = self.get_value(self.setup_frame.lens_position, u.mm).value
             self.session.publish("hipercam.compo.target_lens_position", position)
         elif stage == "pickoff":
-            position = self.setup_frame.pickoff_angle.value()
+            position = self.get_value(self.setup_frame.pickoff_angle, u.deg).value
             self.session.publish("hipercam.compo.target_pickoff_angle", position)
         elif stage == "injection":
-            position = self.setup_frame.injection_angle.value()
+            position = self.get_value(self.setup_frame.injection_angle, u.deg).value
             self.session.publish("hipercam.compo.target_injection_angle", position)
         else:
             print(f"unrecognised stage: {stage}")
@@ -266,13 +297,14 @@ class CompoWidget(tk.Toplevel):
             self.print_message("no session")
             return
 
-        ia = self.setup_frame.injection_angle.value() * u.deg
+        ia = self.get_value(self.setup_frame.injection_angle, u.deg)
         ia += NOMINAL_INJECTOR_ZERO
 
-        poa = self.setup_frame.pickoff_angle.value() * u.deg
+        poa = self.get_value(self.setup_frame.pickoff_angle, u.deg)
         poa += NOMINAL_PICKOFF_ZERO
 
-        lens = self.setup_frame.lens_position.value()
+        lens = self.get_value(self.setup_frame.lens_position, u.mm).value
+
         self.session.publish("hipercam.compo.target_pickoff_angle", poa.to_value(u.deg))
         self.session.publish(
             "hipercam.compo.target_injection_angle", ia.to_value(u.deg)
