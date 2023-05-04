@@ -36,7 +36,6 @@ class COMPOSetupFrame(tk.Frame):
     """
 
     def __init__(self, master):
-
         tk.Frame.__init__(self, master)
         addStyle(self)
 
@@ -154,7 +153,7 @@ class CompoWidget(tk.Toplevel):
         self.title("COMPO setup")
 
         # do not display on creation
-        # self.withdraw()
+        self.withdraw()
 
         # dont destroy when we click the close button
         self.protocol("WM_DELETE_WINDOW", self.withdraw)
