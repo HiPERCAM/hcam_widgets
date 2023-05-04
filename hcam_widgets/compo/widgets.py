@@ -1,5 +1,6 @@
 import six
 import pickle
+import json
 import traceback
 import itertools
 from functools import partial
@@ -69,6 +70,9 @@ class COMPOSetupFrame(tk.Frame):
             ia = INJECTOR_THETA
         elif self.injection_side.value() == "R":
             ia = -INJECTOR_THETA
+        elif self.injection_side.value() == "G":
+            # TODO - find guide position
+            ia = PARK_POSITION
         else:
             ia = PARK_POSITION
         return ia
@@ -126,10 +130,11 @@ class COMPOSetupWidget(tk.Toplevel):
             pickoff_angle=self.setup_frame.pickoff_angle.value(),
         )
 
-    def loadJSON(self, data):
+    def loadJSON(self, json_string):
         """
         Sets widget values from JSON data
         """
+        data = json.loads(json_string)["compo"]
         self.setup_frame.injection_side.set(data["injection_side"])
         self.setup_frame.pickoff_angle.set(data["pickoff_angle"])
 
@@ -159,6 +164,19 @@ class CompoWidget(tk.Toplevel):
 
         # dont destroy when we click the close button
         self.protocol("WM_DELETE_WINDOW", self.withdraw)
+
+    @property
+    def ok_to_start_run(self):
+        """
+        Convencience property to check if we are ready to start a run
+
+        Runs should not start if any component is not in position
+        """
+        return (
+            self.injection_status["text"] == "INPOS"
+            and self.pickoff_status["text"] == "INPOS"
+            and self.lens_status["text"] == "INPOS"
+        )
 
     @property
     def session(self):
@@ -286,12 +304,9 @@ class CompoWidget(tk.Toplevel):
             msg = err.error_message() if hasattr(err, "error_message") else str(err)
             g.clog.warn(f"Failed to stop {stage} in COMPO: {msg}")
 
-    @inlineCallbacks
-    def move(self):
+    def update_target_positions(self):
         """
-        Send commands to COMPO.
-
-        This is more efficient than calling CompoWidget.move_stage for each stage
+        This does not move the stages, but simply updates the target positions
         """
         if not self.session:
             self.print_message("no session")
@@ -310,8 +325,22 @@ class CompoWidget(tk.Toplevel):
             "hipercam.compo.target_injection_angle", ia.to_value(u.deg)
         )
         self.session.publish("hipercam.compo.target_lens_position", lens)
-        # allow time for statemachines to step forward (don't know if this is needed)
+
+    @inlineCallbacks
+    def move(self):
+        """
+        Send commands to COMPO.
+
+        This is more efficient than calling CompoWidget.move_stage for each stage
+        """
+        if not self.session:
+            self.print_message("no session")
+            return
+
+        self.update_target_positions()
+        # allow time for statemachines to step forward
         yield async_sleep(1.5)
+
         try:
             yield self.session.call("hipercam.compo_arms.rpc.pickoff.move")
             yield self.session.call("hipercam.compo_arms.rpc.injection.move")
@@ -358,6 +387,7 @@ class CompoWidget(tk.Toplevel):
         g = get_root(self).globals
         colours = {
             "inpos": g.COL["start"],
+            "outpos": g.COL["warn"],
             "moving": g.COL["warn"],
             "stopped": g.COL["warn"],
             "init": g.COL["warn"],
@@ -465,12 +495,21 @@ class CompoWidget(tk.Toplevel):
             pickoff_angle=self.setup_frame.pickoff_angle.value(),
         )
 
-    def loadJSON(self, data):
+    def loadJSON(self, json_string):
         """
         Sets widget values from JSON data
         """
+        try:
+            data = json.loads(json_string)["compo"]
+        except KeyError:
+            # no compo data in JSON, park arms
+            data = dict(
+                injection_side="P",
+                pickoff_angle=PARK_POSITION.to_value(u.deg),
+            )
         self.setup_frame.injection_side.set(data["injection_side"])
         self.setup_frame.pickoff_angle.set(data["pickoff_angle"])
+        self.update_target_positions()
 
 
 class COMPOControlWidget(CompoWidget):
@@ -486,7 +525,6 @@ class COMPOControlWidget(CompoWidget):
 
     def __init__(self, parent):
         CompoWidget.__init__(self, parent)
-        self.withdraw()
 
         g = get_root(self).globals
         # frames for sections
