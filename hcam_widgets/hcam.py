@@ -522,6 +522,13 @@ class InstPars(tk.LabelFrame):
         Loads in an application saved in JSON format.
         """
         g = get_root(self).globals
+
+        # enable COMPO if present in JSON
+        if "compo" in json.loads(json_string):
+            self.compo.set(1)
+        else:
+            self.compo.set(0)
+
         data = json.loads(json_string)["appdata"]
         # first set the parameters which change regardless of mode
         # number of exposures
@@ -1773,15 +1780,37 @@ class Start(w.ActButton):
             xbin, ybin = g.ipars.wframe.xbin.value(), g.ipars.wframe.ybin.value()
             if xbin not in (1, 2, 5, 10) or ybin not in (1, 2, 5, 10):
                 if not messagebox.askokcancel("Binning alert", msg):
-                    return False
+                    returnValue(False)
 
         # Check instrument pars are OK
         if not g.ipars.check():
-            g.clog.warn("Invalid instrument parameters; save failed.")
+            g.clog.warn("Invalid instrument parameters; start failed.")
             returnValue(False)
 
         # create JSON to post
         data = yield createJSON(g)
+
+        # check if COMPO is in position
+        # Do this regardless if enabled or not, as we might need to park
+        if not g.compo_hw.ok_to_start_run:
+            msg = """
+            COMPO is reporting that it is not ready to start a run.
+            Please check the state of COMPO.
+            
+            Click OK if you wish to continue anyway."""
+            if not messagebox.askokcancel("COMPO alert", msg):
+                returnValue(False)
+
+        # check autoguiding is started if we are guiding with COMPO
+        if g.ipars.compo() and g.compo_hw.setup_frame.injection_side.value() == "G":
+            msg = """
+            COMPO setup implies you will be guiding with COMPO.
+            Check that autoguiding is set up and running.
+            
+            Click OK when you wish to continue and start run.
+            Click Cancel to abort run."""
+            if not messagebox.askokcancel("Guiding alert", msg):
+                returnValue(False)
 
         # POST
         try:
@@ -1868,11 +1897,8 @@ class Load(w.ActButton):
         # load up the run parameters
         g.rpars.loadJSON(json_string)
 
-        # load the COMPO json if possible
-        try:
-            g.compo_hw.loadJSON(json_string)
-        except KeyError:
-            pass
+        # load the COMPO setup
+        g.compo_hw.loadJSON(json_string)
 
         return True
 
