@@ -20,6 +20,7 @@ from .utils import (
     NOMINAL_INJECTOR_ZERO,
     target_lens_position,
     PARK_POSITION,
+    GUIDE_THETA,
 )
 from .. import widgets as w
 
@@ -71,8 +72,8 @@ class COMPOSetupFrame(tk.Frame):
         elif self.injection_side.value() == "R":
             ia = -INJECTOR_THETA
         elif self.injection_side.value() == "G":
-            # TODO - find guide position
-            ia = PARK_POSITION
+            # TODO check sign!
+            ia = GUIDE_THETA
         else:
             ia = PARK_POSITION
         return ia
