@@ -292,7 +292,7 @@ class SlideFrame(tk.LabelFrame, Mimic):
                 command=lambda: self.action("connection.disconnect"), text="disconn"
             )
 
-        str = f"{telemetry['timestamp'].iso}:\n"
+        str = f"{telemetry['timestamp']}:\n"
         status = "/".join(state["stage"][4:])
         str += f"pos: curr={pos:.0f}, targ={targ:.0f}\n{status}\n\n"
         self.update_mimic(telemetry)
