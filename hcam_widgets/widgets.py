@@ -19,17 +19,26 @@ from astropy.time import Time
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.task import LoopingCall
 
-from hcam_devices.gtc.headers import (create_gtc_header_table,
-                                      add_gtc_header_table_row)
+from hcam_devices.gtc.headers import create_gtc_header_table, add_gtc_header_table_row
 
 # internal
 from . import DriverError
 from .tkutils import get_root
 from .logs import Logger, GuiHandler
 from .astro import calc_riseset
-from .misc import (execCommand, checkSimbad, isOnline, isRunActive, stopNodding,
-                   getRunNumber, postJSON, insertFITSHDU,
-                   isPoweredOn, ReadNGCTelemetry, async_sleep)
+from .misc import (
+    execCommand,
+    checkSimbad,
+    isOnline,
+    isRunActive,
+    stopNodding,
+    getRunNumber,
+    postJSON,
+    insertFITSHDU,
+    isPoweredOn,
+    ReadNGCTelemetry,
+    async_sleep,
+)
 
 if not six.PY3:
     import Tkinter as tk
@@ -46,6 +55,7 @@ class Boolean(tk.IntVar):
     If defined, callback is run with the new value of the flag as its
     argument
     """
+
     def __init__(self, master, flag, callback=None):
         tk.IntVar.__init__(self)
         self.master = master
@@ -53,7 +63,7 @@ class Boolean(tk.IntVar):
         g = get_root(master).globals
 
         self.set(g.cpars[flag])
-        self.trace('w', self._update)
+        self.trace("w", self._update)
         self.flag = flag
         self.callback = callback
 
@@ -179,11 +189,11 @@ class IntegerEntry(tk.Entry):
             return False
 
     def enable(self):
-        self.configure(state='normal')
+        self.configure(state="normal")
         self.set_bind()
 
     def disable(self):
-        self.configure(state='disable')
+        self.configure(state="disable")
         self.set_unbind()
 
     def on_key_release(self, *dummy):
@@ -208,13 +218,13 @@ class IntegerEntry(tk.Entry):
             self.has_prev_key_release = None
         # increment the value
         increment = 1
-        if 'Shift' in keysym:
+        if "Shift" in keysym:
             increment = 10
-        elif 'Control' in keysym:
+        elif "Control" in keysym:
             increment = 100
-        if 'Up' in keysym:
+        if "Up" in keysym:
             self.add(increment)
-        elif 'Down' in keysym:
+        elif "Down" in keysym:
             self.sub(increment)
 
     def set_bind(self):
@@ -222,36 +232,36 @@ class IntegerEntry(tk.Entry):
         Sets key bindings.
         """
         # Arrow keys and enter
-        self.bind('<Up>', lambda e: self.on_key_press_repeat('Up'))
-        self.bind('<Down>', lambda e: self.on_key_press_repeat('Down'))
-        self.bind('<Shift-Up>', lambda e: self.on_key_press_repeat('Shift-Up'))
-        self.bind('<Shift-Down>', lambda e: self.on_key_press_repeat('Shift-Down'))
-        self.bind('<Control-Up>', lambda e: self.on_key_press_repeat('Control-Up'))
-        self.bind('<Control-Down>', lambda e: self.on_key_press_repeat('Control-Down'))
-        self.bind('<KeyRelease>', lambda e: self.on_key_release_repeat())
+        self.bind("<Up>", lambda e: self.on_key_press_repeat("Up"))
+        self.bind("<Down>", lambda e: self.on_key_press_repeat("Down"))
+        self.bind("<Shift-Up>", lambda e: self.on_key_press_repeat("Shift-Up"))
+        self.bind("<Shift-Down>", lambda e: self.on_key_press_repeat("Shift-Down"))
+        self.bind("<Control-Up>", lambda e: self.on_key_press_repeat("Control-Up"))
+        self.bind("<Control-Down>", lambda e: self.on_key_press_repeat("Control-Down"))
+        self.bind("<KeyRelease>", lambda e: self.on_key_release_repeat())
 
         # Mouse buttons: bit complex since they don't automatically
         # run in continuous mode like the arrow keys
-        self.bind('<ButtonPress-1>', self._leftMouseDown)
-        self.bind('<ButtonRelease-1>', self._leftMouseUp)
-        self.bind('<Shift-ButtonPress-1>', self._shiftLeftMouseDown)
-        self.bind('<Shift-ButtonRelease-1>', self._shiftLeftMouseUp)
-        self.bind('<Control-Button-1>', lambda e: self.add(100))
+        self.bind("<ButtonPress-1>", self._leftMouseDown)
+        self.bind("<ButtonRelease-1>", self._leftMouseUp)
+        self.bind("<Shift-ButtonPress-1>", self._shiftLeftMouseDown)
+        self.bind("<Shift-ButtonRelease-1>", self._shiftLeftMouseUp)
+        self.bind("<Control-Button-1>", lambda e: self.add(100))
 
-        self.bind('<ButtonPress-3>', self._rightMouseDown)
-        self.bind('<ButtonRelease-3>', self._rightMouseUp)
-        self.bind('<Shift-ButtonPress-3>', self._shiftRightMouseDown)
-        self.bind('<Shift-ButtonRelease-3>', self._shiftRightMouseUp)
-        self.bind('<Control-Button-3>', lambda e: self.sub(100))
+        self.bind("<ButtonPress-3>", self._rightMouseDown)
+        self.bind("<ButtonRelease-3>", self._rightMouseUp)
+        self.bind("<Shift-ButtonPress-3>", self._shiftRightMouseDown)
+        self.bind("<Shift-ButtonRelease-3>", self._shiftRightMouseUp)
+        self.bind("<Control-Button-3>", lambda e: self.sub(100))
 
-        self.bind('<Double-Button-1>', self._dadd1)
-        self.bind('<Double-Button-3>', self._dsub1)
-        self.bind('<Shift-Double-Button-1>', self._dadd10)
-        self.bind('<Shift-Double-Button-3>', self._dsub10)
-        self.bind('<Control-Double-Button-1>', self._dadd100)
-        self.bind('<Control-Double-Button-3>', self._dsub100)
+        self.bind("<Double-Button-1>", self._dadd1)
+        self.bind("<Double-Button-3>", self._dsub1)
+        self.bind("<Shift-Double-Button-1>", self._dadd10)
+        self.bind("<Shift-Double-Button-3>", self._dsub10)
+        self.bind("<Control-Double-Button-1>", self._dadd100)
+        self.bind("<Control-Double-Button-3>", self._dsub100)
 
-        self.bind('<Enter>', self._enter)
+        self.bind("<Enter>", self._enter)
 
     def _leftMouseDown(self, event):
         self._leftMousePressed = True
@@ -332,28 +342,28 @@ class IntegerEntry(tk.Entry):
         """
         Unsets key bindings.
         """
-        self.unbind('<Up>')
-        self.unbind('<Down>')
-        self.unbind('<Shift-Up>')
-        self.unbind('<Shift-Down>')
-        self.unbind('<Control-Up>')
-        self.unbind('<Control-Down>')
+        self.unbind("<Up>")
+        self.unbind("<Down>")
+        self.unbind("<Shift-Up>")
+        self.unbind("<Shift-Down>")
+        self.unbind("<Control-Up>")
+        self.unbind("<Control-Down>")
 
-        self.unbind('<Shift-Button-1>')
-        self.unbind('<Shift-Button-3>')
-        self.unbind('<Control-Button-1>')
-        self.unbind('<Control-Button-3>')
-        self.unbind('<ButtonPress-1>')
-        self.unbind('<ButtonRelease-1>')
-        self.unbind('<ButtonPress-3>')
-        self.unbind('<ButtonRelease-3>')
-        self.unbind('<Double-Button-1>')
-        self.unbind('<Double-Button-3>')
-        self.unbind('<Shift-Double-Button-1>')
-        self.unbind('<shiftDouble-Button-3>')
-        self.unbind('<Control-Double-Button-1>')
-        self.unbind('<Control-Double-Button-3>')
-        self.unbind('<Enter>')
+        self.unbind("<Shift-Button-1>")
+        self.unbind("<Shift-Button-3>")
+        self.unbind("<Control-Button-1>")
+        self.unbind("<Control-Button-3>")
+        self.unbind("<ButtonPress-1>")
+        self.unbind("<ButtonRelease-1>")
+        self.unbind("<ButtonPress-3>")
+        self.unbind("<ButtonRelease-3>")
+        self.unbind("<Double-Button-1>")
+        self.unbind("<Double-Button-3>")
+        self.unbind("<Shift-Double-Button-1>")
+        self.unbind("<shiftDouble-Button-3>")
+        self.unbind("<Control-Double-Button-1>")
+        self.unbind("<Control-Double-Button-3>")
+        self.unbind("<Enter>")
 
     def _callback(self, *dummy):
         """
@@ -382,34 +392,34 @@ class IntegerEntry(tk.Entry):
     # following are callbacks for bindings
     def _dadd1(self, event):
         self.add(1)
-        return 'break'
+        return "break"
 
     def _dsub1(self, event):
         self.sub(1)
-        return 'break'
+        return "break"
 
     def _dadd10(self, event):
         self.add(10)
-        return 'break'
+        return "break"
 
     def _dsub10(self, event):
         self.sub(10)
-        return 'break'
+        return "break"
 
     def _dadd100(self, event):
         self.add(100)
-        return 'break'
+        return "break"
 
     def _dsub100(self, event):
         self.sub(100)
-        return 'break'
+        return "break"
 
     def _enter(self, event):
         self.focus()
         self.icursor(tk.END)
 
 
-class PosInt (IntegerEntry):
+class PosInt(IntegerEntry):
     """
     Provide positive or 0 integer input. Basically
     an IntegerEntry with one or two extras.
@@ -420,14 +430,14 @@ class PosInt (IntegerEntry):
         Sets key bindings -- we need this more than once
         """
         IntegerEntry.set_bind(self)
-        self.bind('<Next>', lambda e: self.set(0))
+        self.bind("<Next>", lambda e: self.set(0))
 
     def set_unbind(self):
         """
         Unsets key bindings -- we need this more than once
         """
         IntegerEntry.set_unbind(self)
-        self.unbind('<Next>')
+        self.unbind("<Next>")
 
     def validate(self, value):
         """
@@ -484,6 +494,7 @@ class RangedInt(IntegerEntry):
     """
     Provides range-checked integer input.
     """
+
     def __init__(self, master, ival, imin, imax, checker, blank, **kw):
         """
         master  -- enclosing widget
@@ -500,24 +511,24 @@ class RangedInt(IntegerEntry):
         self.imin = imin
         self.imax = imax
         IntegerEntry.__init__(self, master, ival, checker, blank, **kw)
-        self.bind('<Next>', lambda e: self.set(self.imin))
-        self.bind('<Prior>', lambda e: self.set(self.imax))
+        self.bind("<Next>", lambda e: self.set(self.imin))
+        self.bind("<Prior>", lambda e: self.set(self.imax))
 
     def set_bind(self):
         """
         Sets key bindings -- we need this more than once
         """
         IntegerEntry.set_bind(self)
-        self.bind('<Next>', lambda e: self.set(self.imin))
-        self.bind('<Prior>', lambda e: self.set(self.imax))
+        self.bind("<Next>", lambda e: self.set(self.imin))
+        self.bind("<Prior>", lambda e: self.set(self.imax))
 
     def set_unbind(self):
         """
         Unsets key bindings -- we need this more than once
         """
         IntegerEntry.set_unbind(self)
-        self.unbind('<Next>')
-        self.unbind('<Prior>')
+        self.unbind("<Next>")
+        self.unbind("<Prior>")
 
     def validate(self, value):
         """
@@ -581,30 +592,29 @@ class RangedMint(RangedInt):
         to allow it to be updated
         """
         self.mfac = mfac
-        RangedInt.__init__(self, master, ival, imin,
-                           imax, checker, blank, **kw)
-        self.unbind('<Next>')
-        self.unbind('<Prior>')
-        self.bind('<Next>', lambda e: self.set(self._min()))
-        self.bind('<Prior>', lambda e: self.set(self._max()))
+        RangedInt.__init__(self, master, ival, imin, imax, checker, blank, **kw)
+        self.unbind("<Next>")
+        self.unbind("<Prior>")
+        self.bind("<Next>", lambda e: self.set(self._min()))
+        self.bind("<Prior>", lambda e: self.set(self._max()))
 
     def set_bind(self):
         """
         Sets key bindings -- we need this more than once
         """
         RangedInt.set_bind(self)
-        self.unbind('<Next>')
-        self.unbind('<Prior>')
-        self.bind('<Next>', lambda e: self.set(self._min()))
-        self.bind('<Prior>', lambda e: self.set(self._max()))
+        self.unbind("<Next>")
+        self.unbind("<Prior>")
+        self.bind("<Next>", lambda e: self.set(self._min()))
+        self.bind("<Prior>", lambda e: self.set(self._max()))
 
     def set_unbind(self):
         """
         Sets key bindings -- we need this more than once
         """
         RangedInt.set_unbind(self)
-        self.unbind('<Next>')
-        self.unbind('<Prior>')
+        self.unbind("<Next>")
+        self.unbind("<Prior>")
 
     def add(self, num):
         """
@@ -619,9 +629,9 @@ class RangedMint(RangedInt):
         chunk = self.mfac.value()
         if val % chunk > 0:
             if num > 0:
-                val = chunk*(val // chunk + 1)
+                val = chunk * (val // chunk + 1)
             elif num < 0:
-                val = chunk*(val // chunk)
+                val = chunk * (val // chunk)
 
         val = max(self._min(), min(self._max(), val))
         self.set(val)
@@ -639,9 +649,9 @@ class RangedMint(RangedInt):
         chunk = self.mfac.value()
         if val % chunk > 0:
             if num > 0:
-                val = chunk*(val // chunk)
+                val = chunk * (val // chunk)
             elif num < 0:
-                val = chunk*(val // chunk + 1)
+                val = chunk * (val // chunk + 1)
 
         val = max(self._min(), min(self._max(), val))
         self.set(val)
@@ -675,6 +685,7 @@ class ListInt(IntegerEntry):
     Provides integer input allowing only a finite list of integers.
     Needed for the binning factors.
     """
+
     def __init__(self, master, ival, allowed, checker, **kw):
         """
         master  -- enclosing widget
@@ -684,11 +695,15 @@ class ListInt(IntegerEntry):
         kw      -- keyword arguments
         """
         if ival not in allowed:
-            raise DriverError('utils.widgets.ListInt: value = ' + str(ival) +
-                              ' not in list of allowed values.')
+            raise DriverError(
+                "utils.widgets.ListInt: value = "
+                + str(ival)
+                + " not in list of allowed values."
+            )
         if len(set(allowed)) != len(allowed):
-            raise DriverError('utils.widgets.ListInt: not all values unique' +
-                              ' in allowed list.')
+            raise DriverError(
+                "utils.widgets.ListInt: not all values unique" + " in allowed list."
+            )
 
         # we need to maintain an index of which integer has been selected
         self.allowed = allowed
@@ -701,37 +716,37 @@ class ListInt(IntegerEntry):
         Sets key bindings -- we need this more than once
         """
         IntegerEntry.set_bind(self)
-        self.unbind('<Shift-Up>')
-        self.unbind('<Shift-Down>')
-        self.unbind('<Control-Up>')
-        self.unbind('<Control-Down>')
-        self.unbind('<Double-Button-1>')
-        self.unbind('<Double-Button-3>')
-        self.unbind('<Shift-Button-1>')
-        self.unbind('<Shift-Button-3>')
-        self.unbind('<Control-Button-1>')
-        self.unbind('<Control-Button-3>')
+        self.unbind("<Shift-Up>")
+        self.unbind("<Shift-Down>")
+        self.unbind("<Control-Up>")
+        self.unbind("<Control-Down>")
+        self.unbind("<Double-Button-1>")
+        self.unbind("<Double-Button-3>")
+        self.unbind("<Shift-Button-1>")
+        self.unbind("<Shift-Button-3>")
+        self.unbind("<Control-Button-1>")
+        self.unbind("<Control-Button-3>")
 
-        self.bind('<Button-1>', lambda e: self.add(1))
-        self.bind('<Button-3>', lambda e: self.sub(1))
-        self.bind('<Up>', lambda e: self.add(1))
-        self.bind('<Down>', lambda e: self.sub(1))
-        self.bind('<Enter>', self._enter)
-        self.bind('<Next>', lambda e: self.set(self.allowed[0]))
-        self.bind('<Prior>', lambda e: self.set(self.allowed[-1]))
+        self.bind("<Button-1>", lambda e: self.add(1))
+        self.bind("<Button-3>", lambda e: self.sub(1))
+        self.bind("<Up>", lambda e: self.add(1))
+        self.bind("<Down>", lambda e: self.sub(1))
+        self.bind("<Enter>", self._enter)
+        self.bind("<Next>", lambda e: self.set(self.allowed[0]))
+        self.bind("<Prior>", lambda e: self.set(self.allowed[-1]))
 
     def set_unbind(self):
         """
         Unsets key bindings -- we need this more than once
         """
         IntegerEntry.set_unbind(self)
-        self.unbind('<Button-1>')
-        self.unbind('<Button-3>')
-        self.unbind('<Up>')
-        self.unbind('<Down>')
-        self.unbind('<Enter>')
-        self.unbind('<Next>')
-        self.unbind('<Prior>')
+        self.unbind("<Button-1>")
+        self.unbind("<Button-3>")
+        self.unbind("<Up>")
+        self.unbind("<Down>")
+        self.unbind("<Enter>")
+        self.unbind("<Next>")
+        self.unbind("<Prior>")
 
     def validate(self, value):
         """
@@ -760,14 +775,14 @@ class ListInt(IntegerEntry):
         """
         Adds num to the current value
         """
-        self.index = max(0, min(len(self.allowed)-1, self.index+num))
+        self.index = max(0, min(len(self.allowed) - 1, self.index + num))
         self.set(self.allowed[self.index])
 
     def sub(self, num):
         """
         Subtracts num from the current value
         """
-        self.index = max(0, min(len(self.allowed)-1, self.index-num))
+        self.index = max(0, min(len(self.allowed) - 1, self.index - num))
         self.set(self.allowed[self.index])
 
     def ok(self):
@@ -797,7 +812,7 @@ class FloatEntry(tk.Entry):
         """
         # important to set the value of _variable before tracing it
         # to avoid immediate run of _callback.
-        np = kw.pop('nplaces', 8)
+        np = kw.pop("nplaces", 8)
         tk.Entry.__init__(self, master, **kw)
         self._variable = tk.StringVar()
         self.nplaces = np
@@ -871,52 +886,52 @@ class FloatEntry(tk.Entry):
             return False
 
     def enable(self):
-        self.configure(state='normal')
+        self.configure(state="normal")
         self.set_bind()
 
     def disable(self):
-        self.configure(state='disable')
+        self.configure(state="disable")
         self.set_unbind()
 
     def set_bind(self):
         """
         Sets key bindings.
         """
-        self.bind('<Button-1>', lambda e: self.add(0.1))
-        self.bind('<Button-3>', lambda e: self.sub(0.1))
-        self.bind('<Up>', lambda e: self.add(0.1))
-        self.bind('<Down>', lambda e: self.sub(0.1))
-        self.bind('<Shift-Up>', lambda e: self.add(1))
-        self.bind('<Shift-Down>', lambda e: self.sub(1))
-        self.bind('<Control-Up>', lambda e: self.add(10))
-        self.bind('<Control-Down>', lambda e: self.sub(10))
-        self.bind('<Double-Button-1>', self._dadd)
-        self.bind('<Double-Button-3>', self._dsub)
-        self.bind('<Shift-Button-1>', lambda e: self.add(1))
-        self.bind('<Shift-Button-3>', lambda e: self.sub(1))
-        self.bind('<Control-Button-1>', lambda e: self.add(10))
-        self.bind('<Control-Button-3>', lambda e: self.sub(10))
-        self.bind('<Enter>', self._enter)
+        self.bind("<Button-1>", lambda e: self.add(0.1))
+        self.bind("<Button-3>", lambda e: self.sub(0.1))
+        self.bind("<Up>", lambda e: self.add(0.1))
+        self.bind("<Down>", lambda e: self.sub(0.1))
+        self.bind("<Shift-Up>", lambda e: self.add(1))
+        self.bind("<Shift-Down>", lambda e: self.sub(1))
+        self.bind("<Control-Up>", lambda e: self.add(10))
+        self.bind("<Control-Down>", lambda e: self.sub(10))
+        self.bind("<Double-Button-1>", self._dadd)
+        self.bind("<Double-Button-3>", self._dsub)
+        self.bind("<Shift-Button-1>", lambda e: self.add(1))
+        self.bind("<Shift-Button-3>", lambda e: self.sub(1))
+        self.bind("<Control-Button-1>", lambda e: self.add(10))
+        self.bind("<Control-Button-3>", lambda e: self.sub(10))
+        self.bind("<Enter>", self._enter)
 
     def set_unbind(self):
         """
         Unsets key bindings.
         """
-        self.unbind('<Button-1>')
-        self.unbind('<Button-3>')
-        self.unbind('<Up>')
-        self.unbind('<Down>')
-        self.unbind('<Shift-Up>')
-        self.unbind('<Shift-Down>')
-        self.unbind('<Control-Up>')
-        self.unbind('<Control-Down>')
-        self.unbind('<Double-Button-1>')
-        self.unbind('<Double-Button-3>')
-        self.unbind('<Shift-Button-1>')
-        self.unbind('<Shift-Button-3>')
-        self.unbind('<Control-Button-1>')
-        self.unbind('<Control-Button-3>')
-        self.unbind('<Enter>')
+        self.unbind("<Button-1>")
+        self.unbind("<Button-3>")
+        self.unbind("<Up>")
+        self.unbind("<Down>")
+        self.unbind("<Shift-Up>")
+        self.unbind("<Shift-Down>")
+        self.unbind("<Control-Up>")
+        self.unbind("<Control-Down>")
+        self.unbind("<Double-Button-1>")
+        self.unbind("<Double-Button-3>")
+        self.unbind("<Shift-Button-1>")
+        self.unbind("<Shift-Button-3>")
+        self.unbind("<Control-Button-1>")
+        self.unbind("<Control-Button-3>")
+        self.unbind("<Enter>")
 
     def _callback(self, *dummy):
         """
@@ -949,11 +964,11 @@ class FloatEntry(tk.Entry):
     # following are callbacks for bindings
     def _dadd(self, event):
         self.add(0.1)
-        return 'break'
+        return "break"
 
     def _dsub(self, event):
         self.sub(0.1)
-        return 'break'
+        return "break"
 
     def _enter(self, event):
         self.focus()
@@ -964,8 +979,8 @@ class RangedFloat(FloatEntry):
     """
     Provides range-checked float input.
     """
-    def __init__(self, master, fval, fmin, fmax, checker,
-                 blank, allowzero=False, **kw):
+
+    def __init__(self, master, fval, fmin, fmax, checker, blank, allowzero=False, **kw):
         """
         master    -- enclosing widget
         fval      -- initial float value
@@ -984,8 +999,8 @@ class RangedFloat(FloatEntry):
         self.fmin = fmin
         self.fmax = fmax
         FloatEntry.__init__(self, master, fval, checker, blank, **kw)
-        self.bind('<Next>', lambda e: self.set(self.fmin))
-        self.bind('<Prior>', lambda e: self.set(self.fmax))
+        self.bind("<Next>", lambda e: self.set(self.fmin))
+        self.bind("<Prior>", lambda e: self.set(self.fmax))
         self.allowzero = allowzero
 
     def set_bind(self):
@@ -993,16 +1008,16 @@ class RangedFloat(FloatEntry):
         Sets key bindings -- we need this more than once
         """
         FloatEntry.set_bind(self)
-        self.bind('<Next>', lambda e: self.set(self.fmin))
-        self.bind('<Prior>', lambda e: self.set(self.fmax))
+        self.bind("<Next>", lambda e: self.set(self.fmin))
+        self.bind("<Prior>", lambda e: self.set(self.fmax))
 
     def set_unbind(self):
         """
         Unsets key bindings -- we need this more than once
         """
         FloatEntry.set_unbind(self)
-        self.unbind('<Next>')
-        self.unbind('<Prior>')
+        self.unbind("<Next>")
+        self.unbind("<Prior>")
 
     def validate(self, value):
         """
@@ -1015,8 +1030,11 @@ class RangedFloat(FloatEntry):
             # trap blank fields here
             if not self.blank or value:
                 v = float(value)
-                if (self.allowzero and v != 0 and v < self.fmin) or \
-                        (not self.allowzero and v < self.fmin) or v > self.fmax:
+                if (
+                    (self.allowzero and v != 0 and v < self.fmin)
+                    or (not self.allowzero and v < self.fmin)
+                    or v > self.fmax
+                ):
                     return None
             return value
         except ValueError:
@@ -1062,24 +1080,20 @@ class TextEntry(tk.Entry):
     it but it keeps things neater and it has a check for
     blank entries.
     """
+
     def __init__(self, master, width, callback=None):
         """
         master  : the widget this gets placed inside
-        """        # Define a StringVar, connect it to the callback, if there is one
+        """  # Define a StringVar, connect it to the callback, if there is one
         self.val = tk.StringVar()
         if callback is not None:
-            self.val.trace('w', callback)
-        tk.Entry.__init__(
-            self,
-            master,
-            textvariable=self.val,
-            width=width
-        )
+            self.val.trace("w", callback)
+        tk.Entry.__init__(self, master, textvariable=self.val, width=width)
         # get globals
         g = get_root(self).globals
-        self.config(fg=g.COL['text'], bg=g.COL['main'])
+        self.config(fg=g.COL["text"], bg=g.COL["main"])
         # Control input behaviour.
-        self.bind('<Enter>', lambda e: self.focus())
+        self.bind("<Enter>", lambda e: self.focus())
 
     def value(self):
         """
@@ -1094,7 +1108,7 @@ class TextEntry(tk.Entry):
         return self.val.set(text)
 
     def ok(self):
-        if self.value() == '' or self.value().isspace():
+        if self.value() == "" or self.value().isspace():
             return False
         else:
             return True
@@ -1104,6 +1118,7 @@ class Choice(tk.OptionMenu):
     """
     Menu choice class.
     """
+
     def __init__(self, master, options, initial=None, width=0, checker=None):
         """
         master  : containing widget
@@ -1125,16 +1140,16 @@ class Choice(tk.OptionMenu):
         self.config(width=width, font=g.ENTRY_FONT)
         self.checker = checker
         if self.checker is not None:
-            self.val.trace('w', self.checker)
+            self.val.trace("w", self.checker)
         self.options = options
 
     def update(self, new_options):
         """
         Update option list with new options
         """
-        menu = self['menu']
+        menu = self["menu"]
         # clear the menu
-        menu.delete(0, 'end')
+        menu.delete(0, "end")
         for option in new_options:
             menu.add_command(label=option, command=partial(self.val.set, option))
 
@@ -1145,10 +1160,10 @@ class Choice(tk.OptionMenu):
         return self.val.set(choice)
 
     def disable(self):
-        self.configure(state='disable')
+        self.configure(state="disable")
 
     def enable(self):
-        self.configure(state='normal')
+        self.configure(state="normal")
 
     def getIndex(self):
         """
@@ -1164,6 +1179,7 @@ class Expose(RangedFloat):
     Special entry field for exposure times designed to return
     an integer number of 0.01ms increments.
     """
+
     def __init__(self, master, fval, fmin, fmax, checker, **kw):
         """
         master  -- enclosing widget
@@ -1174,16 +1190,19 @@ class Expose(RangedFloat):
 
         fval, fmin and fmax must be multiples of 0.00001
         """
-        if abs(round(100000*fval)-100000*fval) > 1.e-12:
+        if abs(round(100000 * fval) - 100000 * fval) > 1.0e-12:
             raise DriverError(
-                'utils.widgets.Expose.__init__: fval must be a multiple of 0.00001')
-        if abs(round(100000*fmin)-100000*fmin) > 1.e-12:
+                "utils.widgets.Expose.__init__: fval must be a multiple of 0.00001"
+            )
+        if abs(round(100000 * fmin) - 100000 * fmin) > 1.0e-12:
             raise DriverError(
-                'utils.widgets.Expose.__init__: fmin must be a multiple of 0.00001')
-        if abs(round(100000*fmax)-100000*fmax) > 1.e-12:
+                "utils.widgets.Expose.__init__: fmin must be a multiple of 0.00001"
+            )
+        if abs(round(100000 * fmax) - 100000 * fmax) > 1.0e-12:
             raise DriverError(
-                'utils.widgets.Expose.__init__: fmax must be a multiple of 0.00001')
-        kw['nplaces'] = 5
+                "utils.widgets.Expose.__init__: fmax must be a multiple of 0.00001"
+            )
+        kw["nplaces"] = 5
         RangedFloat.__init__(self, master, fval, fmin, fmax, checker, True, **kw)
 
     def validate(self, value):
@@ -1196,7 +1215,7 @@ class Expose(RangedFloat):
                 v = float(value)
                 if (v != 0 and v < self.fmin) or v > self.fmax:
                     return None
-                if abs(round(100000*v)-100000*v) > 1.e-12:
+                if abs(round(100000 * v) - 100000 * v) > 1.0e-12:
                     return None
             return value
         except ValueError:
@@ -1207,7 +1226,7 @@ class Expose(RangedFloat):
         Returns integer value in units of 0.01ms, if possible, None if not.
         """
         try:
-            return int(round(100000*float(self._value)))
+            return int(round(100000 * float(self._value)))
         except Exception:
             return None
 
@@ -1215,9 +1234,10 @@ class Expose(RangedFloat):
         """
         Updates minimum value
         """
-        if round(100000*fmin) != 100000*fmin:
-            raise DriverError('utils.widgets.Expose.set_min: ' +
-                              'fmin must be a multiple of 0.00001')
+        if round(100000 * fmin) != 100000 * fmin:
+            raise DriverError(
+                "utils.widgets.Expose.set_min: " + "fmin must be a multiple of 0.00001"
+            )
         self.fmin = fmin
         self.set(self.fmin)
 
@@ -1228,8 +1248,8 @@ class Radio(tk.Frame):
     from left-to-right. Has a max number of columns after which it
     will jump to left of next row and start over.
     """
-    def __init__(self, master, options, ncmax, checker=None,
-                 values=None, initial=0):
+
+    def __init__(self, master, options, ncmax, checker=None, values=None, initial=0):
         """
         master : containing widget
         options : array of option strings, in order. These are the choices
@@ -1244,8 +1264,10 @@ class Radio(tk.Frame):
         # get globals from root widget
         g = get_root(self).globals
         if values is not None and len(values) != len(options):
-            raise DriverError('utils.widgets.Radio.__init__: values and ' +
-                              'options must have same length')
+            raise DriverError(
+                "utils.widgets.Radio.__init__: values and "
+                + "options must have same length"
+            )
 
         self.val = tk.StringVar()
         if values is None:
@@ -1259,13 +1281,25 @@ class Radio(tk.Frame):
         for nopt, option in enumerate(options):
             if values is None:
                 self.buttons.append(
-                    tk.Radiobutton(self, text=option, variable=self.val,
-                                   font=g.ENTRY_FONT, value=option))
+                    tk.Radiobutton(
+                        self,
+                        text=option,
+                        variable=self.val,
+                        font=g.ENTRY_FONT,
+                        value=option,
+                    )
+                )
                 self.buttons[-1].grid(row=row, column=col, sticky=tk.W)
             else:
                 self.buttons.append(
-                    tk.Radiobutton(self, text=option, variable=self.val,
-                                   font=g.ENTRY_FONT, value=values[nopt]))
+                    tk.Radiobutton(
+                        self,
+                        text=option,
+                        variable=self.val,
+                        font=g.ENTRY_FONT,
+                        value=values[nopt],
+                    )
+                )
                 self.buttons[-1].grid(row=row, column=col, sticky=tk.W)
             col += 1
             if col == ncmax:
@@ -1274,7 +1308,7 @@ class Radio(tk.Frame):
 
         self.checker = checker
         if self.checker is not None:
-            self.val.trace('w', self.checker)
+            self.val.trace("w", self.checker)
         self.options = options
 
     def value(self):
@@ -1285,11 +1319,11 @@ class Radio(tk.Frame):
 
     def disable(self):
         for b in self.buttons:
-            b.configure(state='disable')
+            b.configure(state="disable")
 
     def enable(self):
         for b in self.buttons:
-            b.configure(state='normal')
+            b.configure(state="normal")
 
     def getIndex(self):
         """
@@ -1304,20 +1338,20 @@ class OnOff(tk.Checkbutton):
     """
     On or Off choice
     """
+
     def __init__(self, master, value, checker=None):
         self.val = tk.IntVar()
         self.val.set(value)
-        tk.Checkbutton.__init__(self, master, variable=self.val,
-                                command=checker)
+        tk.Checkbutton.__init__(self, master, variable=self.val, command=checker)
 
     def __call__(self):
         return self.val.get()
 
     def disable(self):
-        self.configure(state='disable')
+        self.configure(state="disable")
 
     def enable(self):
-        self.configure(state='normal')
+        self.configure(state="normal")
 
     def set(self, state):
         self.val.set(state)
@@ -1327,27 +1361,27 @@ class Select(tk.OptionMenu):
     """
     Dropdown box menu for selection
     """
+
     def __init__(self, master, initial_index, options, checker=None):
         self.val = tk.StringVar()
         self.options = options
         self.val.set(options[initial_index])
-        tk.OptionMenu.__init__(self, master, self.val, *options,
-                               command=checker)
+        tk.OptionMenu.__init__(self, master, self.val, *options, command=checker)
 
     def __call__(self):
         return self.val.get()
 
     def disable(self):
-        self.configure(state='disable')
+        self.configure(state="disable")
 
     def enable(self):
-        self.configure(state='normal')
+        self.configure(state="normal")
 
     def set(self, value):
         if value not in self.options:
-            raise ValueError('{0} not one of the possible options: {1!r}'.format(
-                value, self.options
-            ))
+            raise ValueError(
+                "{0} not one of the possible options: {1!r}".format(value, self.options)
+            )
         self.val.set(value)
 
 
@@ -1361,8 +1395,8 @@ class GuiLogger(Logger, tk.Frame):
      width   : width in pixels
 
     """
-    def __init__(self, logname, root, height, width):
 
+    def __init__(self, logname, root, height, width):
         # configure the Logger
         Logger.__init__(self, logname)
 
@@ -1373,8 +1407,12 @@ class GuiLogger(Logger, tk.Frame):
         scrollbar = tk.Scrollbar(self)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         twidget = tk.Text(
-            self, height=height, width=width, bg=g.COL['log'],
-            yscrollcommand=scrollbar.set)
+            self,
+            height=height,
+            width=width,
+            bg=g.COL["log"],
+            yscrollcommand=scrollbar.set,
+        )
         twidget.configure(state=tk.DISABLED)
         twidget.pack(side=tk.LEFT)
         scrollbar.config(command=twidget.yview)
@@ -1396,7 +1434,6 @@ class LabelGuiLogger(Logger, tk.LabelFrame):
     """
 
     def __init__(self, logname, root, height, width, label):
-
         # configure the Logger
         Logger.__init__(self, logname)
 
@@ -1407,8 +1444,12 @@ class LabelGuiLogger(Logger, tk.LabelFrame):
         scrollbar = tk.Scrollbar(self)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         twidget = tk.Text(
-            self, height=height, width=width, bg=g.COL['log'],
-            yscrollcommand=scrollbar.set)
+            self,
+            height=height,
+            width=width,
+            bg=g.COL["log"],
+            yscrollcommand=scrollbar.set,
+        )
         twidget.configure(state=tk.DISABLED)
         twidget.pack(side=tk.LEFT)
         scrollbar.config(command=twidget.yview)
@@ -1436,8 +1477,9 @@ class ActButton(tk.Button):
         bg       : background colour
         kwargs   : keyword arguments
         """
-        tk.Button.__init__(self, master, fg='black', width=width,
-                           command=self.act, **kwargs)
+        tk.Button.__init__(
+            self, master, fg="black", width=width, command=self.act, **kwargs
+        )
 
         # store some attributes. other anc calbback are obvious.
         # _active indicates whether the button should be enabled or disabled
@@ -1451,7 +1493,7 @@ class ActButton(tk.Button):
         """
         Enable the button, set its activity flag.
         """
-        self.config(state='normal')
+        self.config(state="normal")
         self._active = True
 
     def disable(self):
@@ -1460,7 +1502,7 @@ class ActButton(tk.Button):
         unset its activity flag come-what-may.
         """
         if not self._expert:
-            self.config(state='disable')
+            self.config(state="disable")
         self._active = False
 
     def setExpert(self):
@@ -1469,7 +1511,7 @@ class ActButton(tk.Button):
         regardless of its activity status.
         """
         self._expert = True
-        self.configure(state='normal')
+        self.configure(state="normal")
 
     def setNonExpert(self):
         """
@@ -1494,6 +1536,7 @@ class Ilabel(tk.Label):
     Class to define an information label which uses the same font
     as the entry fields rather than the default font
     """
+
     def __init__(self, master, **kw):
         tk.Label.__init__(self, master, **kw)
         g = get_root(self).globals
@@ -1504,8 +1547,9 @@ class PABox(RangedFloat):
     """
     A float that wraps at 360 deg
     """
+
     def set(self, value):
-        new_val = coord.Longitude(value*u.deg).deg
+        new_val = coord.Longitude(value * u.deg).deg
         RangedFloat.set(self, new_val)
 
 
@@ -1513,9 +1557,10 @@ class Sexagesimal(tk.Entry):
     """
     Widget for coordinate entry
     """
-    def __init__(self, master, ival=0, callback=None, unit='hms', **kw):
+
+    def __init__(self, master, ival=0, callback=None, unit="hms", **kw):
         tk.Entry.__init__(self, master, **kw)
-        if unit == 'hms':
+        if unit == "hms":
             self.unit = u.hourangle
         else:
             self.unit = u.deg
@@ -1532,9 +1577,11 @@ class Sexagesimal(tk.Entry):
 
     def as_string(self):
         if self.unit == u.hourangle:
-            return self._value.to_string(unit=self.unit, sep=':', precision=2)
+            return self._value.to_string(unit=self.unit, sep=":", precision=2)
         else:
-            return self._value.to_string(unit=self.unit, sep=':', precision=1, alwayssign=True)
+            return self._value.to_string(
+                unit=self.unit, sep=":", precision=1, alwayssign=True
+            )
 
     def validate(self, value):
         """
@@ -1590,52 +1637,52 @@ class Sexagesimal(tk.Entry):
             return False
 
     def enable(self):
-        self.configure(state='normal')
+        self.configure(state="normal")
         self.set_bind()
 
     def disable(self):
-        self.configure(state='disable')
+        self.configure(state="disable")
         self.set_unbind()
 
     def set_bind(self):
         """
         Sets key bindings.
         """
-        self.bind('<Button-1>', lambda e: self.add(0.1*u.arcsec))
-        self.bind('<Button-3>', lambda e: self.sub(0.1*u.arcsec))
-        self.bind('<Up>', lambda e: self.add(0.1*u.arcsec))
-        self.bind('<Down>', lambda e: self.sub(0.1*u.arcsec))
-        self.bind('<Shift-Up>', lambda e: self.add(1*u.arcsec))
-        self.bind('<Shift-Down>', lambda e: self.sub(1*u.arcsec))
-        self.bind('<Control-Up>', lambda e: self.add(10*u.arcsec))
-        self.bind('<Control-Down>', lambda e: self.sub(10*u.arcsec))
-        self.bind('<Double-Button-1>', self._dadd)
-        self.bind('<Double-Button-3>', self._dsub)
-        self.bind('<Shift-Button-1>', lambda e: self.add(1*u.arcsec))
-        self.bind('<Shift-Button-3>', lambda e: self.sub(1*u.arcsec))
-        self.bind('<Control-Button-1>', lambda e: self.add(10*u.arcsec))
-        self.bind('<Control-Button-3>', lambda e: self.sub(10*u.arcsec))
-        self.bind('<Enter>', self._enter)
+        self.bind("<Button-1>", lambda e: self.add(0.1 * u.arcsec))
+        self.bind("<Button-3>", lambda e: self.sub(0.1 * u.arcsec))
+        self.bind("<Up>", lambda e: self.add(0.1 * u.arcsec))
+        self.bind("<Down>", lambda e: self.sub(0.1 * u.arcsec))
+        self.bind("<Shift-Up>", lambda e: self.add(1 * u.arcsec))
+        self.bind("<Shift-Down>", lambda e: self.sub(1 * u.arcsec))
+        self.bind("<Control-Up>", lambda e: self.add(10 * u.arcsec))
+        self.bind("<Control-Down>", lambda e: self.sub(10 * u.arcsec))
+        self.bind("<Double-Button-1>", self._dadd)
+        self.bind("<Double-Button-3>", self._dsub)
+        self.bind("<Shift-Button-1>", lambda e: self.add(1 * u.arcsec))
+        self.bind("<Shift-Button-3>", lambda e: self.sub(1 * u.arcsec))
+        self.bind("<Control-Button-1>", lambda e: self.add(10 * u.arcsec))
+        self.bind("<Control-Button-3>", lambda e: self.sub(10 * u.arcsec))
+        self.bind("<Enter>", self._enter)
 
     def set_unbind(self):
         """
         Unsets key bindings.
         """
-        self.unbind('<Button-1>')
-        self.unbind('<Button-3>')
-        self.unbind('<Up>')
-        self.unbind('<Down>')
-        self.unbind('<Shift-Up>')
-        self.unbind('<Shift-Down>')
-        self.unbind('<Control-Up>')
-        self.unbind('<Control-Down>')
-        self.unbind('<Double-Button-1>')
-        self.unbind('<Double-Button-3>')
-        self.unbind('<Shift-Button-1>')
-        self.unbind('<Shift-Button-3>')
-        self.unbind('<Control-Button-1>')
-        self.unbind('<Control-Button-3>')
-        self.unbind('<Enter>')
+        self.unbind("<Button-1>")
+        self.unbind("<Button-3>")
+        self.unbind("<Up>")
+        self.unbind("<Down>")
+        self.unbind("<Shift-Up>")
+        self.unbind("<Shift-Down>")
+        self.unbind("<Control-Up>")
+        self.unbind("<Control-Down>")
+        self.unbind("<Double-Button-1>")
+        self.unbind("<Double-Button-3>")
+        self.unbind("<Shift-Button-1>")
+        self.unbind("<Shift-Button-3>")
+        self.unbind("<Control-Button-1>")
+        self.unbind("<Control-Button-3>")
+        self.unbind("<Enter>")
 
     def _callback(self, *dummy):
         """
@@ -1657,12 +1704,12 @@ class Sexagesimal(tk.Entry):
 
     # following are callbacks for bindings
     def _dadd(self, event):
-        self.add(0.1*u.arcsec)
-        return 'break'
+        self.add(0.1 * u.arcsec)
+        return "break"
 
     def _dsub(self, event):
-        self.sub(0.1*u.arcsec)
-        return 'break'
+        self.sub(0.1 * u.arcsec)
+        return "break"
 
     def _enter(self, event):
         self.focus()
@@ -1682,9 +1729,9 @@ class Stop(ActButton):
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='Stop')
+        ActButton.__init__(self, master, width, text="Stop")
         g = get_root(self).globals
-        self.config(bg=g.COL['stop'])
+        self.config(bg=g.COL["stop"])
 
         # flags to help with stopping in background
         self.stopping = False
@@ -1695,7 +1742,7 @@ class Stop(ActButton):
         """
         ActButton.enable(self)
         g = get_root(self).globals
-        self.config(bg=g.COL['stop'])
+        self.config(bg=g.COL["stop"])
 
     def disable(self):
         """
@@ -1704,9 +1751,9 @@ class Stop(ActButton):
         ActButton.disable(self)
         g = get_root(self).globals
         if self._expert:
-            self.config(bg=g.COL['stop'])
+            self.config(bg=g.COL["stop"])
         else:
-            self.config(bg=g.COL['stopD'])
+            self.config(bg=g.COL["stopD"])
 
     def setExpert(self):
         """
@@ -1715,7 +1762,7 @@ class Stop(ActButton):
         """
         ActButton.setExpert(self)
         g = get_root(self).globals
-        self.config(bg=g.COL['stop'])
+        self.config(bg=g.COL["stop"])
 
     def setNonExpert(self):
         """
@@ -1733,7 +1780,7 @@ class Stop(ActButton):
         Carries out the action associated with Stop button
         """
         g = get_root(self).globals
-        g.clog.info('Stop pressed')
+        g.clog.info("Stop pressed")
 
         # Stop exposure meter
         # do this first, so timer doesn't also try to enable idle mode
@@ -1741,11 +1788,11 @@ class Stop(ActButton):
 
         try:
             session = get_root(self).globals.session
-            yield session.call('hipercam.ngc.rpc.abort')
+            yield session.call("hipercam.ngc.rpc.abort")
             self.stopping = True
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn('Run stop failed. Error = ' + msg)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
+            g.clog.warn("Run stop failed. Error = " + msg)
             self.stopping = False
 
     @inlineCallbacks
@@ -1761,7 +1808,7 @@ class Stop(ActButton):
 
         g = get_root(self).globals
         res = ReadNGCTelemetry(telemetry)
-        stopped = res.state == 'idle'
+        stopped = res.state == "idle"
 
         if stopped and self.stopping:
             # Exposure stopped OK; modify buttons
@@ -1772,7 +1819,7 @@ class Stop(ActButton):
             try:
                 yield insertFITSHDU(g)
             except Exception as err:
-                g.clog.warn('Could not add FITS Table to run')
+                g.clog.warn("Could not add FITS Table to run")
                 g.clog.warn(str(err))
 
             g.observe.start.enable()
@@ -1781,27 +1828,27 @@ class Stop(ActButton):
             self.disable()
 
             # Report that run has stopped
-            g.clog.info('Run stopped')
+            g.clog.info("Run stopped")
             self.stopping = False
 
             # enable idle mode now run has stopped
-            g.clog.info('Setting chips to idle')
-            idle = {'appdata': {'app': 'Idle'}}
+            g.clog.info("Setting chips to idle")
+            idle = {"appdata": {"app": "Idle"}}
             try:
                 success = yield postJSON(g, idle)
                 if not success:
-                    raise Exception('postJSON returned false')
+                    raise Exception("postJSON returned false")
             except Exception as err:
-                g.clog.warn('Failed to enable idle mode')
+                g.clog.warn("Failed to enable idle mode")
                 g.clog.warn(str(err))
 
-            g.clog.info('Stopping offsets (if running')
+            g.clog.info("Stopping offsets (if running")
             try:
                 success = yield stopNodding(g)
                 if not success:
-                    raise Exception('Failed to stop dithering: response was false')
+                    raise Exception("Failed to stop dithering: response was false")
             except Exception as err:
-                g.clog.warn('Failed to stop GTC offset script')
+                g.clog.warn("Failed to stop GTC offset script")
                 g.clog.warn(str(err))
 
             returnValue(True)
@@ -1816,7 +1863,7 @@ class Stop(ActButton):
             g.observe.start.disable()
             g.setup.powerOn.disable()
             g.setup.powerOff.disable()
-        elif res.state == 'active':
+        elif res.state == "active":
             # exposure is underway
             self.enable()
             g.observe.start.disable()
@@ -1831,15 +1878,16 @@ class ProgramID(tk.Frame):
     This is a text entry field and a PosInt widget bound together.
     The point of this widget is simply to get a nice layout.
     """
+
     def __init__(self, master):
         tk.Frame.__init__(self, master)
         self.master = master
-        check = master.check if hasattr(master, 'check') else None
+        check = master.check if hasattr(master, "check") else None
         self.progid = TextEntry(self, 20, check)
         self.obid = PosInt(self, 1, check, True, width=4)
 
         self.progid.pack(side=tk.LEFT, anchor=tk.W)
-        tk.Label(self, text='/').pack(side=tk.LEFT, anchor=tk.W, padx=2)
+        tk.Label(self, text="/").pack(side=tk.LEFT, anchor=tk.W, padx=2)
         self.obid.pack(side=tk.LEFT, anchor=tk.W, padx=2)
 
     def disable(self):
@@ -1864,6 +1912,7 @@ class Target(tk.Frame):
     according to the results. If no check has been made, it has
     a default colour.
     """
+
     def __init__(self, master, callback=None):
         tk.Frame.__init__(self, master)
 
@@ -1872,20 +1921,20 @@ class Target(tk.Frame):
         # Entry field, linked to a StringVar which is traced for
         # any modification
         self.val = tk.StringVar()
-        self.val.trace('w', self.modver)
+        self.val.trace("w", self.modver)
         self.entry = tk.Entry(
-            self, textvariable=self.val, fg=g.COL['text'],
-            bg=g.COL['main'], width=25)
-        self.entry.bind('<Enter>', lambda e: self.entry.focus())
+            self, textvariable=self.val, fg=g.COL["text"], bg=g.COL["main"], width=25
+        )
+        self.entry.bind("<Enter>", lambda e: self.entry.focus())
 
         # Verification button which accesses simbad to see if
         # the target is recognised.
         self.verify = tk.Button(
-            self, fg='black', width=8, text='Verify',
-            bg=g.COL['main'], command=self.act)
+            self, fg="black", width=8, text="Verify", bg=g.COL["main"], command=self.act
+        )
         self.entry.pack(side=tk.LEFT, anchor=tk.W)
         self.verify.pack(side=tk.LEFT, anchor=tk.W, padx=5)
-        self.verify.config(state='disable')
+        self.verify.config(state="disable")
         # track successed and failures
         self.successes = []
         self.failures = []
@@ -1904,43 +1953,43 @@ class Target(tk.Frame):
         return self.val.set(text)
 
     def disable(self):
-        self.entry.configure(state='disable')
+        self.entry.configure(state="disable")
         g = get_root(self).globals
         if self.ok():
             tname = self.val.get()
             if tname in self.successes:
                 # known to be in simbad
-                self.verify.config(bg=g.COL['startD'])
+                self.verify.config(bg=g.COL["startD"])
             elif tname in self.failures:
                 # known not to be in simbad
-                self.verify.config(bg=g.COL['stopD'])
+                self.verify.config(bg=g.COL["stopD"])
             else:
                 # not known whether in simbad
-                self.verify.config(bg=g.COL['main'])
+                self.verify.config(bg=g.COL["main"])
         else:
-            self.verify.config(bg=g.COL['main'])
-        self.verify.config(state='disable')
+            self.verify.config(bg=g.COL["main"])
+        self.verify.config(state="disable")
 
     def enable(self):
-        self.entry.configure(state='normal')
+        self.entry.configure(state="normal")
         g = get_root(self).globals
         if self.ok():
             tname = self.val.get()
             if tname in self.successes:
                 # known to be in simbad
-                self.verify.config(bg=g.COL['start'])
+                self.verify.config(bg=g.COL["start"])
             elif tname in self.failures:
                 # known not to be in simbad
-                self.verify.config(bg=g.COL['stop'])
+                self.verify.config(bg=g.COL["stop"])
             else:
                 # not known whether in simbad
-                self.verify.config(bg=g.COL['main'])
+                self.verify.config(bg=g.COL["main"])
         else:
-            self.verify.config(bg=g.COL['main'])
-        self.verify.config(state='normal')
+            self.verify.config(bg=g.COL["main"])
+        self.verify.config(state="normal")
 
     def ok(self):
-        if self.val.get() == '' or self.val.get().isspace():
+        if self.val.get() == "" or self.val.get().isspace():
             return False
         else:
             return True
@@ -1954,17 +2003,17 @@ class Target(tk.Frame):
             tname = self.val.get()
             if tname in self.successes:
                 # known to be in simbad
-                self.verify.config(bg=g.COL['start'])
+                self.verify.config(bg=g.COL["start"])
             elif tname in self.failures:
                 # known not to be in simbad
-                self.verify.config(bg=g.COL['stop'])
+                self.verify.config(bg=g.COL["stop"])
             else:
                 # not known whether in simbad
-                self.verify.config(bg=g.COL['main'])
-            self.verify.config(state='normal')
+                self.verify.config(bg=g.COL["main"])
+            self.verify.config(state="normal")
         else:
-            self.verify.config(bg=g.COL['main'])
-            self.verify.config(state='disable')
+            self.verify.config(bg=g.COL["main"])
+            self.verify.config(state="disable")
 
         if self.callback is not None:
             self.callback()
@@ -1975,41 +2024,42 @@ class Target(tk.Frame):
         """
         tname = self.val.get()
         g = get_root(self).globals
-        g.clog.info('Checking ' + tname + ' in simbad')
+        g.clog.info("Checking " + tname + " in simbad")
         try:
             ret = checkSimbad(g, tname)
             if len(ret) == 0:
-                self.verify.config(bg=g.COL['stop'])
+                self.verify.config(bg=g.COL["stop"])
                 g.clog.warn('No matches to "' + tname + '" found.')
                 if tname not in self.failures:
                     self.failures.append(tname)
             elif len(ret) == 1:
-                self.verify.config(bg=g.COL['start'])
-                g.clog.info(tname + ' verified OK in simbad')
-                g.clog.info('Primary simbad name = ' + ret[0]['Name'])
+                self.verify.config(bg=g.COL["start"])
+                g.clog.info(tname + " verified OK in simbad")
+                g.clog.info("Primary simbad name = " + ret[0]["Name"])
                 if tname not in self.successes:
                     self.successes.append(tname)
             else:
                 g.clog.warn('More than one match to "' + tname + '" found')
-                self.verify.config(bg=g.COL['stop'])
+                self.verify.config(bg=g.COL["stop"])
                 if tname not in self.failures:
                     self.failures.append(tname)
         except urllib.error.URLError:
-            g.clog.warn('Simbad lookup timed out')
+            g.clog.warn("Simbad lookup timed out")
         except socket.timeout:
-            g.clog.warn('Simbad lookup timed out')
+            g.clog.warn("Simbad lookup timed out")
 
 
 class NGCReset(ActButton):
     """
     Class defining the 'NGC Reset' button
     """
+
     def __init__(self, master, width):
         """
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='NGC Reset')
+        ActButton.__init__(self, master, width, text="NGC Reset")
 
     @inlineCallbacks
     def act(self):
@@ -2018,17 +2068,17 @@ class NGCReset(ActButton):
         """
         root = get_root(self)
         g = root.globals
-        g.clog.debug('NGC Reset pressed')
+        g.clog.debug("NGC Reset pressed")
         session = root.globals.session
         try:
-            msg, ok = yield session.call('hipercam.ngc.rpc.reset')
+            msg, ok = yield session.call("hipercam.ngc.rpc.reset")
             if not ok:
-                raise RuntimeError('reset command failed: ' + msg)
+                raise RuntimeError("reset command failed: " + msg)
         except Exception:
-            g.clog.warn('NGC Reset failed')
+            g.clog.warn("NGC Reset failed")
             returnValue(False)
         else:
-            g.clog.info('NGC Reset succeeded')
+            g.clog.info("NGC Reset succeeded")
 
             # alter buttons here
             g.observe.start.disable()
@@ -2045,26 +2095,27 @@ class NGCStandby(ActButton):
     In standby, the NGC server will respond to commands, but processes (sequencer) etc are
     halted, and power is off to controller.
     """
+
     def __init__(self, master, width):
         """
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='NGC Standby')
+        ActButton.__init__(self, master, width, text="NGC Standby")
 
     @inlineCallbacks
     def act(self):
         root = get_root(self)
         g = root.globals
-        g.clog.debug('NGC Standby pressed')
+        g.clog.debug("NGC Standby pressed")
         session = root.globals.session
         try:
-            yield session.call('hipercam.ngc.rpc.standby')
+            yield session.call("hipercam.ngc.rpc.standby")
         except Exception as err:
-            g.clog.warn('NGC Standby failed: ' + str(err))
+            g.clog.warn("NGC Standby failed: " + str(err))
             returnValue(False)
         else:
-            g.clog.info('Standby command successful')
+            g.clog.info("Standby command successful")
             # alter buttons here
             g.observe.start.disable()
             g.observe.stop.disable()
@@ -2081,27 +2132,28 @@ class NGCOnline(ActButton):
     are autostarted if autostart is enabled, as are any clocks. You can turn clocks on
     and off in this state.
     """
+
     def __init__(self, master, width):
         """
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='NGC Online')
+        ActButton.__init__(self, master, width, text="NGC Online")
 
     @inlineCallbacks
     def act(self):
         root = get_root(self)
         g = root.globals
-        g.clog.debug('NGC Online pressed')
+        g.clog.debug("NGC Online pressed")
         session = root.globals.session
         try:
-            yield session.call('hipercam.ngc.rpc.online')
+            yield session.call("hipercam.ngc.rpc.online")
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
             g.clog.warn("NGC Online failed: " + msg)
             returnValue(False)
         else:
-            g.clog.info('Online command successful')
+            g.clog.info("Online command successful")
             # alter buttons here
             g.observe.start.disable()
             g.observe.stop.disable()
@@ -2120,27 +2172,28 @@ class NGCOff(ActButton):
 
     The server initialises in this state.
     """
+
     def __init__(self, master, width):
         """
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='NGC Off')
+        ActButton.__init__(self, master, width, text="NGC Off")
 
     @inlineCallbacks
     def act(self):
         root = get_root(self)
         g = root.globals
-        g.clog.debug('NGC Off pressed')
+        g.clog.debug("NGC Off pressed")
         session = root.globals.session
         try:
-            yield session.call('hipercam.ngc.rpc.offline')
+            yield session.call("hipercam.ngc.rpc.offline")
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
             g.clog.warn("NGC Off failed: " + msg)
             returnValue(False)
         else:
-            g.clog.info('off command successful; server in loaded state')
+            g.clog.info("off command successful; server in loaded state")
 
             # alter buttons here
             g.observe.start.disable()
@@ -2154,31 +2207,32 @@ class SeqStart(ActButton):
     """
     Class defining the button to start sequencers.
     """
+
     def __init__(self, master, width):
         """
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='Seq Start')
+        ActButton.__init__(self, master, width, text="Seq Start")
         self.disable()
 
     @inlineCallbacks
     def act(self):
         root = get_root(self)
         g = root.globals
-        g.clog.debug('Seq Start pressed')
+        g.clog.debug("Seq Start pressed")
         session = root.globals.session
 
         try:
-            msg, ok = yield session.call('hipercam.ngc.rpc.seq_start')
+            msg, ok = yield session.call("hipercam.ngc.rpc.seq_start")
             if not ok:
-                raise RuntimeError('could not start sequencer: ' + msg)
+                raise RuntimeError("could not start sequencer: " + msg)
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
             g.clog.warn("Seq Start failed: " + msg)
             returnValue(False)
         else:
-            g.clog.info('seq start command successful; clocks powered on')
+            g.clog.info("seq start command successful; clocks powered on")
             # alter buttons here
             g.observe.start.enable()
             g.observe.stop.enable()
@@ -2191,31 +2245,32 @@ class SeqStop(ActButton):
     """
     Class defining the button to stop sequencers.
     """
+
     def __init__(self, master, width):
         """
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='Seq Stop')
+        ActButton.__init__(self, master, width, text="Seq Stop")
         self.disable()
 
     @inlineCallbacks
     def act(self):
         root = get_root(self)
         g = root.globals
-        g.clog.debug('Seq Stop pressed')
+        g.clog.debug("Seq Stop pressed")
         session = root.globals.session
 
         try:
-            msg, ok = yield session.call('hipercam.ngc.rpc.seq_stop')
+            msg, ok = yield session.call("hipercam.ngc.rpc.seq_stop")
             if not ok:
-                raise RuntimeError('could not stop sequencer: ' + msg)
+                raise RuntimeError("could not stop sequencer: " + msg)
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
             g.clog.warn("Seq Stop failed: " + msg)
             returnValue(False)
         else:
-            g.clog.info('seq stop command successful')
+            g.clog.info("seq stop command successful")
             # alter buttons here
             g.observe.start.disable()
             g.observe.stop.disable()
@@ -2228,19 +2283,20 @@ class CLDCOn(ActButton):
     """
     Class defining the button to turn on clocks.
     """
+
     def __init__(self, master, width):
         """
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='CLDC On')
+        ActButton.__init__(self, master, width, text="CLDC On")
         self.disable()
 
     @inlineCallbacks
     def act(self):
         root = get_root(self)
         g = root.globals
-        g.clog.debug('CLDC On pressed')
+        g.clog.debug("CLDC On pressed")
         session = root.globals.session
         try:
             powered_on = yield isPoweredOn(g)
@@ -2249,19 +2305,19 @@ class CLDCOn(ActButton):
             returnValue(False)
 
         if powered_on:
-            g.clog.info('clocks already on')
+            g.clog.info("clocks already on")
             returnValue(True)
 
         try:
-            msg, ok = yield session.call('hipercam.ngc.rpc.pon')
+            msg, ok = yield session.call("hipercam.ngc.rpc.pon")
             if not ok:
-                raise RuntimeError('could not power on clocks')
+                raise RuntimeError("could not power on clocks")
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
             g.clog.warn("CLDC On failed: " + msg)
             returnValue(False)
         else:
-            g.clog.info('CLDC on command successful; clocks powered on')
+            g.clog.info("CLDC on command successful; clocks powered on")
             # alter buttons here
             g.observe.start.enable()
             g.observe.stop.enable()
@@ -2275,31 +2331,32 @@ class CLDCOff(ActButton):
     """
     Class defining the button to turn off clocks.
     """
+
     def __init__(self, master, width):
         """
         master   : containing widget
         width    : width of button
         """
-        ActButton.__init__(self, master, width, text='CLDC Off')
+        ActButton.__init__(self, master, width, text="CLDC Off")
         self.disable()
 
     @inlineCallbacks
     def act(self):
         root = get_root(self)
         g = root.globals
-        g.clog.debug('CLDC Off pressed')
+        g.clog.debug("CLDC Off pressed")
         session = root.globals.session
 
         try:
-            msg, ok = yield session.call('hipercam.ngc.rpc.poff')
+            msg, ok = yield session.call("hipercam.ngc.rpc.poff")
             if not ok:
-                raise RuntimeError('could not power off clocks')
+                raise RuntimeError("could not power off clocks")
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
             g.clog.warn("CLDC Off failed: " + msg)
             returnValue(False)
         else:
-            g.clog.info('CLDC off command successful; clocks powered off')
+            g.clog.info("CLDC off command successful; clocks powered off")
 
             # alter buttons here
             g.observe.start.disable()
@@ -2319,7 +2376,7 @@ class PowerOn(ActButton):
         master  : containing widget
         width   : width of button
         """
-        ActButton.__init__(self, master, width, text='Power on')
+        ActButton.__init__(self, master, width, text="Power on")
 
     @inlineCallbacks
     def act(self):
@@ -2328,44 +2385,44 @@ class PowerOn(ActButton):
         """
         root = get_root(self)
         g = root.globals
-        g.clog.debug('Power on pressed')
+        g.clog.debug("Power on pressed")
         try:
             session = root.globals.session
-            msg, ok = yield session.call('hipercam.ngc.rpc.online')
+            msg, ok = yield session.call("hipercam.ngc.rpc.online")
             if not ok:
                 raise RuntimeError(msg)
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn('Failed to bring server online: ' + msg)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
+            g.clog.warn("Failed to bring server online: " + msg)
             return False
         else:
-            g.clog.info('ESO server online')
-            g.cpars['eso_server_online'] = True
+            g.clog.info("ESO server online")
+            g.cpars["eso_server_online"] = True
             try:
                 powered_on = yield isPoweredOn(g)
             except Exception as err:
-                g.clog.warn('cannot determine if CLDC is already on')
-                msg = err.error_message() if hasattr(err, 'error_message') else str(err)
+                g.clog.warn("cannot determine if CLDC is already on")
+                msg = err.error_message() if hasattr(err, "error_message") else str(err)
                 g.clog.warn(msg)
                 returnValue(False)
 
             if not powered_on:
-                success = yield execCommand(g, 'pon')
+                success = yield execCommand(g, "pon")
                 if not success:
-                    g.clog.warn('Unable to power on CLDC')
+                    g.clog.warn("Unable to power on CLDC")
                     returnValue(False)
 
-            success = yield execCommand(g, 'seq_start')
+            success = yield execCommand(g, "seq_start")
             if not success:
-                g.clog.warn('Failed to start sequencer after Power On.')
+                g.clog.warn("Failed to start sequencer after Power On.")
 
             try:
                 run = yield getRunNumber(g)
-                g.info.run.configure(text='{0:03d}'.format(run))
+                g.info.run.configure(text="{0:03d}".format(run))
             except Exception as err:
-                g.clog.warn('Failed to determine run number at start of run')
+                g.clog.warn("Failed to determine run number at start of run")
                 g.clog.warn(str(err))
-                g.info.run.configure(text='UNDEF')
+                g.info.run.configure(text="UNDEF")
 
             # change other buttons
             self.disable()
@@ -2385,7 +2442,7 @@ class PowerOff(ActButton):
         master  : containing widget
         width   : width of button
         """
-        ActButton.__init__(self, master, width, text='Power off')
+        ActButton.__init__(self, master, width, text="Power off")
         self.disable()
 
     @inlineCallbacks
@@ -2394,17 +2451,17 @@ class PowerOff(ActButton):
         Power off action
         """
         g = get_root(self).globals
-        g.clog.debug('Power off pressed')
+        g.clog.debug("Power off pressed")
 
-        success = yield execCommand(g, 'poff')
+        success = yield execCommand(g, "poff")
         if not success:
-            g.clog.warn('Unable to power off CLDC')
+            g.clog.warn("Unable to power off CLDC")
             returnValue(False)
 
-        success = yield execCommand(g, 'offline')
+        success = yield execCommand(g, "offline")
         if success:
-            g.clog.info('ESO server idle')
-            g.cpars['eso_server_online'] = False
+            g.clog.info("ESO server idle")
+            g.cpars["eso_server_online"] = False
 
             # alter buttons
             self.disable()
@@ -2413,7 +2470,7 @@ class PowerOff(ActButton):
             g.setup.powerOn.enable()
             returnValue(True)
         else:
-            g.clog.warn('Power off failed')
+            g.clog.warn("Power off failed")
             returnValue(False)
 
 
@@ -2426,8 +2483,7 @@ class InstSetup(tk.LabelFrame):
         """
         master -- containing widget
         """
-        tk.LabelFrame.__init__(self, master, text='Instrument setup',
-                               padx=10, pady=10)
+        tk.LabelFrame.__init__(self, master, text="Instrument setup", padx=10, pady=10)
 
         # Define all buttons
         width = 17
@@ -2443,23 +2499,30 @@ class InstSetup(tk.LabelFrame):
         # non-expert
         self.powerOn = PowerOn(self, width)
         self.powerOff = PowerOff(self, width)
-        self.all_buttons = [self.ngcReset, self.ngcStandby, self.ngcOnline,
-                            self.ngcOff, self.cldcOn, self.cldcOff,
-                            self.powerOn, self.powerOff, self.seqStart, self.seqStop]
+        self.all_buttons = [
+            self.ngcReset,
+            self.ngcStandby,
+            self.ngcOnline,
+            self.ngcOff,
+            self.cldcOn,
+            self.cldcOff,
+            self.powerOn,
+            self.powerOff,
+            self.seqStart,
+            self.seqStop,
+        ]
         # set which buttons are presented and where they go
         self.setExpertLevel()
-        self.telemetry_topics = [
-            ('hipercam.ngc.telemetry', self.on_telemetry)
-        ]
+        self.telemetry_topics = [("hipercam.ngc.telemetry", self.on_telemetry)]
 
     def on_telemetry(self, package):
         g = get_root(self).globals
         try:
             telemetry = pickle.loads(package)
-            ngc_status = telemetry.get('system.stateName', 'unknown')
+            ngc_status = telemetry.get("system.stateName", "unknown")
             res = ReadNGCTelemetry(telemetry)
             # clocks
-            if res.clocks == 'enabled':
+            if res.clocks == "enabled":
                 self.cldcOn.disable()
                 self.cldcOff.enable()
                 self.seqStart.enable()
@@ -2467,22 +2530,21 @@ class InstSetup(tk.LabelFrame):
                 self.cldcOn.enable()
                 self.cldcOff.disable()
             # power on/off
-            if (res.clocks == 'enabled'
-                    and ngc_status.lower() == 'online'):
+            if res.clocks == "enabled" and ngc_status.lower() == "online":
                 self.powerOff.enable()
                 self.powerOn.disable()
             else:
                 self.powerOn.enable()
                 self.powerOff.disable()
         except Exception:
-            g.clog.warn('could not decode NGC telemetry')
+            g.clog.warn("could not decode NGC telemetry")
 
     def setExpertLevel(self):
         """
         Set expert level
         """
         g = get_root(self).globals
-        level = g.cpars['expert_level']
+        level = g.cpars["expert_level"]
 
         # first define which buttons are visible
         if level == 0:
@@ -2525,6 +2587,7 @@ class Switch(tk.Frame):
     and observing frames. Provides radio buttons and hides / shows
     respective frames
     """
+
     def __init__(self, master):
         """
         master : containing widget
@@ -2532,54 +2595,62 @@ class Switch(tk.Frame):
         tk.Frame.__init__(self, master)
 
         self.val = tk.StringVar()
-        self.val.set('Setup')
-        self.val.trace('w', self._changed)
+        self.val.set("Setup")
+        self.val.trace("w", self._changed)
 
         g = get_root(self).globals
-        tk.Radiobutton(self, text='Setup', variable=self.val,
-                       font=g.ENTRY_FONT,
-                       value='Setup').grid(row=0, column=0, sticky=tk.W)
-        tk.Radiobutton(self, text='Observe', variable=self.val,
-                       font=g.ENTRY_FONT,
-                       value='Observe').grid(row=0, column=1, sticky=tk.W)
-        tk.Radiobutton(self, text='Focal plane slide', variable=self.val,
-                       font=g.ENTRY_FONT,
-                       value='Focal plane slide').grid(row=0, column=2,
-                                                       sticky=tk.W)
-        self.tecs = tk.Radiobutton(self, text='CCD TECs', variable=self.val,
-                                   font=g.ENTRY_FONT, value='CCD TECs')
+        tk.Radiobutton(
+            self, text="Setup", variable=self.val, font=g.ENTRY_FONT, value="Setup"
+        ).grid(row=0, column=0, sticky=tk.W)
+        tk.Radiobutton(
+            self, text="Observe", variable=self.val, font=g.ENTRY_FONT, value="Observe"
+        ).grid(row=0, column=1, sticky=tk.W)
+        tk.Radiobutton(
+            self,
+            text="Focal plane slide",
+            variable=self.val,
+            font=g.ENTRY_FONT,
+            value="Focal plane slide",
+        ).grid(row=0, column=2, sticky=tk.W)
+        self.tecs = tk.Radiobutton(
+            self,
+            text="CCD TECs",
+            variable=self.val,
+            font=g.ENTRY_FONT,
+            value="CCD TECs",
+        )
         self.tecs.grid(row=0, column=3, sticky=tk.W)
 
         self.setExpertLevel()
 
     def _changed(self, *args):
         g = get_root(self).globals
-        if self.val.get() == 'Setup':
+        if self.val.get() == "Setup":
             g.setup.pack(anchor=tk.W, pady=10)
             g.fpslide.pack_forget()
             g.observe.pack_forget()
             g.tecs.pack_forget()
 
-        elif self.val.get() == 'Focal plane slide':
+        elif self.val.get() == "Focal plane slide":
             g.setup.pack_forget()
             g.fpslide.pack(anchor=tk.W, pady=10)
             g.observe.pack_forget()
             g.tecs.pack_forget()
 
-        elif self.val.get() == 'Observe':
+        elif self.val.get() == "Observe":
             g.setup.pack_forget()
             g.fpslide.pack_forget()
             g.observe.pack(anchor=tk.W, pady=10)
             g.tecs.pack_forget()
 
-        elif self.val.get() == 'CCD TECs':
+        elif self.val.get() == "CCD TECs":
             g.setup.pack_forget()
             g.fpslide.pack_forget()
             g.observe.pack_forget()
             g.tecs.pack(anchor=tk.W, pady=10)
 
         else:
-            raise DriverError('Unrecognised Switch value')
+            raise DriverError("Unrecognised Switch value")
 
     def setExpertLevel(self):
         """
@@ -2588,10 +2659,10 @@ class Switch(tk.Frame):
         set CCD temps
         """
         g = get_root(self).globals
-        level = g.cpars['expert_level']
+        level = g.cpars["expert_level"]
         if level == 0:
-            if self.val.get() == 'CCD TECs':
-                self.val.set('Observe')
+            if self.val.get() == "CCD TECs":
+                self.val.set("Observe")
                 self._changed()
             self.tecs.grid_forget()
         else:
@@ -2605,6 +2676,7 @@ class TelChooser(tk.Menu):
     The telescope setting affects the signal/noise calculations
     and routines for pulling RA/Dec etc from the TCS.
     """
+
     def __init__(self, master, *args):
         """
         Parameters
@@ -2616,9 +2688,9 @@ class TelChooser(tk.Menu):
         g = get_root(self).globals
 
         self.val = tk.StringVar()
-        tel = g.cpars.get('telins_name', list(g.TINS)[0])
+        tel = g.cpars.get("telins_name", list(g.TINS)[0])
         self.val.set(tel)
-        self.val.trace('w', self._change)
+        self.val.trace("w", self._change)
         for tel_name in g.TINS.keys():
             self.add_radiobutton(label=tel_name, value=tel_name, variable=self.val)
         self.args = args
@@ -2626,7 +2698,7 @@ class TelChooser(tk.Menu):
 
     def _change(self, *args):
         g = get_root(self).globals
-        g.cpars['telins_name'] = self.val.get()
+        g.cpars["telins_name"] = self.val.get()
         g.count.update()
         g.ipars.check()
 
@@ -2641,6 +2713,7 @@ class ExpertMenu(tk.Menu):
     enabled or disabled according to the expert level (disabled
     at level 0, otherwise enabled)
     """
+
     def __init__(self, master, *args):
         """
         master   -- the containing widget, e.g. toolbar menu
@@ -2650,22 +2723,22 @@ class ExpertMenu(tk.Menu):
         g = get_root(self).globals
 
         self.val = tk.IntVar()
-        self.val.set(g.cpars['expert_level'])
-        self.val.trace('w', self._change)
-        self.add_radiobutton(label='Level 0', value=0, variable=self.val)
-        self.add_radiobutton(label='Level 1', value=1, variable=self.val)
-        self.add_radiobutton(label='Level 2', value=2, variable=self.val)
+        self.val.set(g.cpars["expert_level"])
+        self.val.trace("w", self._change)
+        self.add_radiobutton(label="Level 0", value=0, variable=self.val)
+        self.add_radiobutton(label="Level 1", value=1, variable=self.val)
+        self.add_radiobutton(label="Level 2", value=2, variable=self.val)
         self.args = args
         self.root = master
         self.indices = []
 
     def _change(self, *args):
         g = get_root(self).globals
-        g.cpars['expert_level'] = self.val.get()
+        g.cpars["expert_level"] = self.val.get()
         for arg in self.args:
             arg.setExpertLevel()
         for index in self.indices:
-            if g.cpars['expert_level']:
+            if g.cpars["expert_level"]:
                 self.root.entryconfig(index, state=tk.NORMAL)
             else:
                 self.root.entryconfig(index, state=tk.DISABLED)
@@ -2681,8 +2754,9 @@ class Timer(tk.Label):
 
     Updates @10Hz, checks run status @1Hz.
     """
+
     def __init__(self, master):
-        tk.Label.__init__(self, master, text='{0:<d} s'.format(0))
+        tk.Label.__init__(self, master, text="{0:<d} s".format(0))
         g = get_root(self).globals
         self.config(font=g.ENTRY_FONT)
         self._loop = None
@@ -2693,7 +2767,7 @@ class Timer(tk.Label):
         Starts the timer from zero
         """
         self.startTime = time.time()
-        self.configure(text='{0:<d} s'.format(0))
+        self.configure(text="{0:<d} s".format(0))
         self._loop = LoopingCall(self.tick)
         self._loop.start(0.1)
 
@@ -2707,7 +2781,7 @@ class Timer(tk.Label):
         try:
             self.count += 1
             delta = int(round(time.time() - self.startTime))
-            self.configure(text='{0:<d} s'.format(delta))
+            self.configure(text="{0:<d} s".format(delta))
 
             if self.count % 50 == 0:
                 try:
@@ -2715,13 +2789,12 @@ class Timer(tk.Label):
                 except Exception as err:
                     g.clog.warn(str(err))
                 if not run_active:
-
                     # try and write FITS table before enabling start button, otherwise
                     # a new start will clear table
                     try:
                         yield insertFITSHDU(g)
                     except Exception as err:
-                        g.clog.warn('Could not add FITS Table to run')
+                        g.clog.warn("Could not add FITS Table to run")
                         g.clog.warn(str(err))
 
                     g.observe.start.enable()
@@ -2729,42 +2802,44 @@ class Timer(tk.Label):
                     g.setup.ngcReset.enable()
                     g.setup.powerOn.disable()
                     g.setup.powerOff.enable()
-                    g.clog.info('Timer detected stopped run')
+                    g.clog.info("Timer detected stopped run")
 
-                    warn_cmd = '/usr/bin/ssh observer@192.168.1.1 spd-say "\'exposure finished\'"'
+                    warn_cmd = "/usr/bin/ssh observer@192.168.1.1 spd-say \"'exposure finished'\""
                     try:
-                        subprocess.check_output(warn_cmd, shell=True, stderr=subprocess.PIPE)
+                        subprocess.check_output(
+                            warn_cmd, shell=True, stderr=subprocess.PIPE
+                        )
                     except Exception:
                         pass
 
                     # enable idle mode now run has stopped
-                    g.clog.info('Setting chips to idle')
-                    idle = {'appdata': {'app': 'Idle'}}
+                    g.clog.info("Setting chips to idle")
+                    idle = {"appdata": {"app": "Idle"}}
                     try:
                         success = yield postJSON(g, idle)
                         if not success:
-                            raise Exception('postJSON returned false')
+                            raise Exception("postJSON returned false")
                     except Exception as err:
-                        g.clog.warn('Failed to enable idle mode')
+                        g.clog.warn("Failed to enable idle mode")
                         g.clog.warn(str(err))
 
-                    g.clog.info('Stopping offsets (if running')
+                    g.clog.info("Stopping offsets (if running")
                     try:
                         success = yield stopNodding(g)
                         if not success:
-                            raise Exception('failed to stop dithering')
+                            raise Exception("failed to stop dithering")
                     except Exception as err:
-                        g.clog.warn('Failed to stop GTC offset script')
+                        g.clog.warn("Failed to stop GTC offset script")
                         g.clog.warn(str(err))
 
                     self.stop()
 
         except Exception as err:
             if self.count % 100 == 0:
-                g.clog.warn('Timer.update: error = ' + str(err))
+                g.clog.warn("Timer.update: error = " + str(err))
 
     def stop(self):
-        if hasattr(self, '_loop') and self._loop is not None:
+        if hasattr(self, "_loop") and self._loop is not None:
             self._loop.stop()
         self._loop = None
 
@@ -2773,77 +2848,78 @@ class InfoFrame(tk.LabelFrame):
     """
     Information frame: run number, exposure time, etc.
     """
-    def __init__(self, master):
-        tk.LabelFrame.__init__(self, master,
-                               text='Current run & telescope status', padx=4, pady=4)
 
-        self.run = Ilabel(self, text='UNDEF')
-        self.frame = Ilabel(self, text='UNDEF')
+    def __init__(self, master):
+        tk.LabelFrame.__init__(
+            self, master, text="Current run & telescope status", padx=4, pady=4
+        )
+
+        self.run = Ilabel(self, text="UNDEF")
+        self.frame = Ilabel(self, text="UNDEF")
         self.timer = Timer(self)
-        self.cadence = Ilabel(self, text='UNDEF')
-        self.duty = Ilabel(self, text='UNDEF')
-        self.ra = Ilabel(self, text='UNDEF')
-        self.dec = Ilabel(self, text='UNDEF')
-        self.alt = Ilabel(self, text='UNDEF')
-        self.az = Ilabel(self, text='UNDEF')
-        self.airmass = Ilabel(self, text='UNDEF')
-        self.ha = Ilabel(self, text='UNDEF')
-        self.pa = Ilabel(self, text='UNDEF')
-        self.focus = Ilabel(self, text='UNDEF')
-        self.mdist = Ilabel(self, text='UNDEF')
-        self.fpslide = Ilabel(self, text='UNDEF')
-        self.ccd_temps = Ilabel(self, text='UNDEF')
+        self.cadence = Ilabel(self, text="UNDEF")
+        self.duty = Ilabel(self, text="UNDEF")
+        self.ra = Ilabel(self, text="UNDEF")
+        self.dec = Ilabel(self, text="UNDEF")
+        self.alt = Ilabel(self, text="UNDEF")
+        self.az = Ilabel(self, text="UNDEF")
+        self.airmass = Ilabel(self, text="UNDEF")
+        self.ha = Ilabel(self, text="UNDEF")
+        self.pa = Ilabel(self, text="UNDEF")
+        self.focus = Ilabel(self, text="UNDEF")
+        self.mdist = Ilabel(self, text="UNDEF")
+        self.fpslide = Ilabel(self, text="UNDEF")
+        self.ccd_temps = Ilabel(self, text="UNDEF")
 
         # left-hand side
-        tk.Label(self, text='Run:').grid(row=0, column=0, padx=5, sticky=tk.W)
+        tk.Label(self, text="Run:").grid(row=0, column=0, padx=5, sticky=tk.W)
         self.run.grid(row=0, column=1, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Frame:').grid(row=1, column=0, padx=5, sticky=tk.W)
+        tk.Label(self, text="Frame:").grid(row=1, column=0, padx=5, sticky=tk.W)
         self.frame.grid(row=1, column=1, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Exposure:').grid(row=2, column=0, padx=5, sticky=tk.W)
+        tk.Label(self, text="Exposure:").grid(row=2, column=0, padx=5, sticky=tk.W)
         self.timer.grid(row=2, column=1, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Cadence:').grid(row=3, column=0, padx=5, sticky=tk.W)
+        tk.Label(self, text="Cadence:").grid(row=3, column=0, padx=5, sticky=tk.W)
         self.cadence.grid(row=3, column=1, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Duty cycle:').grid(row=4, column=0, padx=5,
-                                                sticky=tk.W)
+        tk.Label(self, text="Duty cycle:").grid(row=4, column=0, padx=5, sticky=tk.W)
         self.duty.grid(row=4, column=1, padx=5, sticky=tk.W)
 
         # middle
-        tk.Label(self, text='RA:').grid(row=0, column=3, padx=5, sticky=tk.W)
+        tk.Label(self, text="RA:").grid(row=0, column=3, padx=5, sticky=tk.W)
         self.ra.grid(row=0, column=4, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Dec:').grid(row=1, column=3, padx=5, sticky=tk.W)
+        tk.Label(self, text="Dec:").grid(row=1, column=3, padx=5, sticky=tk.W)
         self.dec.grid(row=1, column=4, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Alt:').grid(row=2, column=3, padx=5, sticky=tk.W)
+        tk.Label(self, text="Alt:").grid(row=2, column=3, padx=5, sticky=tk.W)
         self.alt.grid(row=2, column=4, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Az:').grid(row=3, column=3, padx=5, sticky=tk.W)
+        tk.Label(self, text="Az:").grid(row=3, column=3, padx=5, sticky=tk.W)
         self.az.grid(row=3, column=4, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Airm:').grid(row=4, column=3, padx=5, sticky=tk.W)
+        tk.Label(self, text="Airm:").grid(row=4, column=3, padx=5, sticky=tk.W)
         self.airmass.grid(row=4, column=4, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='HA:').grid(row=5, column=3, padx=5, sticky=tk.W)
+        tk.Label(self, text="HA:").grid(row=5, column=3, padx=5, sticky=tk.W)
         self.ha.grid(row=5, column=4, padx=5, sticky=tk.W)
 
         # right-hand side
-        tk.Label(self, text='PA:').grid(row=0, column=6, padx=5, sticky=tk.W)
+        tk.Label(self, text="PA:").grid(row=0, column=6, padx=5, sticky=tk.W)
         self.pa.grid(row=0, column=7, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Focus:').grid(row=1, column=6, padx=5, sticky=tk.W)
+        tk.Label(self, text="Focus:").grid(row=1, column=6, padx=5, sticky=tk.W)
         self.focus.grid(row=1, column=7, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='Mdist:').grid(row=2, column=6, padx=5, sticky=tk.W)
+        tk.Label(self, text="Mdist:").grid(row=2, column=6, padx=5, sticky=tk.W)
         self.mdist.grid(row=2, column=7, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='FP slide:').grid(row=3, column=6, padx=5, sticky=tk.W)
+        tk.Label(self, text="FP slide:").grid(row=3, column=6, padx=5, sticky=tk.W)
         self.fpslide.grid(row=3, column=7, padx=5, sticky=tk.W)
 
-        tk.Label(self, text='CCD temps:').grid(row=4, column=6, padx=5, sticky=tk.W)
+        tk.Label(self, text="CCD temps:").grid(row=4, column=6, padx=5, sticky=tk.W)
         self.ccd_temps.grid(row=4, column=7, padx=5, sticky=tk.W)
 
         # add a FITS table to record TCS info
@@ -2856,21 +2932,21 @@ class InfoFrame(tk.LabelFrame):
         # an implementing GUI must subscribe this widget to the
         # following topics, with the given callbacks
         self.telemetry_topics = [
-            ('hipercam.slide.telemetry', self.update_slidepos),
-            ('hipercam.gtc.telemetry', self.update_tcs),
-            ('hipercam.ccd1.telemetry', self.update_ccd),
-            ('hipercam.ccd2.telemetry', self.update_ccd),
-            ('hipercam.ccd3.telemetry', self.update_ccd),
-            ('hipercam.ccd4.telemetry', self.update_ccd),
-            ('hipercam.ccd5.telemetry', self.update_ccd),
-            ('hipercam.ngc.telemetry', self.update_runstatus)
+            ("hipercam.slide.telemetry", self.update_slidepos),
+            ("hipercam.gtc.telemetry", self.update_tcs),
+            ("hipercam.ccd1.telemetry", self.update_ccd),
+            ("hipercam.ccd2.telemetry", self.update_ccd),
+            ("hipercam.ccd3.telemetry", self.update_ccd),
+            ("hipercam.ccd4.telemetry", self.update_ccd),
+            ("hipercam.ccd5.telemetry", self.update_ccd),
+            ("hipercam.ngc.telemetry", self.update_runstatus),
         ]
 
         self._update_tcs_table_loop = LoopingCall(self.update_tcs_table)
         self._update_tcs_table_loop.start(60)
 
     def _getVal(self, widg):
-        return -99.0 if widg['text'] == 'UNDEF' else float(widg['text'])
+        return -99.0 if widg["text"] == "UNDEF" else float(widg["text"])
 
     def dumpJSON(self):
         """
@@ -2878,15 +2954,15 @@ class InfoFrame(tk.LabelFrame):
         """
         g = get_root(self).globals
         return dict(
-            RA=self.ra['text'],
-            DEC=self.dec['text'],
-            tel=g.cpars['telins_name'],
+            RA=self.ra["text"],
+            DEC=self.dec["text"],
+            tel=g.cpars["telins_name"],
             alt=self._getVal(self.alt),
             az=self._getVal(self.az),
             secz=self._getVal(self.airmass),
             pa=self._getVal(self.pa),
             foc=self._getVal(self.focus),
-            mdist=self._getVal(self.mdist)
+            mdist=self._getVal(self.mdist),
         )
 
     def clear_tcs_table(self):
@@ -2904,15 +2980,17 @@ class InfoFrame(tk.LabelFrame):
         """
         root = get_root(self)
         g = root.globals
-        if not g.cpars['tcs_on'] or not g.cpars['telins_name'].lower() == 'gtc':
+        if not g.cpars["tcs_on"] or not g.cpars["telins_name"].lower() == "gtc":
             return
         try:
             session = root.globals.session
-            telpars = yield session.call('hipercam.gtc.rpc.get_telescope_pars')
+            telpars = yield session.call("hipercam.gtc.rpc.get_telescope_pars")
+            if telpars is None:
+                raise RuntimeError("no telescope parameters returned from server")
             add_gtc_header_table_row(self.tcs_table, telpars)
         except Exception as err:
-            msg = err.error_message() if hasattr(err, 'error_message') else str(err)
-            g.clog.warn('Could not update table of TCS info: ' + msg)
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
+            g.clog.warn("Could not update table of TCS info: " + msg)
 
     def update_tcs(self, packet):
         """
@@ -2929,55 +3007,54 @@ class InfoFrame(tk.LabelFrame):
         g = get_root(self).globals
         try:
             telemetry = pickle.loads(packet)
-            header = telemetry['telpars']
+            header = telemetry["telpars"]
         except Exception as err:
-            g.clog.warn('Could not parse telemetry from TCS: ' + str(err))
+            g.clog.warn("Could not parse telemetry from TCS: " + str(err))
         else:
-            ra = float(header['RADEG'])
-            dec = float(header['DECDEG'])
-            pa = float(header['INSTRPA'])
-            focus = float(header['M2UZ'])
+            ra = float(header["RADEG"])
+            dec = float(header["DECDEG"])
+            pa = float(header["INSTRPA"])
+            focus = float(header["M2UZ"])
             # format ra, dec as HMS
             coo = coord.SkyCoord(ra, dec, unit=(u.deg, u.deg))
-            ratxt = coo.ra.to_string(sep=':', unit=u.hour, precision=0)
-            dectxt = coo.dec.to_string(sep=':', unit=u.deg,
-                                       alwayssign=True,
-                                       precision=0)
+            ratxt = coo.ra.to_string(sep=":", unit=u.hour, precision=0)
+            dectxt = coo.dec.to_string(
+                sep=":", unit=u.deg, alwayssign=True, precision=0
+            )
             self.ra.configure(text=ratxt)
             self.dec.configure(text=dectxt)
 
             # wrap pa from 0 to 360
-            pa = coord.Longitude(pa*u.deg)
-            self.pa.configure(text='{0:6.2f}'.format(pa.value))
+            pa = coord.Longitude(pa * u.deg)
+            self.pa.configure(text="{0:6.2f}".format(pa.value))
 
             # set focus
-            self.focus.configure(text='{0:+5.2f}'.format(focus))
+            self.focus.configure(text="{0:+5.2f}".format(focus))
 
             # Calculate most of the
             # stuff that we don't get from the telescope
             now = Time.now()
             lon = g.astro.obs.lon
-            lst = now.sidereal_time(kind='mean',
-                                    longitude=lon)
-            ha = lst - coo.ra.hourangle*u.hourangle
-            hatxt = ha.wrap_at(12*u.hourangle).to_string(sep=':', precision=0)
+            lst = now.sidereal_time(kind="mean", longitude=lon)
+            ha = lst - coo.ra.hourangle * u.hourangle
+            hatxt = ha.wrap_at(12 * u.hourangle).to_string(sep=":", precision=0)
             self.ha.configure(text=hatxt)
 
             altaz_frame = coord.AltAz(obstime=now, location=g.astro.obs)
             altaz = coo.transform_to(altaz_frame)
-            self.alt.configure(text='{0:<4.1f}'.format(altaz.alt.value))
-            self.az.configure(text='{0:<5.1f}'.format(altaz.az.value))
+            self.alt.configure(text="{0:<4.1f}".format(altaz.alt.value))
+            self.az.configure(text="{0:<5.1f}".format(altaz.az.value))
             # set airmass
-            self.airmass.configure(text='{0:<4.2f}'.format(altaz.secz))
+            self.airmass.configure(text="{0:<4.2f}".format(altaz.secz))
 
             # distance to the moon. Warn if too close
             # (configurable) to it.
             md = coord.get_moon(now, g.astro.obs).separation(coo)
-            self.mdist.configure(text='{0:<7.2f}'.format(md.value))
-            if md < g.cpars['mdist_warn']*u.deg:
-                self.mdist.configure(bg=g.COL['warn'])
+            self.mdist.configure(text="{0:<7.2f}".format(md.value))
+            if md < g.cpars["mdist_warn"] * u.deg:
+                self.mdist.configure(bg=g.COL["warn"])
             else:
-                self.mdist.configure(bg=g.COL['main'])
+                self.mdist.configure(bg=g.COL["main"])
 
     def update_ccd(self, packet):
         """
@@ -2995,16 +3072,16 @@ class InfoFrame(tk.LabelFrame):
         try:
             telemetry = pickle.loads(packet)
         except Exception as err:
-            g.clog.warn('could not decode CCD telemetry: ' + str(err))
-            self.ccd_temps.configure(text='UNDEF')
-            self.ccd_temps.configure(bg=g.COL['warn'])
+            g.clog.warn("could not decode CCD telemetry: " + str(err))
+            self.ccd_temps.configure(text="UNDEF")
+            self.ccd_temps.configure(bg=g.COL["warn"])
         else:
-            if telemetry['state'] == 'OK':
-                self.ccd_temps.configure(text='OK')
-                self.ccd_temps.configure(bg=g.COL['main'])
+            if telemetry["state"] == "OK":
+                self.ccd_temps.configure(text="OK")
+                self.ccd_temps.configure(bg=g.COL["main"])
             else:
-                self.ccd_temps.configure(text='ERR')
-                self.ccd_temps.configure(bg=g.COL['warn'])
+                self.ccd_temps.configure(text="ERR")
+                self.ccd_temps.configure(bg=g.COL["warn"])
 
     def update_slidepos(self, packet):
         """
@@ -3019,33 +3096,32 @@ class InfoFrame(tk.LabelFrame):
             a pickled serialisation of the telemetry packet
         """
         g = get_root(self).globals
-        if not g.cpars['focal_plane_slide_on']:
+        if not g.cpars["focal_plane_slide_on"]:
             return
 
         try:
             telemetry = pickle.loads(packet)
         except Exception as err:
-            g.clog.warn('could not decode slide telemetry: ' + str(err))
+            g.clog.warn("could not decode slide telemetry: " + str(err))
         else:
             # get positions, dealing with the fact that sometimes it has units
             try:
-                pos = telemetry['position']['current']
-                targ = telemetry['position']['target']
-                pos = pos.value if hasattr(pos, 'value') else pos
-                targ = targ.value if hasattr(targ, 'value') else targ
-                state = telemetry['state']
-                if 'error' in state['connection'] or 'offline' in state['connection']:
-                    self.fpslide.configure(bg=g.COL['warn'])
-                    g.clog.warn('slide in error state')
+                pos = telemetry["position"]["current"]
+                targ = telemetry["position"]["target"]
+                pos = pos.value if hasattr(pos, "value") else pos
+                targ = targ.value if hasattr(targ, "value") else targ
+                state = telemetry["state"]
+                if "error" in state["connection"] or "offline" in state["connection"]:
+                    self.fpslide.configure(bg=g.COL["warn"])
+                    g.clog.warn("slide in error state")
 
-                self.fpslide.configure(text='{0:d}'.format(
-                        int(round(pos))))
-                if pos < 1050. or abs(pos-targ) > 3:
-                    self.fpslide.configure(bg=g.COL['warn'])
+                self.fpslide.configure(text="{0:d}".format(int(round(pos))))
+                if pos < 1050.0 or abs(pos - targ) > 3:
+                    self.fpslide.configure(bg=g.COL["warn"])
                 else:
-                    self.fpslide.configure(bg=g.COL['main'])
+                    self.fpslide.configure(bg=g.COL["main"])
             except Exception as err:
-                g.clog.warn('unable to process slide telemetry: ') + str(err)
+                g.clog.warn("unable to process slide telemetry: ") + str(err)
 
     def update_runstatus(self, packet):
         """
@@ -3060,27 +3136,28 @@ class InfoFrame(tk.LabelFrame):
             a pickled serialisation of the telemetry packet
         """
         g = get_root(self).globals
-        if not (g.cpars['hcam_server_on'] and g.cpars['eso_server_online']):
+        if not (g.cpars["hcam_server_on"] and g.cpars["eso_server_online"]):
             return
 
         try:
             telemetry = pickle.loads(packet)
             status = ReadNGCTelemetry(telemetry)
             run = status.run
-            frame_no = int(telemetry['exposure.frame'])
+            frame_no = int(telemetry["exposure.frame"])
         except Exception as err:
-            g.clog.warn('failed to parse NGC telemetry: ' + str(err))
+            g.clog.warn("failed to parse NGC telemetry: " + str(err))
         else:
-            self.run.configure(text='{0:03d}'.format(run))
-            self.frame.configure(text='{0:04d}'.format(frame_no))
+            self.run.configure(text="{0:03d}".format(run))
+            self.frame.configure(text="{0:04d}".format(frame_no))
 
 
 class AstroFrame(tk.LabelFrame):
     """
     Astronomical information frame
     """
+
     def __init__(self, master):
-        tk.LabelFrame.__init__(self, master, padx=2, pady=2, text='Time & Sky')
+        tk.LabelFrame.__init__(self, master, padx=2, pady=2, text="Time & Sky")
 
         # times
         self.mjd = Ilabel(self)
@@ -3101,56 +3178,47 @@ class AstroFrame(tk.LabelFrame):
 
         # observatory info
         g = get_root(self).globals
-        tins = g.TINS[g.cpars['telins_name']]
-        lat = tins['latitude']
-        lon = tins['longitude']
-        elevation = tins['elevation']
+        tins = g.TINS[g.cpars["telins_name"]]
+        lat = tins["latitude"]
+        lon = tins["longitude"]
+        elevation = tins["elevation"]
         self.obs = coord.EarthLocation.from_geodetic(
-            lon*u.deg,
-            lat*u.deg,
-            elevation*u.m
+            lon * u.deg, lat * u.deg, elevation * u.m
         )
         # report back to the user
-        g.clog.info('Tel/ins = ' + g.cpars['telins_name'])
-        g.clog.info('Longitude = ' + str(tins['longitude']) + ' E')
-        g.clog.info('Latitude = ' + str(tins['latitude']) + ' N')
-        g.clog.info('Elevation = ' + str(tins['elevation']) + ' m')
+        g.clog.info("Tel/ins = " + g.cpars["telins_name"])
+        g.clog.info("Longitude = " + str(tins["longitude"]) + " E")
+        g.clog.info("Latitude = " + str(tins["latitude"]) + " N")
+        g.clog.info("Elevation = " + str(tins["elevation"]) + " m")
 
         # arrange time info
-        tk.Label(self, text='MJD:').grid(
-            row=0, column=0, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="MJD:").grid(row=0, column=0, padx=2, pady=3, sticky=tk.W)
         self.mjd.grid(row=0, column=1, columnspan=2, padx=2, pady=3, sticky=tk.W)
-        tk.Label(self, text='UTC:').grid(
-            row=0, column=3, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="UTC:").grid(row=0, column=3, padx=2, pady=3, sticky=tk.W)
         self.utc.grid(row=0, column=4, padx=2, pady=3, sticky=tk.W)
-        tk.Label(self, text='LST:').grid(
-            row=0, column=5, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="LST:").grid(row=0, column=5, padx=2, pady=3, sticky=tk.W)
         self.lst.grid(row=0, column=6, padx=2, pady=3, sticky=tk.W)
 
         # arrange solar info
-        tk.Label(self, text='Sun:').grid(
-            row=1, column=0, padx=2, pady=3, sticky=tk.W)
-        tk.Label(self, text='Alt:').grid(
-            row=1, column=1, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="Sun:").grid(row=1, column=0, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="Alt:").grid(row=1, column=1, padx=2, pady=3, sticky=tk.W)
         self.sunalt.grid(row=1, column=2, padx=2, pady=3, sticky=tk.W)
         self.lriset.grid(row=1, column=3, padx=2, pady=3, sticky=tk.W)
         self.riset.grid(row=1, column=4, padx=2, pady=3, sticky=tk.W)
-        tk.Label(self, text='At -18:').grid(
-            row=1, column=5, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="At -18:").grid(
+            row=1, column=5, padx=2, pady=3, sticky=tk.W
+        )
         self.astro.grid(row=1, column=6, padx=2, pady=3, sticky=tk.W)
 
         # arrange moon info
-        tk.Label(self, text='Moon:').grid(
-            row=2, column=0, padx=2, pady=3, sticky=tk.W)
-        tk.Label(self, text='RA:').grid(
-            row=2, column=1, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="Moon:").grid(row=2, column=0, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="RA:").grid(row=2, column=1, padx=2, pady=3, sticky=tk.W)
         self.moonra.grid(row=2, column=2, padx=2, pady=3, sticky=tk.W)
-        tk.Label(self, text='Dec:').grid(row=3, column=1, padx=2, sticky=tk.W)
+        tk.Label(self, text="Dec:").grid(row=3, column=1, padx=2, sticky=tk.W)
         self.moondec.grid(row=3, column=2, padx=2, sticky=tk.W)
-        tk.Label(self, text='Alt:').grid(
-            row=2, column=3, padx=2, pady=3, sticky=tk.W)
+        tk.Label(self, text="Alt:").grid(row=2, column=3, padx=2, pady=3, sticky=tk.W)
         self.moonalt.grid(row=2, column=4, padx=2, pady=3, sticky=tk.W)
-        tk.Label(self, text='Phase:').grid(row=3, column=3, padx=2, sticky=tk.W)
+        tk.Label(self, text="Phase:").grid(row=3, column=3, padx=2, sticky=tk.W)
         self.moonphase.grid(row=3, column=4, padx=2, sticky=tk.W)
 
         # parameters used to reduce re-calculation of sun rise etc, and
@@ -3175,11 +3243,11 @@ class AstroFrame(tk.LabelFrame):
             now = Time.now()
 
             # configure times
-            self.utc.configure(text=now.datetime.strftime('%H:%M:%S'))
-            self.mjd.configure(text='{0:11.5f}'.format(now.mjd))
+            self.utc.configure(text=now.datetime.strftime("%H:%M:%S"))
+            self.mjd.configure(text="{0:11.5f}".format(now.mjd))
             lon = self.obs.lon
-            lst = now.sidereal_time(kind='mean', longitude=lon)
-            self.lst.configure(text=lst.to_string(sep=':', precision=0))
+            lst = now.sidereal_time(kind="mean", longitude=lon)
+            self.lst.configure(text=lst.to_string(sep=":", precision=0))
 
             if self.counter % 600 == 1:
                 # only re-compute Sun & Moon info once every 600 calls
@@ -3189,74 +3257,82 @@ class AstroFrame(tk.LabelFrame):
                 moon = coord.get_moon(now, self.obs)
                 moon_aa = moon.transform_to(altaz_frame)
                 elongation = sun.separation(moon)
-                moon_phase_angle = np.arctan2(sun.distance*np.sin(elongation),
-                                              moon.distance - sun.distance*np.cos(elongation))
-                moon_phase = (1 + np.cos(moon_phase_angle))/2.0
-
-                self.sunalt.configure(
-                    text='{0:+03d} deg'.format(int(sun_aa.alt.deg))
+                moon_phase_angle = np.arctan2(
+                    sun.distance * np.sin(elongation),
+                    moon.distance - sun.distance * np.cos(elongation),
                 )
+                moon_phase = (1 + np.cos(moon_phase_angle)) / 2.0
+
+                self.sunalt.configure(text="{0:+03d} deg".format(int(sun_aa.alt.deg)))
                 self.moonra.configure(
-                    text=moon.ra.to_string(unit='hour', sep=':', precision=0)
+                    text=moon.ra.to_string(unit="hour", sep=":", precision=0)
                 )
                 self.moondec.configure(
-                    text=moon.dec.to_string(unit='deg', sep=':', precision=0)
+                    text=moon.dec.to_string(unit="deg", sep=":", precision=0)
                 )
-                self.moonalt.configure(text='{0:+03d} deg'.format(
-                        int(moon_aa.alt.deg)
-                ))
-                self.moonphase.configure(text='{0:02d} %'.format(
-                        int(100.*moon_phase.value)
-                ))
+                self.moonalt.configure(text="{0:+03d} deg".format(int(moon_aa.alt.deg)))
+                self.moonphase.configure(
+                    text="{0:02d} %".format(int(100.0 * moon_phase.value))
+                )
 
-                if (now > self.lastRiset and now > self.lastAstro):
+                if now > self.lastRiset and now > self.lastAstro:
                     # Only re-compute rise and setting times when necessary,
                     # and only re-compute when both rise/set and astro
                     # twilight times have gone by
 
                     # For sunrise and set we set the horizon down to match a
                     # standard amount of refraction at the horizon and subtract size of disc
-                    horizon = -64*u.arcmin
-                    sunset = calc_riseset(now, 'sun', self.obs, 'next', 'setting', horizon)
-                    sunrise = calc_riseset(now, 'sun', self.obs, 'next', 'rising', horizon)
+                    horizon = -64 * u.arcmin
+                    sunset = calc_riseset(
+                        now, "sun", self.obs, "next", "setting", horizon
+                    )
+                    sunrise = calc_riseset(
+                        now, "sun", self.obs, "next", "rising", horizon
+                    )
 
                     # Astro twilight: geometric centre at -18 deg
-                    horizon = -18*u.deg
-                    astroset = calc_riseset(now, 'sun', self.obs, 'next', 'setting', horizon)
-                    astrorise = calc_riseset(now, 'sun', self.obs, 'next', 'rising', horizon)
+                    horizon = -18 * u.deg
+                    astroset = calc_riseset(
+                        now, "sun", self.obs, "next", "setting", horizon
+                    )
+                    astrorise = calc_riseset(
+                        now, "sun", self.obs, "next", "rising", horizon
+                    )
 
                     if sunrise > sunset:
                         # In the day time we report the upcoming sunset and
                         # end of evening twilight
-                        self.lriset.configure(text='Sets:', font=g.DEFAULT_FONT)
+                        self.lriset.configure(text="Sets:", font=g.DEFAULT_FONT)
                         self.lastRiset = sunset
                         self.lastAstro = astroset
 
                     elif astrorise > astroset and astrorise < sunrise:
                         # During evening twilight, we report the sunset just
                         # passed and end of evening twilight
-                        self.lriset.configure(text='Sets:', font=g.DEFAULT_FONT)
-                        horizon = -64*u.arcmin
-                        self.lastRiset = calc_riseset(now, 'sun', self.obs, 'previous', 'setting', horizon)
+                        self.lriset.configure(text="Sets:", font=g.DEFAULT_FONT)
+                        horizon = -64 * u.arcmin
+                        self.lastRiset = calc_riseset(
+                            now, "sun", self.obs, "previous", "setting", horizon
+                        )
                         self.lastAstro = astroset
 
                     elif astrorise > astroset and astrorise < sunrise:
                         # During night, report upcoming start of morning
                         # twilight and sunrise
-                        self.lriset.configure(text='Rises:',
-                                              font=g.DEFAULT_FONT)
-                        horizon = -64*u.arcmin
+                        self.lriset.configure(text="Rises:", font=g.DEFAULT_FONT)
+                        horizon = -64 * u.arcmin
                         self.lastRiset = sunrise
                         self.lastAstro = astrorise
 
                     else:
                         # During morning twilight report start of twilight
                         # just passed and upcoming sunrise
-                        self.lriset.configure(text='Rises:',
-                                              font=g.DEFAULT_FONT)
-                        horizon = -18*u.deg
+                        self.lriset.configure(text="Rises:", font=g.DEFAULT_FONT)
+                        horizon = -18 * u.deg
                         self.lastRiset = sunrise
-                        self.lastAstro = calc_riseset(now, 'sun', self.obs, 'previous', 'rising', horizon)
+                        self.lastAstro = calc_riseset(
+                            now, "sun", self.obs, "previous", "rising", horizon
+                        )
 
                     # Configure the corresponding text fields
                     self.riset.configure(
@@ -3268,7 +3344,7 @@ class AstroFrame(tk.LabelFrame):
 
         except Exception as err:
             # catchall
-            g.clog.warn('AstroFrame.update: error = ' + str(err))
+            g.clog.warn("AstroFrame.update: error = " + str(err))
 
         # run again after 100 milli-seconds
         self.after_id = self.after(100, self.update)
@@ -3279,8 +3355,26 @@ class WinPairs(tk.Frame):
     Class to define a frame of multiple window pairs,
     contained within a gridded block that can be easily position.
     """
-    def __init__(self, master, xsls, xslmins, xslmaxs, xsrs, xsrmins, xsrmaxs,
-                 yss, ysmins, ysmaxs, nxs, nys, xbfac, ybfac, checker, hcam=True):
+
+    def __init__(
+        self,
+        master,
+        xsls,
+        xslmins,
+        xslmaxs,
+        xsrs,
+        xsrmins,
+        xsrmaxs,
+        yss,
+        ysmins,
+        ysmaxs,
+        nxs,
+        nys,
+        xbfac,
+        ybfac,
+        checker,
+        hcam=True,
+    ):
         """
         Arguments:
 
@@ -3322,13 +3416,25 @@ class WinPairs(tk.Frame):
         """
         self.is_hcam = hcam
         npair = len(xsls)
-        checks = (xsls, xslmins, xslmaxs, xsrs, xsrmins, xsrmaxs,
-                  yss, ysmins, ysmaxs, nxs, nys)
+        checks = (
+            xsls,
+            xslmins,
+            xslmaxs,
+            xsrs,
+            xsrmins,
+            xsrmaxs,
+            yss,
+            ysmins,
+            ysmaxs,
+            nxs,
+            nys,
+        )
         for check in checks:
             if npair != len(check):
                 raise DriverError(
-                    'drivers.WindowPairs.__init__:' +
-                    ' conflict array lengths amonst inputs')
+                    "drivers.WindowPairs.__init__:"
+                    + " conflict array lengths amonst inputs"
+                )
 
         tk.Frame.__init__(self, master)
 
@@ -3337,13 +3443,14 @@ class WinPairs(tk.Frame):
         top = tk.Frame(self)
         top.pack(anchor=tk.W)
 
-        tk.Label(top, text='Binning factors (X x Y): ').grid(
-            row=0, column=0, sticky=tk.W)
+        tk.Label(top, text="Binning factors (X x Y): ").grid(
+            row=0, column=0, sticky=tk.W
+        )
 
         xyframe = tk.Frame(top)
         self.xbin = ListInt(xyframe, xbfac[0], xbfac, checker, width=2)
         self.xbin.pack(side=tk.LEFT)
-        tk.Label(xyframe, text=' x ').pack(side=tk.LEFT)
+        tk.Label(xyframe, text=" x ").pack(side=tk.LEFT)
         self.ybin = ListInt(xyframe, ybfac[0], ybfac, checker, width=2)
         self.ybin.pack(side=tk.LEFT)
         xyframe.grid(row=0, column=1, sticky=tk.W)
@@ -3354,8 +3461,9 @@ class WinPairs(tk.Frame):
         self.npair = ListInt(top, ap[0], ap, checker, width=2)
         if npair > 1:
             # Second row: number of windows
-            tk.Label(top, text='Number of window pairs').grid(
-                row=1, column=0, sticky=tk.W)
+            tk.Label(top, text="Number of window pairs").grid(
+                row=1, column=0, sticky=tk.W
+            )
             self.npair.grid(row=row, column=1, sticky=tk.W, pady=2)
             row += 1
 
@@ -3364,38 +3472,55 @@ class WinPairs(tk.Frame):
         bottom.pack(anchor=tk.W)
 
         # top row
-        tk.Label(bottom, text='xsl').grid(row=row, column=1, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='xsr').grid(row=row, column=2, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='ys').grid(row=row, column=3, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='nx').grid(row=row, column=4, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='ny').grid(row=row, column=5, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="xsl").grid(row=row, column=1, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="xsr").grid(row=row, column=2, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="ys").grid(row=row, column=3, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="nx").grid(row=row, column=4, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="ny").grid(row=row, column=5, ipady=5, sticky=tk.S)
 
         row += 1
-        (self.label, self.xsl, self.xsr,
-         self.ys, self.nx, self.ny) = [], [], [], [], [], []
+        (self.label, self.xsl, self.xsr, self.ys, self.nx, self.ny) = (
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
         nr = 0
-        for (xsl, xslmin, xslmax, xsr, xsrmin,
-             xsrmax, ys, ysmin, ysmax, nx, ny) in zip(*checks):
-
+        for xsl, xslmin, xslmax, xsr, xsrmin, xsrmax, ys, ysmin, ysmax, nx, ny in zip(
+            *checks
+        ):
             # create
             if npair == 1:
-                self.label.append(tk.Label(bottom, text='Pair: '))
+                self.label.append(tk.Label(bottom, text="Pair: "))
             else:
-                self.label.append(
-                    tk.Label(bottom, text='Pair ' + str(nr) + ': '))
+                self.label.append(tk.Label(bottom, text="Pair " + str(nr) + ": "))
 
             self.xsl.append(
-                RangedInt(bottom, xsl, xslmin, xslmax, checker, True, width=4))
+                RangedInt(bottom, xsl, xslmin, xslmax, checker, True, width=4)
+            )
             self.xsr.append(
-                RangedInt(bottom, xsr, xsrmin, xsrmax, checker, True, width=4))
-            self.ys.append(
-                RangedInt(bottom, ys, ysmin, ysmax, checker, True, width=4))
+                RangedInt(bottom, xsr, xsrmin, xsrmax, checker, True, width=4)
+            )
+            self.ys.append(RangedInt(bottom, ys, ysmin, ysmax, checker, True, width=4))
             self.nx.append(
-                RangedMint(bottom, nx, 1, xslmax-xslmin+1, self.xbin,
-                           checker, True, width=4))
+                RangedMint(
+                    bottom,
+                    nx,
+                    1,
+                    xslmax - xslmin + 1,
+                    self.xbin,
+                    checker,
+                    True,
+                    width=4,
+                )
+            )
             self.ny.append(
-                RangedMint(bottom, ny, 1, ysmax-ysmin+1, self.ybin,
-                           checker, True, width=4))
+                RangedMint(
+                    bottom, ny, 1, ysmax - ysmin + 1, self.ybin, checker, True, width=4
+                )
+            )
 
             # arrange
             self.label[-1].grid(row=row, column=0)
@@ -3409,7 +3534,7 @@ class WinPairs(tk.Frame):
             nr += 1
 
         # syncing button
-        self.sbutt = ActButton(bottom, 5, self.sync, text='Sync')
+        self.sbutt = ActButton(bottom, 5, self.sync, text="Sync")
         self.sbutt.grid(row=row, column=0, columnspan=5, pady=10, sticky=tk.W)
         self.frozen = False
 
@@ -3433,14 +3558,18 @@ class WinPairs(tk.Frame):
 
         g = get_root(self).globals
         # individual pair checks
-        for xslw, xsrw, ysw, nxw, nyw in zip(self.xsl[:npair], self.xsr[:npair],
-                                             self.ys[:npair], self.nx[:npair],
-                                             self.ny[:npair]):
-            xslw.config(bg=g.COL['main'])
-            xsrw.config(bg=g.COL['main'])
-            ysw.config(bg=g.COL['main'])
-            nxw.config(bg=g.COL['main'])
-            nyw.config(bg=g.COL['main'])
+        for xslw, xsrw, ysw, nxw, nyw in zip(
+            self.xsl[:npair],
+            self.xsr[:npair],
+            self.ys[:npair],
+            self.nx[:npair],
+            self.ny[:npair],
+        ):
+            xslw.config(bg=g.COL["main"])
+            xsrw.config(bg=g.COL["main"])
+            ysw.config(bg=g.COL["main"])
+            nxw.config(bg=g.COL["main"])
+            nyw.config(bg=g.COL["main"])
             status = status if xslw.ok() else False
             status = status if xsrw.ok() else False
             status = status if ysw.ok() else False
@@ -3454,7 +3583,7 @@ class WinPairs(tk.Frame):
 
             # Are unbinned dimensions consistent with binning factors?
             if nx is None or nx % xbin != 0:
-                nxw.config(bg=g.COL['error'])
+                nxw.config(bg=g.COL["error"])
                 status = False
             elif self.is_hcam and (nx // xbin) % 4 != 0:
                 """
@@ -3462,20 +3591,20 @@ class WinPairs(tk.Frame):
                 As a result, to avoid loss of data from frames, the binned
                 x-size must be a multiple of 4.
                 """
-                nxw.config(bg=g.COL['error'])
+                nxw.config(bg=g.COL["error"])
                 status = False
 
             if ny is None or ny % ybin != 0:
-                nyw.config(bg=g.COL['error'])
+                nyw.config(bg=g.COL["error"])
                 status = False
 
             # overlap checks
             if xsl is None or xsr is None or xsl >= xsr:
-                xsrw.config(bg=g.COL['error'])
+                xsrw.config(bg=g.COL["error"])
                 status = False
 
             if xsl is None or xsr is None or nx is None or xsl + nx > xsr:
-                xsrw.config(bg=g.COL['error'])
+                xsrw.config(bg=g.COL["error"])
                 status = False
 
             # Are the windows synchronised? This means that they would
@@ -3485,45 +3614,47 @@ class WinPairs(tk.Frame):
             # to enable / disable the sync button and we don't want it to be
             # enabled just because xs or ys are not set.
             perform_check = all([param is not None for param in (xsl, xsr, ys, nx, ny)])
-            if (perform_check and
-                ((xsl - 1) % xbin != 0 or (xsr - 1025) % xbin != 0 or
-                 (ys - 1) % ybin != 0)):
+            if perform_check and (
+                (xsl - 1) % xbin != 0
+                or (xsr - 1025) % xbin != 0
+                or (ys - 1) % ybin != 0
+            ):
                 synced = False
 
             # Range checks
             if xsl is None or nx is None or xsl + nx - 1 > xslw.imax:
-                xslw.config(bg=g.COL['error'])
+                xslw.config(bg=g.COL["error"])
                 status = False
 
             if xsr is None or nx is None or xsr + nx - 1 > xsrw.imax:
-                xsrw.config(bg=g.COL['error'])
+                xsrw.config(bg=g.COL["error"])
                 status = False
 
             if ys is None or ny is None or ys + ny - 1 > ysw.imax:
-                ysw.config(bg=g.COL['error'])
+                ysw.config(bg=g.COL["error"])
                 status = False
 
         # Pair overlap checks. Compare one pair with the next one in the
         # same quadrant (if there is one). Only bother if we have survived
         # so far, which saves a lot of checks
         if status:
-            for index in range(npair-2):
+            for index in range(npair - 2):
                 ys1 = self.ys[index].value()
                 ny1 = self.ny[index].value()
 
-                ysw2 = self.ys[index+2]
+                ysw2 = self.ys[index + 2]
                 ys2 = ysw2.value()
                 if ys1 + ny1 > ys2:
-                    ysw2.config(bg=g.COL['error'])
+                    ysw2.config(bg=g.COL["error"])
                     status = False
 
         if synced:
-            self.sbutt.config(bg=g.COL['main'])
+            self.sbutt.config(bg=g.COL["main"])
             self.sbutt.disable()
         else:
             if not self.frozen:
                 self.sbutt.enable()
-            self.sbutt.config(bg=g.COL['warn'])
+            self.sbutt.config(bg=g.COL["warn"])
 
         return status
 
@@ -3541,27 +3672,25 @@ class WinPairs(tk.Frame):
         n = 0
         for xsl, xsr, ys, nx, ny in self:
             if xbin > 1:
-                xsl = xbin*((xsl-1)//xbin)+1
+                xsl = xbin * ((xsl - 1) // xbin) + 1
                 self.xsl[n].set(xsl)
-                xsr = xbin*((xsr-1025)//xbin)+1025
+                xsr = xbin * ((xsr - 1025) // xbin) + 1025
                 self.xsr[n].set(xsr)
 
             if ybin > 1:
-                ys = ybin*((ys-1)//ybin)+1
+                ys = ybin * ((ys - 1) // ybin) + 1
                 self.ys[n].set(ys)
 
             n += 1
         g = get_root(self).globals
-        self.sbutt.config(bg=g.COL['main'])
-        self.sbutt.config(state='disable')
+        self.sbutt.config(bg=g.COL["main"])
+        self.sbutt.config(state="disable")
 
     def freeze(self):
         """
         Freeze (disable) all settings so they can't be altered
         """
-        for xsl, xsr, ys, nx, ny in \
-                zip(self.xsl, self.xsr,
-                    self.ys, self.nx, self.ny):
+        for xsl, xsr, ys, nx, ny in zip(self.xsl, self.xsr, self.ys, self.nx, self.ny):
             xsl.disable()
             xsr.disable()
             ys.disable()
@@ -3601,20 +3730,30 @@ class WinPairs(tk.Frame):
         Enables WinPair settings
         """
         npair = self.npair.value()
-        for label, xsl, xsr, ys, nx, ny in \
-                zip(self.label[:npair], self.xsl[:npair], self.xsr[:npair],
-                    self.ys[:npair], self.nx[:npair], self.ny[:npair]):
-            label.config(state='normal')
+        for label, xsl, xsr, ys, nx, ny in zip(
+            self.label[:npair],
+            self.xsl[:npair],
+            self.xsr[:npair],
+            self.ys[:npair],
+            self.nx[:npair],
+            self.ny[:npair],
+        ):
+            label.config(state="normal")
             xsl.enable()
             xsr.enable()
             ys.enable()
             nx.enable()
             ny.enable()
 
-        for label, xsl, xsr, ys, nx, ny in \
-                zip(self.label[npair:], self.xsl[npair:], self.xsr[npair:],
-                    self.ys[npair:], self.nx[npair:], self.ny[npair:]):
-            label.config(state='disable')
+        for label, xsl, xsr, ys, nx, ny in zip(
+            self.label[npair:],
+            self.xsl[npair:],
+            self.xsr[npair:],
+            self.ys[npair:],
+            self.nx[npair:],
+            self.ny[npair:],
+        ):
+            label.config(state="disable")
             xsl.disable()
             xsr.disable()
             ys.disable()
@@ -3630,8 +3769,13 @@ class WinPairs(tk.Frame):
         """
         return xsl, xsr, ys, nx, ny for this pair
         """
-        return (self.xsl[n].value(), self.xsr[n].value(),
-                self.ys[n].value(), self.nx[n].value(), self.ny[n].value())
+        return (
+            self.xsl[n].value(),
+            self.xsr[n].value(),
+            self.ys[n].value(),
+            self.nx[n].value(),
+            self.ny[n].value(),
+        )
 
     def __iter__(self):
         """
@@ -3641,8 +3785,13 @@ class WinPairs(tk.Frame):
         n = 0
         npair = self.npair.value()
         while n < npair:
-            yield (self.xsl[n].value(), self.xsr[n].value(),
-                   self.ys[n].value(), self.nx[n].value(), self.ny[n].value())
+            yield (
+                self.xsl[n].value(),
+                self.xsr[n].value(),
+                self.ys[n].value(),
+                self.nx[n].value(),
+                self.ny[n].value(),
+            )
             n += 1
 
 
@@ -3652,10 +3801,30 @@ class WinQuads(tk.Frame):
     contained within a gridded block that can be easily postioned.
     """
 
-    def __init__(self, master,
-                 xsll, xsllmin, xsllmax, xsul, xsulmin, xsulmax,
-                 xslr, xslrmin, xslrmax, xsur, xsurmin, xsurmax,
-                 ys, ysmin, ysmax, nx, ny, xbfac, ybfac, checker):
+    def __init__(
+        self,
+        master,
+        xsll,
+        xsllmin,
+        xsllmax,
+        xsul,
+        xsulmin,
+        xsulmax,
+        xslr,
+        xslrmin,
+        xslrmax,
+        xsur,
+        xsurmin,
+        xsurmax,
+        ys,
+        ysmin,
+        ysmax,
+        nx,
+        ny,
+        xbfac,
+        ybfac,
+        checker,
+    ):
         """
         Arguments:
 
@@ -3703,13 +3872,31 @@ class WinQuads(tk.Frame):
         """
         # check we have a consistent number of quads in all parameters
         nquad = len(xsll)
-        checks = (xsll, xsllmin, xsllmax, xslr, xslrmin, xslrmax,
-                  xsul, xsulmin, xsulmax, xsur, xsurmin, xsurmax,
-                  ys, ysmin, ysmax, nx, ny)
+        checks = (
+            xsll,
+            xsllmin,
+            xsllmax,
+            xslr,
+            xslrmin,
+            xslrmax,
+            xsul,
+            xsulmin,
+            xsulmax,
+            xsur,
+            xsurmin,
+            xsurmax,
+            ys,
+            ysmin,
+            ysmax,
+            nx,
+            ny,
+        )
         for check in checks:
             if nquad != len(check):
-                raise DriverError('drivers.WinQuads.__init__:' +
-                                  ' conflicting array lengths amongst inputs')
+                raise DriverError(
+                    "drivers.WinQuads.__init__:"
+                    + " conflicting array lengths amongst inputs"
+                )
 
         tk.Frame.__init__(self, master)
 
@@ -3717,13 +3904,14 @@ class WinQuads(tk.Frame):
         top = tk.Frame(self)
         top.pack(anchor=tk.W)
 
-        tk.Label(top, text='Binning factors (X x Y): ').grid(
-            row=0, column=0, sticky=tk.W)
+        tk.Label(top, text="Binning factors (X x Y): ").grid(
+            row=0, column=0, sticky=tk.W
+        )
 
         xyframe = tk.Frame(top)
         self.xbin = ListInt(xyframe, xbfac[0], xbfac, checker, width=2)
         self.xbin.pack(side=tk.LEFT)
-        tk.Label(xyframe, text=' x ').pack(side=tk.LEFT)
+        tk.Label(xyframe, text=" x ").pack(side=tk.LEFT)
         self.ybin = ListInt(xyframe, ybfac[0], ybfac, checker, width=2)
         self.ybin.pack(side=tk.LEFT)
         xyframe.grid(row=0, column=1, sticky=tk.W)
@@ -3734,8 +3922,9 @@ class WinQuads(tk.Frame):
         self.nquad = ListInt(top, aq[0], aq, checker, width=2)
         if nquad > 1:
             # Second row: number of quads selector
-            tk.Label(top, text='Number of window quads: ').grid(
-                row=1, column=0, sticky=tk.W)
+            tk.Label(top, text="Number of window quads: ").grid(
+                row=1, column=0, sticky=tk.W
+            )
             self.nquad.grid(row=row, column=1, sticky=tk.W, pady=2)
             row += 1
 
@@ -3744,46 +3933,81 @@ class WinQuads(tk.Frame):
         bottom.pack(anchor=tk.W)
 
         # top row - labels
-        tk.Label(bottom, text='xsll').grid(row=row, column=1, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='xslr').grid(row=row, column=2, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='xsul').grid(row=row, column=3, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='xsur').grid(row=row, column=4, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='ys').grid(row=row, column=5, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='nx').grid(row=row, column=6, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='ny').grid(row=row, column=7, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="xsll").grid(row=row, column=1, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="xslr").grid(row=row, column=2, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="xsul").grid(row=row, column=3, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="xsur").grid(row=row, column=4, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="ys").grid(row=row, column=5, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="nx").grid(row=row, column=6, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="ny").grid(row=row, column=7, ipady=5, sticky=tk.S)
 
         row += 1
-        (self.label, self.xsll, self.xsul, self.xslr, self.xsur,
-         self.ys, self.nx, self.ny) = [], [], [], [], [], [], [], []
+        (
+            self.label,
+            self.xsll,
+            self.xsul,
+            self.xslr,
+            self.xsur,
+            self.ys,
+            self.nx,
+            self.ny,
+        ) = ([], [], [], [], [], [], [], [])
         nr = 0
-        for (xsll, xsllmin, xsllmax, xslr, xslrmin, xslrmax,
-             xsul, xsulmin, xsulmax, xsur, xsurmin, xsurmax,
-             ys, ysmin, ysmax, nx, ny) in zip(*checks):
-
+        for (
+            xsll,
+            xsllmin,
+            xsllmax,
+            xslr,
+            xslrmin,
+            xslrmax,
+            xsul,
+            xsulmin,
+            xsulmax,
+            xsur,
+            xsurmin,
+            xsurmax,
+            ys,
+            ysmin,
+            ysmax,
+            nx,
+            ny,
+        ) in zip(*checks):
             # create
             if nquad == 1:
-                self.label.append(tk.Label(bottom, text='Quad: '))
+                self.label.append(tk.Label(bottom, text="Quad: "))
             else:
-                self.label.append(
-                    tk.Label(bottom, text='Quad ' + str(nr + 1) + ': ')
-                )
+                self.label.append(tk.Label(bottom, text="Quad " + str(nr + 1) + ": "))
 
             self.xsll.append(
-                RangedInt(bottom, xsll, xsllmin, xsllmax, checker, True, width=4))
+                RangedInt(bottom, xsll, xsllmin, xsllmax, checker, True, width=4)
+            )
             self.xsul.append(
-                RangedInt(bottom, xsul, xsulmin, xsulmax, checker, True, width=4))
+                RangedInt(bottom, xsul, xsulmin, xsulmax, checker, True, width=4)
+            )
             self.xslr.append(
-                RangedInt(bottom, xslr, xslrmin, xslrmax, checker, True, width=4))
+                RangedInt(bottom, xslr, xslrmin, xslrmax, checker, True, width=4)
+            )
             self.xsur.append(
-                RangedInt(bottom, xsur, xsurmin, xsurmax, checker, True, width=4))
-            self.ys.append(
-                RangedInt(bottom, ys, ysmin, ysmax, checker, True, width=4))
+                RangedInt(bottom, xsur, xsurmin, xsurmax, checker, True, width=4)
+            )
+            self.ys.append(RangedInt(bottom, ys, ysmin, ysmax, checker, True, width=4))
             self.nx.append(
-                RangedMint(bottom, nx, 1, xsulmax-xsulmin+1, self.xbin,
-                           checker, True, width=4))
+                RangedMint(
+                    bottom,
+                    nx,
+                    1,
+                    xsulmax - xsulmin + 1,
+                    self.xbin,
+                    checker,
+                    True,
+                    width=4,
+                )
+            )
             self.ny.append(
-                RangedMint(bottom, ny, 1, ysmax-ysmin+1, self.ybin,
-                           checker, True, width=4))
+                RangedMint(
+                    bottom, ny, 1, ysmax - ysmin + 1, self.ybin, checker, True, width=4
+                )
+            )
 
             # arrange
             self.label[-1].grid(row=row, column=0)
@@ -3799,7 +4023,7 @@ class WinQuads(tk.Frame):
             nr += 1
 
         # sync button
-        self.sbutt = ActButton(bottom, 5, self.sync, text='Sync')
+        self.sbutt = ActButton(bottom, 5, self.sync, text="Sync")
         self.sbutt.grid(row=row, column=0, columnspan=7, pady=10, sticky=tk.W)
         self.frozen = False
 
@@ -3819,14 +4043,18 @@ class WinQuads(tk.Frame):
 
         g = get_root(self).globals
         # individual window checks
-        for (xsllw, xsulw, xslrw, xsurw, ysw, nxw, nyw) in zip(
-             self.xsll[:nquad],
-             self.xsul[:nquad], self.xslr[:nquad],
-             self.xsur[:nquad], self.ys[:nquad], self.nx[:nquad], self.ny[:nquad]):
-
+        for xsllw, xsulw, xslrw, xsurw, ysw, nxw, nyw in zip(
+            self.xsll[:nquad],
+            self.xsul[:nquad],
+            self.xslr[:nquad],
+            self.xsur[:nquad],
+            self.ys[:nquad],
+            self.nx[:nquad],
+            self.ny[:nquad],
+        ):
             all_fields = (xsllw, xsulw, xslrw, xsurw, ysw, nxw, nyw)
             for field in all_fields:
-                field.config(bg=g.COL['main'])
+                field.config(bg=g.COL["main"])
                 status = status if field.ok() else False
 
             xsll = xsllw.value()
@@ -3839,7 +4067,7 @@ class WinQuads(tk.Frame):
 
             # Are unbinned dimensions consistent with binning factors?
             if nx is None or nx % xbin != 0:
-                nxw.config(bg=g.COL['error'])
+                nxw.config(bg=g.COL["error"])
                 status = False
             elif (nx // xbin) % 4 != 0:
                 """
@@ -3847,25 +4075,25 @@ class WinQuads(tk.Frame):
                 As a result, to avoid loss of data from frames, the binned
                 x-size must be a multiple of 4.
                 """
-                nxw.config(bg=g.COL['error'])
+                nxw.config(bg=g.COL["error"])
                 status = False
 
             if ny is None or ny % ybin != 0:
-                nyw.config(bg=g.COL['error'])
+                nyw.config(bg=g.COL["error"])
                 status = False
 
             # overlap checks in x direction
             if xsll is None or xslr is None or xsll >= xslr:
-                xslrw.config(bg=g.COL['error'])
+                xslrw.config(bg=g.COL["error"])
                 status = False
             if xsul is None or xsur is None or xsul >= xsur:
-                xsurw.config(bg=g.COL['error'])
+                xsurw.config(bg=g.COL["error"])
                 status = False
             if nx is None or xsll is None or xsll + nx > xslr:
-                xslrw.config(bg=g.COL['error'])
+                xslrw.config(bg=g.COL["error"])
                 status = False
             if xsul is None or nx is None or xsul + nx > xsur:
-                xsurw.config(bg=g.COL['error'])
+                xsurw.config(bg=g.COL["error"])
                 status = False
 
             # Are the windows synchronised? This means that they would
@@ -3874,50 +4102,60 @@ class WinQuads(tk.Frame):
             # set, we count that as "synced" because the purpose of this is
             # to enable / disable the sync button and we don't want it to be
             # enabled just because xs or ys are not set.
-            perform_check = all([param is not None for param in (
-                xsll, xslr, ys, nx, ny
-            )])
-            if (perform_check and ((xsll - 1) % xbin != 0 or (xslr - 1025) % xbin != 0 or
-                                   (ys - 1) % ybin != 0)):
+            perform_check = all(
+                [param is not None for param in (xsll, xslr, ys, nx, ny)]
+            )
+            if perform_check and (
+                (xsll - 1) % xbin != 0
+                or (xslr - 1025) % xbin != 0
+                or (ys - 1) % ybin != 0
+            ):
                 synced = False
 
-            perform_check = all([param is not None for param in (
-                xsul, xsur, ys, nx, ny
-            )])
-            if (perform_check and ((xsul - 1) % xbin != 0 or (xsur - 1025) % xbin != 0 or
-                                   (ys - 1) % ybin != 0)):
+            perform_check = all(
+                [param is not None for param in (xsul, xsur, ys, nx, ny)]
+            )
+            if perform_check and (
+                (xsul - 1) % xbin != 0
+                or (xsur - 1025) % xbin != 0
+                or (ys - 1) % ybin != 0
+            ):
                 synced = False
 
             # Range checks
-            rchecks = ((xsll, nx, xsllw), (xslr, nx, xslrw),
-                       (xsul, nx, xsulw), (xsur, nx, xsurw),
-                       (ys, ny, ysw))
+            rchecks = (
+                (xsll, nx, xsllw),
+                (xslr, nx, xslrw),
+                (xsul, nx, xsulw),
+                (xsur, nx, xsurw),
+                (ys, ny, ysw),
+            )
             for check in rchecks:
                 val, size, widg = check
                 if val is None or size is None or val + size - 1 > widg.imax:
-                    widg.config(bg=g.COL['error'])
+                    widg.config(bg=g.COL["error"])
                     status = False
 
         # Quad overlap checks. Compare one quad with the next one
         # in the same quadrant if there is one. Only bother if we
         # have survived so far, which saves a lot of checks.
         if status:
-            for index in range(nquad-1):
+            for index in range(nquad - 1):
                 ys1 = self.ys[index].value()
                 ny1 = self.ny[index].value()
-                ysw2 = self.ys[index+1]
+                ysw2 = self.ys[index + 1]
                 ys2 = ysw2.value()
                 if any([thing is None for thing in (ys1, ny1, ys2)]) or ys1 + ny1 > ys2:
-                    ysw2.config(bg=g.COL['error'])
+                    ysw2.config(bg=g.COL["error"])
                     status = False
 
         if synced:
-            self.sbutt.config(bg=g.COL['main'])
+            self.sbutt.config(bg=g.COL["main"])
             self.sbutt.disable()
         else:
             if not self.frozen:
                 self.sbutt.enable()
-            self.sbutt.config(bg=g.COL['warn'])
+            self.sbutt.config(bg=g.COL["warn"])
         return status
 
     def sync(self):
@@ -3932,37 +4170,38 @@ class WinQuads(tk.Frame):
         xbin = self.xbin.value()
         ybin = self.ybin.value()
         if xbin == 1 and ybin == 1:
-            self.sbutt.config(state='disable')
+            self.sbutt.config(state="disable")
             return
 
         for n, (xsll, xsul, xslr, xsur, ys, nx, ny) in enumerate(self):
-            if (xsll-1) % xbin != 0:
-                xsll = xbin * ((xsll-1)//xbin)+1
+            if (xsll - 1) % xbin != 0:
+                xsll = xbin * ((xsll - 1) // xbin) + 1
                 self.xsll[n].set(xsll)
-            if (xsul-1) % xbin != 0:
-                xsul = xbin * ((xsul-1)//xbin)+1
+            if (xsul - 1) % xbin != 0:
+                xsul = xbin * ((xsul - 1) // xbin) + 1
                 self.xsul[n].set(xsul)
-            if (xslr-1025) % xbin != 0:
-                xslr = xbin * ((xslr-1025)//xbin)+1025
+            if (xslr - 1025) % xbin != 0:
+                xslr = xbin * ((xslr - 1025) // xbin) + 1025
                 self.xslr[n].set(xslr)
-            if (xsur-1025) % xbin != 0:
-                xsur = xbin * ((xsur-1025)//xbin)+1025
+            if (xsur - 1025) % xbin != 0:
+                xsur = xbin * ((xsur - 1025) // xbin) + 1025
                 self.xsur[n].set(xsur)
 
-            if ybin > 1 and (ys-1) % ybin != 0:
-                ys = ybin*((ys-1)//ybin)+1
+            if ybin > 1 and (ys - 1) % ybin != 0:
+                ys = ybin * ((ys - 1) // ybin) + 1
                 self.ys[n].set(ys)
 
         g = get_root(self).globals
-        self.sbutt.config(bg=g.COL['main'])
-        self.sbutt.config(state='disable')
+        self.sbutt.config(bg=g.COL["main"])
+        self.sbutt.config(state="disable")
 
     def freeze(self):
         """
         Freeze (disable) all settings
         """
-        for fields in zip(self.xsll, self.xsul, self.xslr, self.xsur,
-                          self.ys, self.nx, self.ny):
+        for fields in zip(
+            self.xsll, self.xsul, self.xslr, self.xsur, self.ys, self.nx, self.ny
+        ):
             for field in fields:
                 field.disable()
         self.nquad.disable()
@@ -3999,19 +4238,31 @@ class WinQuads(tk.Frame):
         Enables WinQuad setting
         """
         nquad = self.nquad.value()
-        for label, xsll, xsul, xslr, xsur, ys, nx, ny in \
-                zip(self.label[:nquad], self.xsll[:nquad], self.xsul[:nquad],
-                    self.xslr[:nquad], self.xsur[:nquad], self.ys[:nquad],
-                    self.nx[:nquad], self.ny[:nquad]):
-            label.config(state='normal')
+        for label, xsll, xsul, xslr, xsur, ys, nx, ny in zip(
+            self.label[:nquad],
+            self.xsll[:nquad],
+            self.xsul[:nquad],
+            self.xslr[:nquad],
+            self.xsur[:nquad],
+            self.ys[:nquad],
+            self.nx[:nquad],
+            self.ny[:nquad],
+        ):
+            label.config(state="normal")
             for thing in (xsll, xsul, xslr, xsur, ys, nx, ny):
                 thing.enable()
 
-        for label, xsll, xsul, xslr, xsur, ys, nx, ny in \
-                zip(self.label[nquad:], self.xsll[nquad:], self.xsul[nquad:],
-                    self.xslr[nquad:], self.xsur[nquad:], self.ys[nquad:],
-                    self.nx[nquad:], self.ny[nquad:]):
-            label.config(state='disable')
+        for label, xsll, xsul, xslr, xsur, ys, nx, ny in zip(
+            self.label[nquad:],
+            self.xsll[nquad:],
+            self.xsul[nquad:],
+            self.xslr[nquad:],
+            self.xsur[nquad:],
+            self.ys[nquad:],
+            self.nx[nquad:],
+            self.ny[nquad:],
+        ):
+            label.config(state="disable")
             for thing in (xsll, xsul, xslr, xsur, ys, nx, ny):
                 thing.disable()
 
@@ -4031,9 +4282,13 @@ class WinQuads(tk.Frame):
         nquad = self.nquad.value()
         while n < nquad:
             yield (
-                self.xsll[n].value(), self.xsul[n].value(),
-                self.xslr[n].value(), self.xsur[n].value(),
-                self.ys[n].value(), self.nx[n].value(), self.ny[n].value()
+                self.xsll[n].value(),
+                self.xsul[n].value(),
+                self.xslr[n].value(),
+                self.xsur[n].value(),
+                self.ys[n].value(),
+                self.nx[n].value(),
+                self.ny[n].value(),
             )
             n += 1
 
@@ -4045,8 +4300,21 @@ class Windows(tk.Frame):
     Also defines binning factors and the number of active windows.
     """
 
-    def __init__(self, master, xss, xsmins, xsmaxs, yss, ysmins, ysmaxs,
-                 nxs, nys, xbfac, ybfac, checker):
+    def __init__(
+        self,
+        master,
+        xss,
+        xsmins,
+        xsmaxs,
+        yss,
+        ysmins,
+        ysmaxs,
+        nxs,
+        nys,
+        xbfac,
+        ybfac,
+        checker,
+    ):
         """
         Arguments:
 
@@ -4084,8 +4352,10 @@ class Windows(tk.Frame):
         checks = (xss, xsmins, xsmaxs, yss, ysmins, ysmaxs, nxs, nys)
         for check in checks:
             if nwin != len(check):
-                raise DriverError('drivers.Windows.__init__: ' +
-                                  'conflict array lengths amonst inputs')
+                raise DriverError(
+                    "drivers.Windows.__init__: "
+                    + "conflict array lengths amonst inputs"
+                )
 
         tk.Frame.__init__(self, master)
 
@@ -4094,13 +4364,14 @@ class Windows(tk.Frame):
         top = tk.Frame(self)
         top.pack(anchor=tk.W)
 
-        tk.Label(top, text='Binning factors (X x Y): ').grid(
-            row=0, column=0, sticky=tk.W)
+        tk.Label(top, text="Binning factors (X x Y): ").grid(
+            row=0, column=0, sticky=tk.W
+        )
 
         xyframe = tk.Frame(top)
         self.xbin = ListInt(xyframe, xbfac[0], xbfac, checker, width=2)
         self.xbin.pack(side=tk.LEFT)
-        tk.Label(xyframe, text=' x ').pack(side=tk.LEFT)
+        tk.Label(xyframe, text=" x ").pack(side=tk.LEFT)
         self.ybin = ListInt(xyframe, ybfac[0], ybfac, checker, width=2)
         self.ybin.pack(side=tk.LEFT)
         xyframe.grid(row=0, column=1, sticky=tk.W)
@@ -4109,8 +4380,7 @@ class Windows(tk.Frame):
         self.nwin = RangedInt(top, 1, 1, nwin, checker, False, width=2)
         row = 1
         if nwin > 1:
-            tk.Label(top, text='Number of windows').grid(row=row, column=0,
-                                                         sticky=tk.W)
+            tk.Label(top, text="Number of windows").grid(row=row, column=0, sticky=tk.W)
             self.nwin.grid(row=1, column=1, sticky=tk.W, pady=2)
             row += 1
 
@@ -4119,33 +4389,33 @@ class Windows(tk.Frame):
         bottom.pack(anchor=tk.W)
 
         # top row
-        tk.Label(bottom, text='xs').grid(row=row, column=1, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='ys').grid(row=row, column=2, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='nx').grid(row=row, column=3, ipady=5, sticky=tk.S)
-        tk.Label(bottom, text='ny').grid(row=row, column=4, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="xs").grid(row=row, column=1, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="ys").grid(row=row, column=2, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="nx").grid(row=row, column=3, ipady=5, sticky=tk.S)
+        tk.Label(bottom, text="ny").grid(row=row, column=4, ipady=5, sticky=tk.S)
 
         self.label, self.xs, self.ys, self.nx, self.ny = [], [], [], [], []
         nr = 0
         row += 1
         for xs, xsmin, xsmax, ys, ysmin, ysmax, nx, ny in zip(*checks):
-
             # create
             if nwin == 1:
-                self.label.append(tk.Label(bottom, text='Window: '))
+                self.label.append(tk.Label(bottom, text="Window: "))
             else:
-                self.label.append(
-                    tk.Label(bottom, text='Window ' + str(nr+1) + ': '))
+                self.label.append(tk.Label(bottom, text="Window " + str(nr + 1) + ": "))
 
-            self.xs.append(
-                RangedInt(bottom, xs, xsmin, xsmax, checker, True, width=4))
-            self.ys.append(
-                RangedInt(bottom, ys, ysmin, ysmax, checker, True, width=4))
+            self.xs.append(RangedInt(bottom, xs, xsmin, xsmax, checker, True, width=4))
+            self.ys.append(RangedInt(bottom, ys, ysmin, ysmax, checker, True, width=4))
             self.nx.append(
-                RangedMint(bottom, nx, 1, xsmax-xsmin+1,
-                           self.xbin, checker, True, width=4))
+                RangedMint(
+                    bottom, nx, 1, xsmax - xsmin + 1, self.xbin, checker, True, width=4
+                )
+            )
             self.ny.append(
-                RangedMint(bottom, ny, 1, ysmax-ysmin+1,
-                           self.ybin, checker, True, width=4))
+                RangedMint(
+                    bottom, ny, 1, ysmax - ysmin + 1, self.ybin, checker, True, width=4
+                )
+            )
 
             # arrange
             self.label[-1].grid(row=row, column=0)
@@ -4157,7 +4427,7 @@ class Windows(tk.Frame):
             row += 1
             nr += 1
 
-        self.sbutt = ActButton(bottom, 5, self.sync, text='Sync')
+        self.sbutt = ActButton(bottom, 5, self.sync, text="Sync")
         self.sbutt.grid(row=row, column=0, columnspan=5, pady=6, sticky=tk.W)
         self.frozen = False
 
@@ -4179,14 +4449,13 @@ class Windows(tk.Frame):
 
         # individual window checks
         g = get_root(self).globals
-        for xsw, ysw, nxw, nyw in \
-                zip(self.xs[:nwin], self.ys[:nwin],
-                    self.nx[:nwin], self.ny[:nwin]):
-
-            xsw.config(bg=g.COL['main'])
-            ysw.config(bg=g.COL['main'])
-            nxw.config(bg=g.COL['main'])
-            nyw.config(bg=g.COL['main'])
+        for xsw, ysw, nxw, nyw in zip(
+            self.xs[:nwin], self.ys[:nwin], self.nx[:nwin], self.ny[:nwin]
+        ):
+            xsw.config(bg=g.COL["main"])
+            ysw.config(bg=g.COL["main"])
+            nxw.config(bg=g.COL["main"])
+            nyw.config(bg=g.COL["main"])
             status = status if xsw.ok() else False
             status = status if ysw.ok() else False
             status = status if nxw.ok() else False
@@ -4198,11 +4467,11 @@ class Windows(tk.Frame):
 
             # Are unbinned dimensions consistent with binning factors?
             if nx is None or nx % xbin != 0:
-                nxw.config(bg=g.COL['error'])
+                nxw.config(bg=g.COL["error"])
                 status = False
 
             if ny is None or ny % ybin != 0:
-                nyw.config(bg=g.COL['error'])
+                nyw.config(bg=g.COL["error"])
                 status = False
 
             # Are the windows synchronised? This means that they
@@ -4212,26 +4481,28 @@ class Windows(tk.Frame):
             # "synced" because the purpose of this is to enable
             # / disable the sync button and we don't want it to be
             # enabled just because xs or ys are not set.
-            if (xs is not None and ys is not None and nx is not None and ny is not None):
-                if (xs < 1025 and ((xs - 1) % xbin != 0 or (ys - 1) % ybin != 0)
-                        or ((xs-1025) % xbin != 0 or (ys - 1) % ybin != 0)):
+            if xs is not None and ys is not None and nx is not None and ny is not None:
+                if (
+                    xs < 1025
+                    and ((xs - 1) % xbin != 0 or (ys - 1) % ybin != 0)
+                    or ((xs - 1025) % xbin != 0 or (ys - 1) % ybin != 0)
+                ):
                     synced = False
 
             # Range checks
             if xs is None or nx is None or xs + nx - 1 > xsw.imax:
-                xsw.config(bg=g.COL['error'])
+                xsw.config(bg=g.COL["error"])
                 status = False
 
             if ys is None or ny is None or ys + ny - 1 > ysw.imax:
-                ysw.config(bg=g.COL['error'])
+                ysw.config(bg=g.COL["error"])
                 status = False
 
         # Overlap checks. Compare each window with the next one, requiring
         # no y overlap and that the second is higher than the first
         if status:
             n1 = 0
-            for ysw1, nyw1 in zip(self.ys[:nwin-1], self.ny[:nwin-1]):
-
+            for ysw1, nyw1 in zip(self.ys[: nwin - 1], self.ny[: nwin - 1]):
                 ys1 = ysw1.value()
                 ny1 = nyw1.value()
 
@@ -4241,16 +4512,16 @@ class Windows(tk.Frame):
                 ys2 = ysw2.value()
 
                 if ys2 < ys1 + ny1:
-                    ysw2.config(bg=g.COL['error'])
+                    ysw2.config(bg=g.COL["error"])
                     status = False
 
         if synced:
-            self.sbutt.config(bg=g.COL['main'])
+            self.sbutt.config(bg=g.COL["main"])
             self.sbutt.disable()
         else:
             if not self.frozen:
                 self.sbutt.enable()
-            self.sbutt.config(bg=g.COL['warn'])
+            self.sbutt.config(bg=g.COL["warn"])
 
         return status
 
@@ -4267,27 +4538,26 @@ class Windows(tk.Frame):
         for xs, ys, nx, ny in self:
             if xbin > 1 and xs % xbin != 1:
                 if xs < 1025:
-                    xs = xbin*((xs-1)//xbin)+1
+                    xs = xbin * ((xs - 1) // xbin) + 1
                 else:
-                    xs = xbin*((xs-1025)//xbin)+1025
+                    xs = xbin * ((xs - 1025) // xbin) + 1025
                 self.xs[n].set(xs)
 
             if ybin > 1 and ys % ybin != 1:
-                ys = ybin*((ys-1)//ybin)+1
+                ys = ybin * ((ys - 1) // ybin) + 1
                 self.ys[n].set(ys)
 
             n += 1
 
         g = get_root(self).globals
-        self.sbutt.config(bg=g.COL['main'])
-        self.sbutt.config(state='disable')
+        self.sbutt.config(bg=g.COL["main"])
+        self.sbutt.config(state="disable")
 
     def freeze(self):
         """
         Freeze all settings so they can't be altered
         """
-        for xs, ys, nx, ny in \
-                zip(self.xs, self.ys, self.nx, self.ny):
+        for xs, ys, nx, ny in zip(self.xs, self.ys, self.nx, self.ny):
             xs.disable()
             ys.disable()
             nx.disable()
@@ -4311,19 +4581,27 @@ class Windows(tk.Frame):
         Enables all settings
         """
         nwin = self.nwin.value()
-        for label, xs, ys, nx, ny in \
-                zip(self.label[:nwin], self.xs[:nwin], self.ys[:nwin],
-                    self.nx[:nwin], self.ny[:nwin]):
-            label.config(state='normal')
+        for label, xs, ys, nx, ny in zip(
+            self.label[:nwin],
+            self.xs[:nwin],
+            self.ys[:nwin],
+            self.nx[:nwin],
+            self.ny[:nwin],
+        ):
+            label.config(state="normal")
             xs.enable()
             ys.enable()
             nx.enable()
             ny.enable()
 
-        for label, xs, ys, nx, ny in \
-                zip(self.label[nwin:], self.xs[nwin:], self.ys[nwin:],
-                    self.nx[nwin:], self.ny[nwin:]):
-            label.config(state='disable')
+        for label, xs, ys, nx, ny in zip(
+            self.label[nwin:],
+            self.xs[nwin:],
+            self.ys[nwin:],
+            self.nx[nwin:],
+            self.ny[nwin:],
+        ):
+            label.config(state="disable")
             xs.disable()
             ys.disable()
             nx.disable()
@@ -4342,6 +4620,10 @@ class Windows(tk.Frame):
         n = 0
         nwin = self.nwin.value()
         while n < nwin:
-            yield (self.xs[n].value(), self.ys[n].value(),
-                   self.nx[n].value(), self.ny[n].value())
+            yield (
+                self.xs[n].value(),
+                self.ys[n].value(),
+                self.nx[n].value(),
+                self.ny[n].value(),
+            )
             n += 1
