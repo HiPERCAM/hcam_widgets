@@ -277,7 +277,7 @@ class CompoWidget(tk.Toplevel):
             return
 
         # allow time for statemachines to step forward (don't know why this is needed)
-        yield async_sleep(1.0)
+        yield async_sleep(1.5)
         if stage == "lens":
             rpc = "hipercam.compo_lens.rpc.stage.move"
         else:

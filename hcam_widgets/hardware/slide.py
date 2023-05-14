@@ -24,6 +24,9 @@ else:
     import tkinter as tk
 
 
+SLEEP_BEFORE_MOVE = 2.0
+
+
 class SlideFrame(tk.LabelFrame, Mimic):
     """
     Self-contained widget to deal with the focal plane slide
@@ -236,15 +239,15 @@ class SlideFrame(tk.LabelFrame, Mimic):
             self.set_slide_target_position(BLOCK_POS)
             # allow time for statemachines to step forward
             # this means we state is updated to out of position before moving
-            yield async_sleep(1.0)
+            yield async_sleep(SLEEP_BEFORE_MOVE)
         elif comm[0] == "unblock":
             topic = "hipercam.slide.rpc.stage.move"
             self.set_slide_target_position(UNBLOCK_POS)
-            yield async_sleep(1.0)
+            yield async_sleep(SLEEP_BEFORE_MOVE)
         elif comm[0] == "goto":
             topic = "hipercam.slide.rpc.stage.move"
             self.set_slide_target_position(int(comm[1]))
-            yield async_sleep(1.0)
+            yield async_sleep(SLEEP_BEFORE_MOVE)
         else:
             topic = f"hipercam.slide.rpc.{comm[0]}"
 
