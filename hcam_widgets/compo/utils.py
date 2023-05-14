@@ -366,8 +366,9 @@ class PickoffArm:
         Uses approximate formula which agrees with Zeemax calculations inc distortion to 1pix
         """
         r = 270 * u.mm
-        x = r * np.sin(theta)
-        y = r * (1 - np.cos(theta))
+        # stage for pickoff arm rotates in opposite sense to coordinate axes
+        x = r * np.sin(-theta)
+        y = r * (1 - np.cos(-theta))
         # actually not in focal plane, but assuming it is is OK
         return CartesianRepresentation(x, y, 0 * u.mm)
 
@@ -390,7 +391,7 @@ class PickoffArm:
                 radius=MIRROR_SIZE.to_value(unit) / 2,
             )
             baffle_cart = Baffle().vertices
-            baffle_cart = baffle_cart.transform(rotation_matrix(-theta))
+            baffle_cart = baffle_cart.transform(rotation_matrix(theta))
             baffle_cart += centre
             baffle_xy = baffle_cart.xyz[:2].T.to_value(unit)
             baffle = patches.Polygon(baffle_xy, closed=True)
@@ -410,7 +411,7 @@ class PickoffArm:
 
             # now Baffle
             baffle_cart = Baffle().vertices
-            baffle_cart = baffle_cart.transform(rotation_matrix(-theta))
+            baffle_cart = baffle_cart.transform(rotation_matrix(theta))
             baffle_cart += centre
             c = Chip()
             if c.contains(centre):
