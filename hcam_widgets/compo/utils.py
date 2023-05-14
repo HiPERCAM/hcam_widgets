@@ -75,15 +75,15 @@ Y = u.Quantity(
     unit=u.arcmin,
 )
 
-# Vital statistics for COMPO (mostly from FDR)
-PARK_POSITION = -60 * u.deg
+# Vital statistics for COMPO (from FDR and commissioning)
+PARK_POSITION = -66.4 * u.deg
 MAX_ANGLE = 55 * u.deg
 PICKOFF_SIZE = 26.73 * u.arcsec  # 330 pixels
 MIRROR_SIZE = 24.3 * u.arcsec  # 20 mm
 SHADOW_X = 40 * u.mm  # extent of vignetting by injector arm
 SHADOW_Y = 49 * u.mm  # extent of vignetting by injector arm (~739 pix)
 INJECTOR_THETA = 13.04 * u.deg  # angle of injector arm when in position
-GUIDE_THETA = 54.0 * u.deg  # angle of injector arm when guiding
+GUIDE_THETA = -66.4 * u.deg  # angle of injector arm when guiding
 LENS_REF_POSITION = 0 * u.mm  # TODO: this is made up, replace with true value
 NOMINAL_INJECTOR_ZERO = 0.1583 * u.deg  # value of stage encoder when arm centred
 NOMINAL_PICKOFF_ZERO = -0.135 * u.deg  # value of stage encoder when arm centred

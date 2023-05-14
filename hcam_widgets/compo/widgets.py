@@ -68,11 +68,10 @@ class COMPOSetupFrame(tk.Frame):
         to set it manually.
         """
         if self.injection_side.value() == "L":
-            ia = INJECTOR_THETA
-        elif self.injection_side.value() == "R":
             ia = -INJECTOR_THETA
+        elif self.injection_side.value() == "R":
+            ia = INJECTOR_THETA
         elif self.injection_side.value() == "G":
-            # TODO check sign!
             ia = GUIDE_THETA
         else:
             ia = PARK_POSITION
@@ -126,9 +125,13 @@ class COMPOSetupWidget(tk.Toplevel):
         """
         Encodes current COMPO setup data to JSON compatible dictionary
         """
+        if self.setup_frame.injection_side.value() == "P":
+            pickoff_angle = -PARK_POSITION
+        else:
+            pickoff_angle = self.setup_frame.pickoff_angle.value()
         return dict(
             injection_side=self.setup_frame.injection_side.value(),
-            pickoff_angle=self.setup_frame.pickoff_angle.value(),
+            pickoff_angle=pickoff_angle,
         )
 
     def loadJSON(self, json_string):
@@ -491,9 +494,13 @@ class CompoWidget(tk.Toplevel):
         """
         Encodes current COMPO setup data to JSON compatible dictionary
         """
+        if self.setup_frame.injection_side.value() == "P":
+            pickoff_angle = -PARK_POSITION
+        else:
+            pickoff_angle = self.setup_frame.pickoff_angle.value()
         return dict(
             injection_side=self.setup_frame.injection_side.value(),
-            pickoff_angle=self.setup_frame.pickoff_angle.value(),
+            pickoff_angle=pickoff_angle,
         )
 
     def loadJSON(self, json_string):
