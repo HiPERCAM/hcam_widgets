@@ -24,7 +24,7 @@ else:
     import tkinter as tk
 
 
-SLEEP_BEFORE_MOVE = 2.0
+SLEEP_BEFORE_MOVE = 0.5
 
 
 class SlideFrame(tk.LabelFrame, Mimic):
