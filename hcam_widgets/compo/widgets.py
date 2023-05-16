@@ -45,7 +45,9 @@ class COMPOSetupFrame(tk.Frame):
         tk.Label(self, text="Injection Position").grid(
             row=0, column=0, pady=4, padx=4, sticky=tk.W
         )
-        self.injection_side = w.Radio(self, ("L", "R", "G", "P"), 4, None, initial=1)
+        self.injection_side = w.Radio(
+            self, ("L", "R", "G", "P"), 4, self.side_update, initial=1
+        )
         self.injection_side.grid(row=0, column=1, pady=2, stick=tk.W)
 
         tk.Label(self, text="Pickoff Angle").grid(
@@ -77,6 +79,15 @@ class COMPOSetupFrame(tk.Frame):
             ia = PARK_POSITION
         return ia
 
+    def side_update(self, *args):
+        """
+        Callback for injection side radio buttons
+
+        Used to park pickoff arm if we are parking COMPO
+        """
+        if self.injection_side.value() == "P":
+            self.pickoff_angle.set(-PARK_POSITION.to_value(u.deg))
+
     @property
     def lens_position(self):
         """
@@ -89,9 +100,9 @@ class COMPOSetupFrame(tk.Frame):
         to set it manually.
         """
         guiding = True if self.injection_side.value() == "G" else False
-        return target_lens_position(self.pickoff_angle.value() * u.deg, guiding).to(
-            u.mm
-        )
+        return target_lens_position(
+            abs(self.pickoff_angle.value()) * u.deg, guiding
+        ).to(u.mm)
 
 
 class COMPOSetupWidget(tk.Toplevel):
@@ -126,7 +137,7 @@ class COMPOSetupWidget(tk.Toplevel):
         Encodes current COMPO setup data to JSON compatible dictionary
         """
         if self.setup_frame.injection_side.value() == "P":
-            pickoff_angle = -PARK_POSITION
+            pickoff_angle = -PARK_POSITION.to_value(u.deg)
         else:
             pickoff_angle = self.setup_frame.pickoff_angle.value()
         return dict(
@@ -495,7 +506,7 @@ class CompoWidget(tk.Toplevel):
         Encodes current COMPO setup data to JSON compatible dictionary
         """
         if self.setup_frame.injection_side.value() == "P":
-            pickoff_angle = -PARK_POSITION
+            pickoff_angle = -PARK_POSITION.to_value(u.deg)
         else:
             pickoff_angle = self.setup_frame.pickoff_angle.value()
         return dict(
