@@ -55,7 +55,14 @@ class COMPOSetupFrame(tk.Frame):
             row=1, column=0, pady=4, padx=4, sticky=tk.W
         )
         self.pickoff_angle = w.RangedFloat(
-            self, 0.0, -MAX_ANGLE, MAX_ANGLE, None, False, allowzero=True, width=4
+            self,
+            0.0,
+            -MAX_ANGLE.to_value(u.deg),
+            MAX_ANGLE.to_value(u.deg),
+            None,
+            False,
+            allowzero=True,
+            width=4,
         )
         self.pickoff_angle.grid(row=1, column=1, pady=2, stick=tk.W)
 
