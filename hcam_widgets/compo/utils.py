@@ -85,8 +85,8 @@ SHADOW_Y = 49 * u.mm  # extent of vignetting by injector arm (~739 pix)
 INJECTOR_THETA = 13.04 * u.deg  # angle of injector arm when in position
 GUIDE_THETA = -66.4 * u.deg  # angle of injector arm when guiding
 LENS_REF_POSITION = 0 * u.mm  # TODO: this is made up, replace with true value
-NOMINAL_INJECTOR_ZERO = 0.1583 * u.deg  # value of stage encoder when arm centred
-NOMINAL_PICKOFF_ZERO = -0.135 * u.deg  # value of stage encoder when arm centred
+NOMINAL_INJECTOR_ZERO = -0.1583 * u.deg  # value of stage encoder when arm centred
+NOMINAL_PICKOFF_ZERO = 0.135 * u.deg  # value of stage encoder when arm centred
 MAX_ANGLE = 67 * u.deg  # hard stops at (67.79, -67.55) for PO, (67.4, -67.8) for IA
 
 # interpolated functions for X and Y positions - not unit aware
