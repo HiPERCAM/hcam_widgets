@@ -119,11 +119,14 @@ def field_stop_centre(theta):
     This is based on Zeemax simulations that include distortions
     and the curvature of the plane.
     """
+    # make a simple float or numpy array
+    theta = theta.to_value(u.deg)
+
     # flip the sign of the x-position if we have a -ve angle
-    xmul = 1.0
-    if theta.to_value(u.deg) < 0:
-        xmul = -1.0
-    theta = np.fabs(theta.to_value(u.deg))
+    xmul = xmul = np.where(theta < 0, -1.0, 1.0)
+
+    # interpolate
+    theta = np.fabs(theta)
     return xmul * x_func(theta) * u.arcmin, y_func(theta) * u.arcmin
 
 
