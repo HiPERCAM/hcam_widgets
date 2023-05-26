@@ -119,8 +119,12 @@ def field_stop_centre(theta):
     This is based on Zeemax simulations that include distortions
     and the curvature of the plane.
     """
-    theta = theta.to_value(u.deg)
-    return x_func(theta) * u.arcmin, y_func(theta) * u.arcmin
+    # flip the sign of the x-position if we have a -ve angle
+    xmul = 1.0
+    if theta.to_value(u.deg) < 0:
+        xmul = -1.0
+    theta = np.fabs(theta.to_value(u.deg))
+    return xmul * x_func(theta) * u.arcmin, y_func(theta) * u.arcmin
 
 
 def focal_plane_units(unit):
