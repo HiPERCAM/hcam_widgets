@@ -22,7 +22,7 @@ try:
 except Exception:
     has_ginga = False
 
-flip_y = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
+flip = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
 
 # COMPO is only available on GTC, so these values are well-known
 pixel_scale = 0.08086 * u.arcsec / u.pix
@@ -138,7 +138,7 @@ def focal_plane_to_sky(cartrep):
     """
     Convert physical position in focal plane to sky offset from FoV
     """
-    cartrep = cartrep.transform(flip_y)
+    cartrep = cartrep.transform(flip)
     with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
         return CartesianRepresentation(cartrep.xyz.to(u.arcsec))
 
@@ -331,6 +331,7 @@ class InjectionArm:
         with u.set_enabled_equivalencies(gtc_focalplane_equivalencies):
             # centre w.r.t FoV
             centre = self.position(theta)
+
             # now Baffle
             baffle_cart = Baffle().vertices
             baffle_cart = baffle_cart.transform(rotation_matrix(theta))
@@ -421,9 +422,6 @@ class PickoffArm:
             baffle_cart = Baffle().vertices
             baffle_cart = baffle_cart.transform(rotation_matrix(-theta))
             baffle_cart += centre
-            c = Chip()
-            if c.contains(centre):
-                baffle_cart = c.clip_shape(baffle_cart)
 
             # convert to sky plane
             centre = focal_plane_to_sky(centre)
