@@ -14,8 +14,17 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from . import widgets as w
 from . import DriverError
 from .tkutils import get_root
-from .misc import (createJSON, isPoweredOn, saveJSON, postJSON, startNodding,
-                   execCommand, isRunActive, jsonFromFits, ReadNGCTelemetry)
+from .misc import (
+    createJSON,
+    isPoweredOn,
+    saveJSON,
+    postJSON,
+    startNodding,
+    execCommand,
+    isRunActive,
+    jsonFromFits,
+    ReadNGCTelemetry,
+)
 
 if not six.PY3:
     import Tkinter as tk
@@ -47,7 +56,7 @@ DARK_E = 0.02  # e/pix/s
 
 
 FFX = 1024  # X pixels per output
-FFY = 520   # Y pixels per output
+FFY = 520  # Y pixels per output
 PRSCX = 50  # number of pre-scan pixels
 
 
@@ -56,8 +65,10 @@ class ExposureMultiplier(tk.LabelFrame):
     Top to bottom group of RangedInt entry items to specify Nblue etc. Has a max
     number of rows after which it will jump to the left of next column and start over.
     """
-    def __init__(self, master, labels, ivals, imins, imaxs,
-                 nrmax, checker, blank, **kw):
+
+    def __init__(
+        self, master, labels, ivals, imins, imaxs, nrmax, checker, blank, **kw
+    ):
         """
         Parameters
         ----------
@@ -85,19 +96,22 @@ class ExposureMultiplier(tk.LabelFrame):
         """
         tk.LabelFrame.__init__(self, master, bd=0)
         nitems = len(labels)
-        if (len(ivals) != nitems or len(imins) != nitems or
-                len(imaxs) != nitems):
-            raise DriverError('ExposureMultiplier.__init__ values and options ' +
-                              'must have same length')
+        if len(ivals) != nitems or len(imins) != nitems or len(imaxs) != nitems:
+            raise DriverError(
+                "ExposureMultiplier.__init__ values and options "
+                + "must have same length"
+            )
         self.nitems = nitems
         self.labels = labels
-        self.widgets = [w.RangedInt(self, ival, imin, imax, checker, blank, **kw) for
-                        ival, imin, imax in zip(ivals, imins, imaxs)]
+        self.widgets = [
+            w.RangedInt(self, ival, imin, imax, checker, blank, **kw)
+            for ival, imin, imax in zip(ivals, imins, imaxs)
+        ]
         row = 0
         col = 0
         for nw, widget in enumerate(self.widgets):
             tk.Label(self, text=labels[nw]).grid(row=row, column=col, sticky=tk.W)
-            widget.grid(row=row, column=col+1, sticky=tk.W)
+            widget.grid(row=row, column=col + 1, sticky=tk.W)
             row += 1
             if row == nrmax:
                 col += 1
@@ -118,12 +132,12 @@ class ExposureMultiplier(tk.LabelFrame):
 
     def disable(self):
         for widget in self.widgets:
-            widget.configure(state='disable')
+            widget.configure(state="disable")
             widget.set_unbind()
 
     def enable(self):
         for widget in self.widgets:
-            widget.configure(state='normal')
+            widget.configure(state="normal")
             widget.set_bind()
 
 
@@ -134,6 +148,7 @@ class InstPars(tk.LabelFrame):
     This widget block contains the meat of hdriver. Window settings, readout speed
     etc.
     """
+
     def __init__(self, master):
         """
         master : enclosing widget
@@ -145,26 +160,31 @@ class InstPars(tk.LabelFrame):
         rhs = tk.Frame(self)
 
         # Application (mode)
-        tk.Label(lhs, text='Mode').grid(row=0, column=0, sticky=tk.W)
-        self.app = w.Radio(lhs, ('Full', 'Wins', 'Drift'), 3, self.check,
-                           ('FullFrame', 'Windows', 'Drift'))
+        tk.Label(lhs, text="Mode").grid(row=0, column=0, sticky=tk.W)
+        self.app = w.Radio(
+            lhs,
+            ("Full", "Wins", "Drift"),
+            3,
+            self.check,
+            ("FullFrame", "Windows", "Drift"),
+        )
         self.app.grid(row=0, column=1, columnspan=2, sticky=tk.W)
 
         # Clear enabled
-        self.clearLab = tk.Label(lhs, text='Clear')
+        self.clearLab = tk.Label(lhs, text="Clear")
         self.clearLab.grid(row=1, column=0, sticky=tk.W)
         self.clear = w.OnOff(lhs, False, self.check)
         self.clear.grid(row=1, column=1, columnspan=2, sticky=tk.W)
 
         # nod telescope
-        self.nodLab = tk.Label(lhs, text='Dithering')
+        self.nodLab = tk.Label(lhs, text="Dithering")
         self.nodLab.grid(row=2, column=0, sticky=tk.W)
         self.nod = w.OnOff(lhs, False, self.setupNodding)
         self.nod.grid(row=2, column=1, columnspan=2, sticky=tk.W)
         self.nodPattern = {}
 
         # Overscan in x enabled
-        self.oscanLab = tk.Label(lhs, text='Overscan')
+        self.oscanLab = tk.Label(lhs, text="Overscan")
         self.oscanLab.grid(row=3, column=0, sticky=tk.W)
         self.oscan = w.OnOff(lhs, False, self.check)
         self.oscany = w.OnOff(lhs, False, self.check)
@@ -172,51 +192,50 @@ class InstPars(tk.LabelFrame):
         self.oscany.grid(row=3, column=2, sticky=tk.W)
 
         # led on (expert mode only)
-        self.ledLab = tk.Label(lhs, text='LED setting')
+        self.ledLab = tk.Label(lhs, text="LED setting")
         self.ledLab.grid(row=4, column=0, sticky=tk.W)
         self.led = w.OnOff(lhs, False, None)
         self.led.grid(row=4, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # dummy mode enabled (expert mode only)
-        self.dummyLab = tk.Label(lhs, text='Dummy Output')
+        self.dummyLab = tk.Label(lhs, text="Dummy Output")
         self.dummyLab.grid(row=5, column=0, sticky=tk.W)
         self.dummy = w.OnOff(lhs, True, self.check)
         self.dummy.grid(row=5, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # Faster Clock speed enabled
-        self.fastClkLab = tk.Label(lhs, text='Fast Clocks')
+        self.fastClkLab = tk.Label(lhs, text="Fast Clocks")
         self.fastClkLab.grid(row=6, column=0, sticky=tk.W)
         self.fastClk = w.OnOff(lhs, False, self.check)
         self.fastClk.grid(row=6, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # Readout speed
-        tk.Label(lhs, text='Readout speed').grid(row=7, column=0, sticky=tk.W)
-        self.readSpeed = w.Select(lhs, 1, ('Fast', 'Slow'), self.check)
+        tk.Label(lhs, text="Readout speed").grid(row=7, column=0, sticky=tk.W)
+        self.readSpeed = w.Select(lhs, 1, ("Fast", "Slow"), self.check)
         self.readSpeed.grid(row=7, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # Exp delay
-        tk.Label(lhs, text='Exposure delay (s)').grid(row=8, column=0,
-                                                      sticky=tk.W)
-        self.expose = w.Expose(lhs, 0.1, 0.00001, 1677.7207,
-                               self.check, width=7)
+        tk.Label(lhs, text="Exposure delay (s)").grid(row=8, column=0, sticky=tk.W)
+        self.expose = w.Expose(lhs, 0.1, 0.00001, 1677.7207, self.check, width=7)
         self.expose.grid(row=8, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # num exp
-        tk.Label(lhs, text='Num. exposures  ').grid(row=9, column=0,  sticky=tk.W)
+        tk.Label(lhs, text="Num. exposures  ").grid(row=9, column=0, sticky=tk.W)
         self.number = w.PosInt(lhs, 0, None, False, width=7)
         self.number.grid(row=9, column=1, columnspan=2, pady=2, sticky=tk.W)
 
         # nb, ng, nr etc
-        labels = ('nu', 'ng', 'nr', 'ni', 'nz')
+        labels = ("nu", "ng", "nr", "ni", "nz")
         ivals = (1, 1, 1, 1, 1)
         imins = (1, 1, 1, 1, 1)
         imaxs = (500, 500, 500, 500, 500)
-        self.nmult = ExposureMultiplier(rhs, labels, ivals, imins, imaxs,
-                                        5, self.check, False, width=4)
+        self.nmult = ExposureMultiplier(
+            rhs, labels, ivals, imins, imaxs, 5, self.check, False, width=4
+        )
         # grid (on RHS)
         self.nmult.grid(row=0, column=0, columnspan=2, pady=2, sticky=tk.E + tk.S)
 
-        tk.Label(rhs, text='COMPO  ').grid(row=1, column=0)
+        tk.Label(rhs, text="COMPO  ").grid(row=1, column=0)
         self.compo = w.OnOff(rhs, False, self.check)
         self.compo.grid(row=1, column=1, pady=2, sticky=tk.W)
 
@@ -242,11 +261,23 @@ class InstPars(tk.LabelFrame):
         # allowed binning factors
         xbfac = tuple(range(1, 21))
         ybfac = tuple(range(1, 21))
-        self.drift_frame = w.WinPairs(lhs, xsls, xslmins, xslmaxs,
-                                      xsrs, xsrmins, xsrmaxs,
-                                      yss, ysmins, ysmaxs,
-                                      nxs, nys, xbfac, ybfac,
-                                      self.check)
+        self.drift_frame = w.WinPairs(
+            lhs,
+            xsls,
+            xslmins,
+            xslmaxs,
+            xsrs,
+            xsrmins,
+            xsrmaxs,
+            yss,
+            ysmins,
+            ysmaxs,
+            nxs,
+            nys,
+            xbfac,
+            ybfac,
+            self.check,
+        )
 
         # window frame for quads
         # xstart on LHS
@@ -264,15 +295,31 @@ class InstPars(tk.LabelFrame):
         # sizes (start at FF)
         nx = (1024, 1024)
         ny = (512, 512)
-        self.quad_frame = w.WinQuads(lhs, xsll, xsllmin, xsllmax,
-                                     xsul, xsulmin, xsulmax,
-                                     xslr, xslrmin, xslrmax,
-                                     xsur, xsurmin, xsurmax,
-                                     ys, ysmin, ysmax, nx, ny,
-                                     xbfac, ybfac, self.check)
+        self.quad_frame = w.WinQuads(
+            lhs,
+            xsll,
+            xsllmin,
+            xsllmax,
+            xsul,
+            xsulmin,
+            xsulmax,
+            xslr,
+            xslrmin,
+            xslrmax,
+            xsur,
+            xsurmin,
+            xsurmax,
+            ys,
+            ysmin,
+            ysmax,
+            nx,
+            ny,
+            xbfac,
+            ybfac,
+            self.check,
+        )
 
-        self.quad_frame.grid(row=10, column=0, columnspan=3,
-                             sticky=tk.W+tk.N)
+        self.quad_frame.grid(row=10, column=0, columnspan=3, sticky=tk.W + tk.N)
 
         # Pack two halfs
         lhs.pack(side=tk.LEFT, anchor=tk.N, padx=5)
@@ -306,51 +353,50 @@ class InstPars(tk.LabelFrame):
             return
 
         # Do nothing if we're not at the GTC
-        if g.cpars['telins_name'] != 'GTC':
-            messagebox.showerror('Error', 'Cannot dither WHT')
+        if g.cpars["telins_name"] != "GTC":
+            messagebox.showerror("Error", "Cannot dither WHT")
             self.nod.set(False)
             self.nodPattern = {}
             return
 
         # check for drift mode and bomb out
         if self.isDrift():
-            messagebox.showerror('Error', 'Cannot dither telescope in drift mode')
+            messagebox.showerror("Error", "Cannot dither telescope in drift mode")
             self.nod.set(False)
             self.nodPattern = {}
             return
 
         # check for clear not enabled and warn
         if not self.clear():
-            if not messagebox.askokcancel('Warning',
-                                          'Dithering telescope will enable clear mode. Continue?'):
+            if not messagebox.askokcancel(
+                "Warning", "Dithering telescope will enable clear mode. Continue?"
+            ):
                 self.nod.set(False)
                 self.nodPattern = {}
                 return
 
         # Ask for nod pattern
         try:
-            home = expanduser('~')
+            home = expanduser("~")
             fname = filedialog.askopenfilename(
-                title='Open offsets text file',
-                defaultextension='.txt',
-                filetypes=[('text files', '.txt')],
-                initialdir=home)
+                title="Open offsets text file",
+                defaultextension=".txt",
+                filetypes=[("text files", ".txt")],
+                initialdir=home,
+            )
 
             if not fname:
-                g.clog.warn('Aborted load from disk')
+                g.clog.warn("Aborted load from disk")
                 raise ValueError
 
             ra, dec = np.loadtxt(fname).T
             if len(ra) != len(dec):
-                g.clog.warn('Mismatched lengths of RA and Dec offsets')
+                g.clog.warn("Mismatched lengths of RA and Dec offsets")
                 raise ValueError
 
-            data = dict(
-                ra=ra.tolist(),
-                dec=dec.tolist()
-            )
+            data = dict(ra=ra.tolist(), dec=dec.tolist())
         except Exception:
-            g.clog.warn('Setting dither pattern failed. Disabling dithering')
+            g.clog.warn("Setting dither pattern failed. Disabling dithering")
             self.nod.set(False)
             self.nodPattern = {}
             return
@@ -364,13 +410,13 @@ class InstPars(tk.LabelFrame):
 
     def setExpertLevel(self):
         g = get_root(self).globals
-        level = g.cpars['expert_level']
+        level = g.cpars["expert_level"]
         if level == 0:
             self.ledLab.grid_forget()
             self.led.grid_forget()
             self.led.set(0)
 
-            self.oscanLab.config(text='Overscan')
+            self.oscanLab.config(text="Overscan")
             self.oscany.grid_forget()
             self.remember_oscany = self.oscany()
             self.oscany.set(0)
@@ -381,31 +427,33 @@ class InstPars(tk.LabelFrame):
             self.ledLab.grid(row=4, column=0, sticky=tk.W)
             self.led.grid(row=4, column=1, columnspan=2, pady=2, sticky=tk.W)
 
-            self.oscanLab.config(text='Overscan (x, y)')
+            self.oscanLab.config(text="Overscan (x, y)")
             self.oscany.grid(row=3, column=2, sticky=tk.W)
-            if hasattr(self, 'remember_oscany'):
+            if hasattr(self, "remember_oscany"):
                 self.oscany.set(self.remember_oscany)
 
             self.dummyLab.grid(row=5, column=0, sticky=tk.W)
             self.dummy.grid(row=5, column=1, columnspan=2, pady=2, sticky=tk.W)
 
     def isDrift(self):
-        if self.app.value() == 'Drift':
+        if self.app.value() == "Drift":
             return True
-        elif self.app.value() in ['FullFrame', 'Windows']:
+        elif self.app.value() in ["FullFrame", "Windows"]:
             return False
         else:
-            raise DriverError('InstPars.isDrift: application ' +
-                              self.app.value() + ' not recognised')
+            raise DriverError(
+                "InstPars.isDrift: application " + self.app.value() + " not recognised"
+            )
 
     def isFF(self):
-        if self.app.value() == 'FullFrame':
+        if self.app.value() == "FullFrame":
             return True
-        elif self.app.value() in ['Drift', 'Windows']:
+        elif self.app.value() in ["Drift", "Windows"]:
             return False
         else:
-            raise DriverError('InstPars.isDrift: application ' +
-                              self.app.value() + ' not recognised')
+            raise DriverError(
+                "InstPars.isDrift: application " + self.app.value() + " not recognised"
+            )
 
     def dumpJSON(self):
         """
@@ -430,43 +478,43 @@ class InstPars(tk.LabelFrame):
             xbin=self.wframe.xbin.value(),
             ybin=self.wframe.ybin.value(),
             multipliers=self.nmult.getall(),
-            clear=self.clear()
+            clear=self.clear(),
         )
 
         # only allow nodding in clear mode, even if GUI has got confused
-        if data['clear'] and self.nodPattern:
-            data['nodpattern'] = self.nodPattern
+        if data["clear"] and self.nodPattern:
+            data["nodpattern"] = self.nodPattern
 
         # no mixing clear and multipliers, no matter what GUI says
-        if data['clear']:
-            data['multipliers'] = [1 for i in self.nmult.getall()]
+        if data["clear"]:
+            data["multipliers"] = [1 for i in self.nmult.getall()]
 
         # add window mode
         if not self.isFF():
             if self.isDrift():
                 # no clear, multipliers or oscan in drift
-                for setting in ('clear', 'oscan', 'oscany'):
+                for setting in ("clear", "oscan", "oscany"):
                     data[setting] = 0
-                data['multipliers'] = [1 for i in self.nmult.getall()]
+                data["multipliers"] = [1 for i in self.nmult.getall()]
 
                 for iw, (xsl, xsr, ys, nx, ny) in enumerate(self.wframe):
-                    data['x{}start_left'.format(iw+1)] = xsl
-                    data['x{}start_right'.format(iw+1)] = xsr
-                    data['y{}start'.format(iw+1)] = ys
-                    data['y{}size'.format(iw+1)] = ny
-                    data['x{}size'.format(iw+1)] = nx
+                    data["x{}start_left".format(iw + 1)] = xsl
+                    data["x{}start_right".format(iw + 1)] = xsr
+                    data["y{}start".format(iw + 1)] = ys
+                    data["y{}size".format(iw + 1)] = ny
+                    data["x{}size".format(iw + 1)] = nx
             else:
                 # no oscany in window mode
-                data['oscany'] = 0
+                data["oscany"] = 0
 
                 for iw, (xsll, xsul, xslr, xsur, ys, nx, ny) in enumerate(self.wframe):
-                    data['x{}start_upperleft'.format(iw+1)] = xsul
-                    data['x{}start_lowerleft'.format(iw+1)] = xsll
-                    data['x{}start_upperright'.format(iw+1)] = xsur
-                    data['x{}start_lowerright'.format(iw+1)] = xslr
-                    data['y{}start'.format(iw+1)] = ys
-                    data['x{}size'.format(iw+1)] = nx
-                    data['y{}size'.format(iw+1)] = ny
+                    data["x{}start_upperleft".format(iw + 1)] = xsul
+                    data["x{}start_lowerleft".format(iw + 1)] = xsll
+                    data["x{}start_upperright".format(iw + 1)] = xsur
+                    data["x{}start_lowerright".format(iw + 1)] = xslr
+                    data["y{}start".format(iw + 1)] = ys
+                    data["x{}size".format(iw + 1)] = nx
+                    data["y{}size".format(iw + 1)] = ny
         return data
 
     def loadJSON(self, json_string):
@@ -474,38 +522,44 @@ class InstPars(tk.LabelFrame):
         Loads in an application saved in JSON format.
         """
         g = get_root(self).globals
-        data = json.loads(json_string)['appdata']
+
+        # enable COMPO if present in JSON
+        if "compo" in json.loads(json_string):
+            self.compo.set(1)
+        else:
+            self.compo.set(0)
+
+        data = json.loads(json_string)["appdata"]
         # first set the parameters which change regardless of mode
         # number of exposures
-        numexp = data.get('numexp', 0)
+        numexp = data.get("numexp", 0)
         if numexp == -1:
             numexp = 0
         self.number.set(numexp)
         # Overscan (x, y)
-        if 'oscan' in data:
-            self.oscan.set(data['oscan'])
-        if 'oscany' in data:
-            self.oscan.set(data['oscany'])
+        if "oscan" in data:
+            self.oscan.set(data["oscan"])
+        if "oscany" in data:
+            self.oscan.set(data["oscany"])
         # LED setting
-        self.led.set(data.get('led_flsh', 0))
+        self.led.set(data.get("led_flsh", 0))
         # Dummy output enabled
-        self.dummy.set(data.get('dummy_out', 1))
+        self.dummy.set(data.get("dummy_out", 1))
         # Fast clocking option?
-        self.fastClk.set(data.get('fast_clks', 0))
+        self.fastClk.set(data.get("fast_clks", 0))
         # readout speed
-        self.readSpeed.set(data.get('readout', 'Slow'))
+        self.readSpeed.set(data.get("readout", "Slow"))
         # dwell
-        dwell = data.get('dwell', 0)
+        dwell = data.get("dwell", 0)
         self.expose.set(str(float(dwell)))
 
         # multipliers
-        mult_values = data.get('multipliers',
-                               (1, 1, 1, 1, 1))
+        mult_values = data.get("multipliers", (1, 1, 1, 1, 1))
         self.nmult.setall(mult_values)
 
         # look for nodpattern in data
-        nodPattern = data.get('nodpattern', {})
-        if nodPattern and g.cpars['telins_name'] == 'GTC':
+        nodPattern = data.get("nodpattern", {})
+        if nodPattern and g.cpars["telins_name"] == "GTC":
             self.nodPattern = nodPattern
             self.nod.set(True)
             self.clear.set(True)
@@ -514,47 +568,57 @@ class InstPars(tk.LabelFrame):
             self.nod.set(False)
 
         # binning
-        self.quad_frame.xbin.set(data.get('xbin', 1))
-        self.quad_frame.ybin.set(data.get('ybin', 1))
-        self.drift_frame.xbin.set(data.get('xbin', 1))
-        self.drift_frame.ybin.set(data.get('ybin', 1))
+        self.quad_frame.xbin.set(data.get("xbin", 1))
+        self.quad_frame.ybin.set(data.get("ybin", 1))
+        self.drift_frame.xbin.set(data.get("xbin", 1))
+        self.drift_frame.ybin.set(data.get("ybin", 1))
 
         # now for the behaviour which depends on mode
-        if 'app' in data:
-            self.app.set(data['app'])
-            app = data['app']
+        if "app" in data:
+            self.app.set(data["app"])
+            app = data["app"]
 
-            if app == 'Drift':
+            if app == "Drift":
                 # disable clear mode in drift
                 self.clear.set(0)
                 # only one pair allowed
                 self.wframe.npair.set(1)
 
                 # set the window pair values
-                labels = ('x1start_left', 'y1start',
-                          'x1start_right', 'x1size',
-                          'y1size')
+                labels = (
+                    "x1start_left",
+                    "y1start",
+                    "x1start_right",
+                    "x1size",
+                    "y1size",
+                )
                 if not all(label in data for label in labels):
-                    raise DriverError('Drift mode application missing window params')
+                    raise DriverError("Drift mode application missing window params")
                 # now actually set them
-                self.wframe.xsl[0].set(data['x1start_left'])
-                self.wframe.xsr[0].set(data['x1start_right'])
-                self.wframe.ys[0].set(data['y1start'])
-                self.wframe.nx[0].set(data['x1size'])
-                self.wframe.ny[0].set(data['y1size'])
+                self.wframe.xsl[0].set(data["x1start_left"])
+                self.wframe.xsr[0].set(data["x1start_right"])
+                self.wframe.ys[0].set(data["y1start"])
+                self.wframe.nx[0].set(data["x1size"])
+                self.wframe.ny[0].set(data["y1size"])
                 self.wframe.check()
 
-            elif app == 'FullFrame':
+            elif app == "FullFrame":
                 # enable clear mode if set
-                self.clear.set(data.get('clear', 0))
+                self.clear.set(data.get("clear", 0))
 
-            elif app == 'Windows':
+            elif app == "Windows":
                 # enable clear mode if set
-                self.clear.set(data.get('clear', 0))
+                self.clear.set(data.get("clear", 0))
                 nquad = 0
                 for nw in range(2):
-                    labels = ('x{0}start_lowerleft y{0}start x{0}start_upperleft x{0}start_upperright ' +
-                              'x{0}start_lowerright x{0}size y{0}size').format(nw+1).split()
+                    labels = (
+                        (
+                            "x{0}start_lowerleft y{0}start x{0}start_upperleft x{0}start_upperright "
+                            + "x{0}start_lowerright x{0}size y{0}size"
+                        )
+                        .format(nw + 1)
+                        .split()
+                    )
                     if all(label in data for label in labels):
                         xsll = data[labels[0]]
                         xslr = data[labels[4]]
@@ -599,18 +663,21 @@ class InstPars(tk.LabelFrame):
 
         # if we've just enabled COMPO, then raise window if exists
         if self.compo():
-            compo_hw_widget = getattr(g, 'compo_hw', None)
+            compo_hw_widget = getattr(g, "compo_hw", None)
             if compo_hw_widget is not None:
                 compo_hw_widget.deiconify()
 
         # clear errors on binning (may be set later if FF)
         xbinw, ybinw = self.wframe.xbin, self.wframe.ybin
-        xbinw.config(bg=g.COL['main'])
-        ybinw.config(bg=g.COL['main'])
+        xbinw.config(bg=g.COL["main"])
+        ybinw.config(bg=g.COL["main"])
 
         # keep binning factors of drift mode and windowed mode up to date
-        oframe, aframe = ((self.quad_frame, self.drift_frame) if self.drift_frame.winfo_ismapped()
-                          else (self.drift_frame, self.quad_frame))
+        oframe, aframe = (
+            (self.quad_frame, self.drift_frame)
+            if self.drift_frame.winfo_ismapped()
+            else (self.drift_frame, self.quad_frame)
+        )
         xbin, ybin = aframe.xbin.value(), aframe.ybin.value()
         oframe.xbin.set(xbin)
         oframe.ybin.set(ybin)
@@ -623,18 +690,19 @@ class InstPars(tk.LabelFrame):
                 self.nmult.enable()
 
         if self.isDrift():
-            self.clearLab.config(state='disable')
-            self.nodLab.config(state='disable')
+            self.clearLab.config(state="disable")
+            self.nodLab.config(state="disable")
             if not self.drift_frame.winfo_ismapped():
                 self.quad_frame.grid_forget()
-                self.drift_frame.grid(row=10, column=0, columnspan=3,
-                                      sticky=tk.W+tk.N)
+                self.drift_frame.grid(
+                    row=10, column=0, columnspan=3, sticky=tk.W + tk.N
+                )
 
             if not self.frozen:
-                self.oscany.config(state='disable')
-                self.oscan.config(state='disable')
-                self.clear.config(state='disable')
-                self.nod.config(state='disable')
+                self.oscany.config(state="disable")
+                self.oscan.config(state="disable")
+                self.clear.config(state="disable")
+                self.nod.config(state="disable")
                 self.wframe.enable()
                 status = self.wframe.check()
 
@@ -642,80 +710,78 @@ class InstPars(tk.LabelFrame):
             # special case check of binning from window frame
             if 1024 % xbin != 0:
                 status = False
-                xbinw.config(bg=g.COL['error'])
+                xbinw.config(bg=g.COL["error"])
             elif (1024 // xbin) % 4 != 0:
                 status = False
-                xbinw.config(bg=g.COL['error'])
+                xbinw.config(bg=g.COL["error"])
             if 512 % ybin != 0:
                 status = False
-                ybinw.config(bg=g.COL['error'])
+                ybinw.config(bg=g.COL["error"])
 
             if not self.quad_frame.winfo_ismapped():
                 self.drift_frame.grid_forget()
-                self.quad_frame.grid(row=10, column=0, columnspan=3,
-                                     sticky=tk.W+tk.N)
+                self.quad_frame.grid(row=10, column=0, columnspan=3, sticky=tk.W + tk.N)
 
-            self.clearLab.config(state='normal')
-            if g.cpars['telins_name'] == 'GTC':
-                self.nodLab.config(state='normal')
+            self.clearLab.config(state="normal")
+            if g.cpars["telins_name"] == "GTC":
+                self.nodLab.config(state="normal")
             else:
-                self.nodLab.config(state='disable')
+                self.nodLab.config(state="disable")
             if not self.frozen:
-                self.oscany.config(state='normal')
-                self.oscan.config(state='normal')
-                self.clear.config(state='normal')
-                if g.cpars['telins_name'] == 'GTC':
-                    self.nod.config(state='normal')
+                self.oscany.config(state="normal")
+                self.oscan.config(state="normal")
+                self.clear.config(state="normal")
+                if g.cpars["telins_name"] == "GTC":
+                    self.nod.config(state="normal")
                 else:
-                    self.nod.config(state='disable')
+                    self.nod.config(state="disable")
                 self.wframe.disable()
 
         else:
-            self.clearLab.config(state='normal')
-            if g.cpars['telins_name'] == 'GTC':
-                self.nodLab.config(state='normal')
+            self.clearLab.config(state="normal")
+            if g.cpars["telins_name"] == "GTC":
+                self.nodLab.config(state="normal")
             else:
-                self.nodLab.config(state='disable')
+                self.nodLab.config(state="disable")
             if not self.quad_frame.winfo_ismapped():
                 self.drift_frame.grid_forget()
-                self.quad_frame.grid(row=10, column=0, columnspan=3,
-                                     sticky=tk.W+tk.N)
+                self.quad_frame.grid(row=10, column=0, columnspan=3, sticky=tk.W + tk.N)
 
             if not self.frozen:
-                self.oscany.config(state='disable')
-                self.oscan.config(state='normal')
-                self.clear.config(state='normal')
-                if g.cpars['telins_name'] == 'GTC':
-                    self.nod.config(state='normal')
+                self.oscany.config(state="disable")
+                self.oscan.config(state="normal")
+                self.clear.config(state="normal")
+                if g.cpars["telins_name"] == "GTC":
+                    self.nod.config(state="normal")
                 else:
-                    self.nod.config(state='disable')
+                    self.nod.config(state="disable")
                 self.wframe.enable()
                 status = self.wframe.check()
 
         # exposure delay
         if self.expose.ok():
-            self.expose.config(bg=g.COL['main'])
+            self.expose.config(bg=g.COL["main"])
         else:
-            self.expose.config(bg=g.COL['warn'])
+            self.expose.config(bg=g.COL["warn"])
             status = False
 
         # don't allow binning other than 1, 2 in overscan or prescan mode
         if self.oscan() or self.oscany():
             if xbin not in (1, 2):
                 status = False
-                xbinw.config(bg=g.COL['error'])
+                xbinw.config(bg=g.COL["error"])
             if ybin not in (1, 2):
                 status = False
-                ybinw.config(bg=g.COL['error'])
+                ybinw.config(bg=g.COL["error"])
 
         # disable clear if nodding enabled. re-enable if not drift
         if not self.frozen:
             if self.nod() or self.nodPattern:
-                self.clear.config(state='disabled')
-                self.clearLab.config(state='disabled')
+                self.clear.config(state="disabled")
+                self.clearLab.config(state="disabled")
             elif not self.isDrift():
-                self.clear.config(state='normal')
-                self.clearLab.config(state='normal')
+                self.clear.config(state="normal")
+                self.clearLab.config(state="normal")
 
         # allow posting if parameters are OK. update count and SN estimates too
         if status:
@@ -724,9 +790,13 @@ class InstPars(tk.LabelFrame):
                 powered_on = yield isPoweredOn(g)
             except Exception as err:
                 g.clog.warn(str(err))
-            if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
-                    g.observe.start['state'] == 'disabled' and
-                    not run_active and powered_on):
+            if (
+                g.cpars["hcam_server_on"]
+                and g.cpars["eso_server_online"]
+                and g.observe.start["state"] == "disabled"
+                and not run_active
+                and powered_on
+            ):
                 g.observe.start.enable()
             g.count.update()
         else:
@@ -767,7 +837,7 @@ class InstPars(tk.LabelFrame):
         self.frozen = False
 
     def getRtplotWins(self):
-        """"
+        """ "
         Returns a string suitable to sending off to rtplot when
         it asks for window parameters. Returns null string '' if
         the windows are not OK. This operates on the basis of
@@ -778,41 +848,33 @@ class InstPars(tk.LabelFrame):
         """
         try:
             if self.isFF():
-                return 'fullframe\r\n'
+                return "fullframe\r\n"
             elif self.isDrift():
                 xbin = self.wframe.xbin.value()
                 ybin = self.wframe.ybin.value()
-                nwin = 2*self.wframe.npair.value()
-                ret = str(xbin) + ' ' + str(ybin) + ' ' + str(nwin) + '\r\n'
+                nwin = 2 * self.wframe.npair.value()
+                ret = str(xbin) + " " + str(ybin) + " " + str(nwin) + "\r\n"
                 for xsl, xsr, ys, nx, ny in self.wframe:
-                    ret += '{:d} {:d} {:d} {:d}\r\n'.format(
-                        xsl, ys, nx, ny
-                    )
-                    ret += '{:d} {:d} {:d} {:d}'.format(
-                        xsr, ys, nx, ny
-                    )
+                    ret += "{:d} {:d} {:d} {:d}\r\n".format(xsl, ys, nx, ny)
+                    ret += "{:d} {:d} {:d} {:d}".format(xsr, ys, nx, ny)
                 return ret
             else:
                 xbin = self.wframe.xbin.value()
                 ybin = self.wframe.ybin.value()
-                nwin = 4*self.wframe.nquad.value()
-                ret = str(xbin) + ' ' + str(ybin) + ' ' + str(nwin) + '\r\n'
+                nwin = 4 * self.wframe.nquad.value()
+                ret = str(xbin) + " " + str(ybin) + " " + str(nwin) + "\r\n"
                 for xsll, xsul, xslr, xsur, ys, nx, ny in self.wframe:
-                    ret += '{:d} {:d} {:d} {:d}\r\n'.format(
-                        xsll, ys, nx, ny
-                    )
-                    ret += '{:d} {:d} {:d} {:d}\r\n'.format(
+                    ret += "{:d} {:d} {:d} {:d}\r\n".format(xsll, ys, nx, ny)
+                    ret += "{:d} {:d} {:d} {:d}\r\n".format(
                         xsul, 1025 - ys - ny, nx, ny
                     )
-                    ret += '{:d} {:d} {:d} {:d}\r\n'.format(
-                        xslr, ys, nx, ny
-                    )
-                    ret += '{:d} {:d} {:d} {:d}\r\n'.format(
+                    ret += "{:d} {:d} {:d} {:d}\r\n".format(xslr, ys, nx, ny)
+                    ret += "{:d} {:d} {:d} {:d}\r\n".format(
                         xsur, 1025 - ys - ny, nx, ny
                     )
                 return ret
         except Exception:
-            return ''
+            return ""
 
     def timing(self):
         """
@@ -835,15 +897,16 @@ class InstPars(tk.LabelFrame):
         # Set the readout speed
         readSpeed = self.readSpeed()
 
-        if readSpeed == 'Fast' and self.dummy():
+        if readSpeed == "Fast" and self.dummy():
             video = VIDEO_FAST
-        elif readSpeed == 'Slow' and self.dummy():
+        elif readSpeed == "Slow" and self.dummy():
             video = VIDEO_SLOW
         elif not self.dummy():
             video = VIDEO_SLOW_SE
         else:
-            raise DriverError('InstPars.timing: readout speed = ' +
-                              readSpeed + ' not recognised.')
+            raise DriverError(
+                "InstPars.timing: readout speed = " + readSpeed + " not recognised."
+            )
 
         if self.fastClk():
             DUMP_TIME = DUMP_TIME_FAST
@@ -878,7 +941,7 @@ class InstPars(tk.LabelFrame):
             dxsr = self.wframe.xsr[0].value()
             # differential shift needed to line both
             # windows up with the edge of the chip
-            diffshift = abs(dxsl - 1 - (2*FFX - dxsr - dnx + 1))
+            diffshift = abs(dxsl - 1 - (2 * FFX - dxsr - dnx + 1))
         elif isFF:
             nwin = 1
             ys, nx, ny = [0], [1024], [512]
@@ -891,7 +954,7 @@ class InstPars(tk.LabelFrame):
                 xsf.append(2049 - xslr - nxv)
                 xsg.append(2049 - xsur - nxv)
                 xsh.append(xsul - 1)
-                ys.append(ysv-1)
+                ys.append(ysv - 1)
                 nx.append(nxv)
                 ny.append(nyv)
 
@@ -900,7 +963,7 @@ class InstPars(tk.LabelFrame):
 
         # clear chip by VCLOCK-ing the image and area and dumping storage area (x5)
         if lclear:
-            clear_time = 5*(FFY*VCLOCK_FRAME + FFY*DUMP_TIME)
+            clear_time = 5 * (FFY * VCLOCK_FRAME + FFY * DUMP_TIME)
         else:
             clear_time = 0.0
 
@@ -908,16 +971,16 @@ class InstPars(tk.LabelFrame):
             # for drift mode, we need the number of windows in the pipeline
             # and the pipeshift
             nrows = FFY  # number of rows in storage area
-            pnwin = int(((nrows / dny) + 1)/2)
-            pshift = nrows - (2*pnwin-1)*dny
-            frame_transfer = (dny+dys)*VCLOCK_FRAME
+            pnwin = int(((nrows / dny) + 1) / 2)
+            pshift = nrows - (2 * pnwin - 1) * dny
+            frame_transfer = (dny + dys) * VCLOCK_FRAME
 
-            yshift = [dys*VCLOCK_STORAGE]
+            yshift = [dys * VCLOCK_STORAGE]
 
             # After placing the window adjacent to the serial register, the
             # register must be cleared by clocking out the entire register,
             # taking FFX hclocks.
-            line_clear = [0.]
+            line_clear = [0.0]
             if yshift[0] != 0:
                 line_clear[0] = DUMP_TIME
 
@@ -925,54 +988,63 @@ class InstPars(tk.LabelFrame):
             # drift mode we have to account for the diff shifts and dumping.
             # first perform diff shifts
             # for now we need this *2 (for quadrants E, H or F, G)
-            numhclocks = 2*diffshift
+            numhclocks = 2 * diffshift
             # now add the amount of clocks needed to get
             # both windows to edge of chip
-            if dxsl - 1 > 2*FFX - dxsr - dnx + 1:
+            if dxsl - 1 > 2 * FFX - dxsr - dnx + 1:
                 # it was the left window that got the diff shift,
                 # so the number of hclocks increases by the amount
                 # needed to get the RH window to the edge
-                numhclocks += 2*FFX - dxsr - dnx + 1
+                numhclocks += 2 * FFX - dxsr - dnx + 1
             else:
                 # vice versa
                 numhclocks += dxsl - 1
             # now we actually clock the windows themselves
             numhclocks += dnx
             # finally, we need to hclock the additional pre-scan pixels
-            numhclocks += 2*PRSCX
+            numhclocks += 2 * PRSCX
 
             # here is the total time to read the whole line
-            line_read = [VCLOCK_STORAGE*ybin + numhclocks*HCLOCK +
-                         video*dnx/xbin + DUMP_TIME + 2*SETUP_READ]
+            line_read = [
+                VCLOCK_STORAGE * ybin
+                + numhclocks * HCLOCK
+                + video * dnx / xbin
+                + DUMP_TIME
+                + 2 * SETUP_READ
+            ]
 
-            readout = [(dny/ybin) * line_read[0]]
+            readout = [(dny / ybin) * line_read[0]]
         elif isFF:
             # move entire image into storage area
-            frame_transfer = FFY*VCLOCK_FRAME + DUMP_TIME
+            frame_transfer = FFY * VCLOCK_FRAME + DUMP_TIME
 
             yshift = [0]
             line_clear = [0]
 
             numhclocks = FFX + PRSCX
-            line_read = [VCLOCK_STORAGE*ybin + numhclocks*HCLOCK +
-                         video*nx[0]/xbin + SETUP_READ]
+            line_read = [
+                VCLOCK_STORAGE * ybin
+                + numhclocks * HCLOCK
+                + video * nx[0] / xbin
+                + SETUP_READ
+            ]
             if oscan:
-                line_read[0] += video*PRSCX/xbin
-            nlines = ny[0]/ybin if not oscany else (ny[0] + 8/ybin)
-            readout = [nlines*line_read[0]]
+                line_read[0] += video * PRSCX / xbin
+            nlines = ny[0] / ybin if not oscany else (ny[0] + 8 / ybin)
+            readout = [nlines * line_read[0]]
         else:
             # windowed mode
             # move entire image into storage area
-            frame_transfer = FFY*VCLOCK_FRAME + DUMP_TIME
+            frame_transfer = FFY * VCLOCK_FRAME + DUMP_TIME
 
             # dump rows in storage area up to start of the window without changing the
             # image area.
-            yshift = nwin*[0.]
-            yshift[0] = ys[0]*DUMP_TIME
+            yshift = nwin * [0.0]
+            yshift[0] = ys[0] * DUMP_TIME
             for nw in range(1, nwin):
-                yshift[nw] = (ys[nw]-ys[nw-1]-ny[nw-1])*DUMP_TIME
+                yshift[nw] = (ys[nw] - ys[nw - 1] - ny[nw - 1]) * DUMP_TIME
 
-            line_clear = nwin*[0.]
+            line_clear = nwin * [0.0]
             # Naidu always dumps the serial register, in windowed mode
             # regardless of whether we need to or not
             for nw in range(nwin):
@@ -982,32 +1054,41 @@ class InstPars(tk.LabelFrame):
             # register shift along serial register and then read out the data.
             # total number of hclocks needs to account for diff shifts of
             # windows, carried out in serial
-            numhclocks = nwin*[0]
+            numhclocks = nwin * [0]
             for nw in range(nwin):
                 common_shift = min(xse[nw], xsf[nw], xsg[nw], xsh[nw])
-                diffshifts = sum((xs-common_shift for xs in (xse[nw], xsf[nw], xsg[nw], xsh[nw])))
-                numhclocks[nw] = 2*PRSCX + common_shift + diffshifts + nx[nw]
+                diffshifts = sum(
+                    (xs - common_shift for xs in (xse[nw], xsf[nw], xsg[nw], xsh[nw]))
+                )
+                numhclocks[nw] = 2 * PRSCX + common_shift + diffshifts + nx[nw]
 
-            line_read = nwin*[0.]
+            line_read = nwin * [0.0]
             # line read includes vclocking a row, all the hclocks, digitising pixels and dumping serial register
             # when windows are read out.
             for nw in range(nwin):
-                line_read[nw] = (VCLOCK_STORAGE*ybin + numhclocks[nw]*HCLOCK +
-                                 video*nx[nw]/xbin + 2*SETUP_READ + DUMP_TIME)
+                line_read[nw] = (
+                    VCLOCK_STORAGE * ybin
+                    + numhclocks[nw] * HCLOCK
+                    + video * nx[nw] / xbin
+                    + 2 * SETUP_READ
+                    + DUMP_TIME
+                )
                 if oscan:
-                    line_read[nw] += video*PRSCX/xbin
+                    line_read[nw] += video * PRSCX / xbin
 
             # multiply time to shift one row into serial register by
             # number of rows for total readout time
-            readout = nwin*[0.]
+            readout = nwin * [0.0]
             for nw in range(nwin):
-                nlines = ny[nw]/ybin if not oscany else (ny[nw] + 8/ybin)
+                nlines = ny[nw] / ybin if not oscany else (ny[nw] + 8 / ybin)
                 readout[nw] = nlines * line_read[nw]
 
         # now get the total time to read out one exposure.
         cycleTime = expose_delay + clear_time + frame_transfer
         if isDriftMode:
-            cycleTime += pshift*VCLOCK_STORAGE + yshift[0] + line_clear[0] + readout[0]
+            cycleTime += (
+                pshift * VCLOCK_STORAGE + yshift[0] + line_clear[0] + readout[0]
+            )
         else:
             for nw in range(nwin):
                 cycleTime += yshift[nw] + line_clear[nw] + readout[nw]
@@ -1018,12 +1099,12 @@ class InstPars(tk.LabelFrame):
             cycleTime += 5
         elif self.nod():
             g = get_root(self).globals
-            g.clog.warn('ERR: dithering enabled with clear mode off')
+            g.clog.warn("ERR: dithering enabled with clear mode off")
 
-        frameRate = 1.0/cycleTime
+        frameRate = 1.0 / cycleTime
         expTime = expose_delay if lclear else cycleTime - frame_transfer
         deadTime = cycleTime - expTime
-        dutyCycle = 100.0*expTime/cycleTime
+        dutyCycle = 100.0 * expTime / cycleTime
         return (expTime, deadTime, cycleTime, dutyCycle, frameRate)
 
 
@@ -1031,33 +1112,36 @@ class RunPars(tk.LabelFrame):
     """
     Run parameters
     """
+
     def __init__(self, master):
-        tk.LabelFrame.__init__(self, master, text='Next run parameters',
-                               padx=10, pady=10)
+        tk.LabelFrame.__init__(
+            self, master, text="Next run parameters", padx=10, pady=10
+        )
 
         row = 0
         column = 0
-        tk.Label(self, text='Target name').grid(row=row, column=column, sticky=tk.W)
+        tk.Label(self, text="Target name").grid(row=row, column=column, sticky=tk.W)
 
         row += 1
-        tk.Label(self, text='Filters').grid(row=row, column=column, sticky=tk.W)
+        tk.Label(self, text="Filters").grid(row=row, column=column, sticky=tk.W)
 
         row += 1
-        tk.Label(self, text='Programme ID/OB').grid(row=row, column=column, sticky=tk.W)
+        tk.Label(self, text="Programme ID/OB").grid(row=row, column=column, sticky=tk.W)
 
         row += 1
-        tk.Label(self, text='Principal Investigator').grid(row=row,
-                                                           column=column, sticky=tk.W)
+        tk.Label(self, text="Principal Investigator").grid(
+            row=row, column=column, sticky=tk.W
+        )
 
         row += 1
-        tk.Label(self, text='Observer(s)').grid(row=row, column=column, sticky=tk.W)
+        tk.Label(self, text="Observer(s)").grid(row=row, column=column, sticky=tk.W)
 
         row += 1
-        tk.Label(self, text='Pre-run comment').grid(row=row, column=column, sticky=tk.W)
+        tk.Label(self, text="Pre-run comment").grid(row=row, column=column, sticky=tk.W)
 
         # spacer
         column += 1
-        tk.Label(self, text=' ').grid(row=0, column=column)
+        tk.Label(self, text=" ").grid(row=0, column=column)
 
         # target
         row = 0
@@ -1095,21 +1179,21 @@ class RunPars(tk.LabelFrame):
         Sets the values of the run parameters given an JSON string
         """
         g = get_root(self).globals
-        user = json.loads(json_string)['user']
+        user = json.loads(json_string)["user"]
 
         def setField(widget, field):
             val = user.get(field)
             if val is not None:
                 widget.set(val)
 
-        setField(self.prog_ob.obid, 'OB')
-        setField(self.target, 'target')
-        setField(self.prog_ob.progid, 'ID')
-        setField(self.pi, 'PI')
-        setField(self.observers, 'Observers')
-        setField(self.comment, 'comment')
-        setField(self.filter, 'filters')
-        setField(g.observe.rtype, 'flags')
+        setField(self.prog_ob.obid, "OB")
+        setField(self.target, "target")
+        setField(self.prog_ob.progid, "ID")
+        setField(self.pi, "PI")
+        setField(self.observers, "Observers")
+        setField(self.comment, "comment")
+        setField(self.filter, "filters")
+        setField(g.observe.rtype, "flags")
 
     def dumpJSON(self):
         """
@@ -1117,12 +1201,12 @@ class RunPars(tk.LabelFrame):
         """
         g = get_root(self).globals
         dtype = g.observe.rtype()
-        if dtype == 'bias':
-            target = 'BIAS'
-        elif dtype == 'flat':
-            target = 'FLAT'
-        elif dtype == 'dark':
-            target = 'DARK'
+        if dtype == "bias":
+            target = "BIAS"
+        elif dtype == "flat":
+            target = "FLAT"
+        elif dtype == "dark":
+            target = "DARK"
         else:
             target = self.target.value()
 
@@ -1130,11 +1214,11 @@ class RunPars(tk.LabelFrame):
             target=target,
             ID=self.prog_ob.progid.value(),
             PI=self.pi.value(),
-            OB='{:04d}'.format(self.prog_ob.obid.value()),
+            OB="{:04d}".format(self.prog_ob.obid.value()),
             Observers=self.observers.value(),
             comment=self.comment.value(),
             flags=dtype,
-            filters=self.filter.value()
+            filters=self.filter.value(),
         )
 
     def check(self, *args):
@@ -1145,69 +1229,67 @@ class RunPars(tk.LabelFrame):
         """
 
         ok = True
-        msg = ''
+        msg = ""
         g = get_root(self).globals
         dtype = g.observe.rtype()
-        expert = g.cpars['expert_level'] > 0
+        expert = g.cpars["expert_level"] > 0
 
-        if dtype == 'bias' or dtype == 'flat' or dtype == 'dark':
-            self.pi.configure(state='disable')
-            self.prog_ob.configure(state='disable')
+        if dtype == "bias" or dtype == "flat" or dtype == "dark":
+            self.pi.configure(state="disable")
+            self.prog_ob.configure(state="disable")
             self.target.disable()
         else:
             if expert:
-                self.pi.configure(state='normal')
-                self.prog_ob.configure(state='normal')
+                self.pi.configure(state="normal")
+                self.prog_ob.configure(state="normal")
                 self.prog_ob.enable()
             else:
-                self.prog_ob.configure(state='disable')
-                self.pi.configure(state='disable')
+                self.prog_ob.configure(state="disable")
+                self.pi.configure(state="disable")
                 self.prog_ob.disable()
             self.target.enable()
 
-        if g.cpars['require_run_params']:
+        if g.cpars["require_run_params"]:
             if self.target.ok():
-                self.target.entry.config(bg=g.COL['main'])
+                self.target.entry.config(bg=g.COL["main"])
             else:
-                self.target.entry.config(bg=g.COL['error'])
+                self.target.entry.config(bg=g.COL["error"])
                 ok = False
-                msg += 'Target name field cannot be blank\n'
+                msg += "Target name field cannot be blank\n"
 
-            if dtype == 'acquisition' or \
-               dtype == 'data' or dtype == 'technical':
-
+            if dtype == "acquisition" or dtype == "data" or dtype == "technical":
                 if self.prog_ob.ok():
-                    self.prog_ob.config(bg=g.COL['main'])
+                    self.prog_ob.config(bg=g.COL["main"])
                 else:
-                    self.prog_ob.config(bg=g.COL['error'])
+                    self.prog_ob.config(bg=g.COL["error"])
                     ok = False
-                    msg += 'Programme or OB ID field cannot be blank\n'
+                    msg += "Programme or OB ID field cannot be blank\n"
 
                 if self.pi.ok():
-                    self.pi.config(bg=g.COL['main'])
+                    self.pi.config(bg=g.COL["main"])
                 else:
-                    self.pi.config(bg=g.COL['error'])
+                    self.pi.config(bg=g.COL["error"])
                     ok = False
-                    msg += 'Principal Investigator field cannot be blank\n'
+                    msg += "Principal Investigator field cannot be blank\n"
 
             if self.observers.ok():
-                self.observers.config(bg=g.COL['main'])
+                self.observers.config(bg=g.COL["main"])
             else:
-                self.observers.config(bg=g.COL['error'])
+                self.observers.config(bg=g.COL["error"])
                 ok = False
-                msg += 'Observers field cannot be blank'
+                msg += "Observers field cannot be blank"
         return (ok, msg)
 
     def setExpertLevel(self):
         g = get_root(self).globals
-        expert = g.cpars['expert_level'] > 0
+        expert = g.cpars["expert_level"] > 0
         if expert:
-            self.pi.configure(state='normal')
-            self.prog_ob.configure(state='normal')
+            self.pi.configure(state="normal")
+            self.prog_ob.configure(state="normal")
             self.prog_ob.enable()
         else:
-            self.prog_ob.configure(state='disable')
-            self.pi.configure(state='disable')
+            self.prog_ob.configure(state="disable")
+            self.pi.configure(state="disable")
             self.prog_ob.disable()
 
     def freeze(self):
@@ -1215,119 +1297,128 @@ class RunPars(tk.LabelFrame):
         Freeze all settings so that they can't be altered
         """
         self.target.disable()
-        self.filter.configure(state='disable')
-        self.prog_ob.configure(state='disable')
-        self.pi.configure(state='disable')
-        self.observers.configure(state='disable')
-        self.comment.configure(state='disable')
+        self.filter.configure(state="disable")
+        self.prog_ob.configure(state="disable")
+        self.pi.configure(state="disable")
+        self.observers.configure(state="disable")
+        self.comment.configure(state="disable")
 
     def unfreeze(self):
         """
         Unfreeze all settings so that they can be altered
         """
         g = get_root(self).globals
-        self.filter.configure(state='normal')
+        self.filter.configure(state="normal")
         dtype = g.observe.rtype()
-        if dtype == 'acquisition' or dtype == 'data' or dtype == 'technical':
-            self.prog_ob.configure(state='normal')
-            self.pi.configure(state='normal')
+        if dtype == "acquisition" or dtype == "data" or dtype == "technical":
+            self.prog_ob.configure(state="normal")
+            self.pi.configure(state="normal")
             self.target.enable()
-        self.observers.configure(state='normal')
-        self.comment.configure(state='normal')
+        self.observers.configure(state="normal")
+        self.comment.configure(state="normal")
 
 
 class CountsFrame(tk.LabelFrame):
     """
     Frame for count rate estimates
     """
+
     def __init__(self, master):
         """
         master : enclosing widget
         """
-        tk.LabelFrame.__init__(self, master, pady=2,
-                               text='Count & S-to-N estimator')
+        tk.LabelFrame.__init__(self, master, pady=2, text="Count & S-to-N estimator")
 
         # divide into left and right frames
         lframe = tk.Frame(self, padx=2)
         rframe = tk.Frame(self, padx=2)
 
         # entries
-        self.filter = w.Radio(lframe,
-                              ('u', 'g', 'r', 'i', 'z'), 3,
-                              self.checkUpdate, initial=1)
-        self.mag = w.RangedFloat(lframe, 18., 0., 30.,
-                                 self.checkUpdate, True, width=5,
-                                 nplaces=2)
-        self.seeing = w.RangedFloat(lframe, 1.0, 0.2, 20.,
-                                    self.checkUpdate, True, True,
-                                    width=5, nplaces=1)
-        self.airmass = w.RangedFloat(lframe, 1.5, 1.0, 5.0,
-                                     self.checkUpdate, True, width=5,
-                                     nplaces=2)
-        self.moon = w.Radio(lframe, ('d', 'g', 'b'),  3, self.checkUpdate)
+        self.filter = w.Radio(
+            lframe, ("u", "g", "r", "i", "z"), 3, self.checkUpdate, initial=1
+        )
+        self.mag = w.RangedFloat(
+            lframe, 18.0, 0.0, 30.0, self.checkUpdate, True, width=5, nplaces=2
+        )
+        self.seeing = w.RangedFloat(
+            lframe, 1.0, 0.2, 20.0, self.checkUpdate, True, True, width=5, nplaces=1
+        )
+        self.airmass = w.RangedFloat(
+            lframe, 1.5, 1.0, 5.0, self.checkUpdate, True, width=5, nplaces=2
+        )
+        self.moon = w.Radio(lframe, ("d", "g", "b"), 3, self.checkUpdate)
 
         # results
-        self.cadence = w.Ilabel(rframe, text='UNDEF', width=10, anchor=tk.W)
-        self.exposure = w.Ilabel(rframe, text='UNDEF', width=10, anchor=tk.W)
-        self.duty = w.Ilabel(rframe, text='UNDEF', width=10, anchor=tk.W)
-        self.peak = w.Ilabel(rframe, text='UNDEF', width=10, anchor=tk.W)
-        self.total = w.Ilabel(rframe, text='UNDEF', width=10, anchor=tk.W)
-        self.ston = w.Ilabel(rframe, text='UNDEF', width=10, anchor=tk.W)
-        self.ston3 = w.Ilabel(rframe, text='UNDEF', width=10, anchor=tk.W)
+        self.cadence = w.Ilabel(rframe, text="UNDEF", width=10, anchor=tk.W)
+        self.exposure = w.Ilabel(rframe, text="UNDEF", width=10, anchor=tk.W)
+        self.duty = w.Ilabel(rframe, text="UNDEF", width=10, anchor=tk.W)
+        self.peak = w.Ilabel(rframe, text="UNDEF", width=10, anchor=tk.W)
+        self.total = w.Ilabel(rframe, text="UNDEF", width=10, anchor=tk.W)
+        self.ston = w.Ilabel(rframe, text="UNDEF", width=10, anchor=tk.W)
+        self.ston3 = w.Ilabel(rframe, text="UNDEF", width=10, anchor=tk.W)
 
         # layout
         # left
-        tk.Label(lframe, text='Filter:').grid(row=0, column=0,
-                                              padx=5, pady=3, sticky=tk.W+tk.N)
+        tk.Label(lframe, text="Filter:").grid(
+            row=0, column=0, padx=5, pady=3, sticky=tk.W + tk.N
+        )
         self.filter.grid(row=0, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(lframe, text='Mag:').grid(row=1, column=0, padx=5,
-                                           pady=3, sticky=tk.W)
+        tk.Label(lframe, text="Mag:").grid(row=1, column=0, padx=5, pady=3, sticky=tk.W)
         self.mag.grid(row=1, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(lframe, text='Seeing:').grid(row=2, column=0, padx=5,
-                                              pady=3, sticky=tk.W)
+        tk.Label(lframe, text="Seeing:").grid(
+            row=2, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.seeing.grid(row=2, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(lframe, text='Airmass:').grid(row=3, column=0, padx=5,
-                                               pady=3, sticky=tk.W)
+        tk.Label(lframe, text="Airmass:").grid(
+            row=3, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.airmass.grid(row=3, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(lframe, text='Moon:').grid(row=4, column=0, padx=5,
-                                            pady=3, sticky=tk.W)
+        tk.Label(lframe, text="Moon:").grid(
+            row=4, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.moon.grid(row=4, column=1, padx=5, pady=3, sticky=tk.W)
 
         # right
-        tk.Label(rframe, text='Cadence:').grid(row=0, column=0, padx=5,
-                                               pady=3, sticky=tk.W)
+        tk.Label(rframe, text="Cadence:").grid(
+            row=0, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.cadence.grid(row=0, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(rframe, text='Exposure:').grid(row=1, column=0, padx=5,
-                                                pady=3, sticky=tk.W)
+        tk.Label(rframe, text="Exposure:").grid(
+            row=1, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.exposure.grid(row=1, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(rframe, text='Duty cycle:').grid(row=2, column=0, padx=5,
-                                                  pady=3, sticky=tk.W)
+        tk.Label(rframe, text="Duty cycle:").grid(
+            row=2, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.duty.grid(row=2, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(rframe, text='Peak:').grid(row=3, column=0, padx=5, pady=3,
-                                            sticky=tk.W)
+        tk.Label(rframe, text="Peak:").grid(
+            row=3, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.peak.grid(row=3, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(rframe, text='Total:').grid(row=4, column=0, padx=5,
-                                             pady=3, sticky=tk.W)
+        tk.Label(rframe, text="Total:").grid(
+            row=4, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.total.grid(row=4, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(rframe, text='S/N:').grid(row=5, column=0, padx=5, pady=3, sticky=tk.W)
+        tk.Label(rframe, text="S/N:").grid(row=5, column=0, padx=5, pady=3, sticky=tk.W)
         self.ston.grid(row=5, column=1, padx=5, pady=3, sticky=tk.W)
 
-        tk.Label(rframe, text='S/N (3h):').grid(row=6, column=0, padx=5,
-                                                pady=3, sticky=tk.W)
+        tk.Label(rframe, text="S/N (3h):").grid(
+            row=6, column=0, padx=5, pady=3, sticky=tk.W
+        )
         self.ston3.grid(row=6, column=1, padx=5, pady=3, sticky=tk.W)
 
         # slot frames in
-        lframe.grid(row=0, column=0, sticky=tk.W+tk.N)
-        rframe.grid(row=0, column=1, sticky=tk.W+tk.N)
+        lframe.grid(row=0, column=0, sticky=tk.W + tk.N)
+        rframe.grid(row=0, column=1, sticky=tk.W + tk.N)
 
     def checkUpdate(self, *args):
         """
@@ -1337,11 +1428,11 @@ class CountsFrame(tk.LabelFrame):
         """
         g = get_root(self).globals
         if not self.check():
-            g.clog.warn('Current observing parameters are not valid.')
+            g.clog.warn("Current observing parameters are not valid.")
             return False
 
         if not g.ipars.check():
-            g.clog.warn('Current instrument parameters are not valid.')
+            g.clog.warn("Current instrument parameters are not valid.")
             return False
 
     def check(self):
@@ -1351,21 +1442,21 @@ class CountsFrame(tk.LabelFrame):
         status = True
         g = get_root(self).globals
         if self.mag.ok():
-            self.mag.config(bg=g.COL['main'])
+            self.mag.config(bg=g.COL["main"])
         else:
-            self.mag.config(bg=g.COL['warn'])
+            self.mag.config(bg=g.COL["warn"])
             status = False
 
         if self.airmass.ok():
-            self.airmass.config(bg=g.COL['main'])
+            self.airmass.config(bg=g.COL["main"])
         else:
-            self.airmass.config(bg=g.COL['warn'])
+            self.airmass.config(bg=g.COL["warn"])
             status = False
 
         if self.seeing.ok():
-            self.seeing.config(bg=g.COL['main'])
+            self.seeing.config(bg=g.COL["main"])
         else:
-            self.seeing.config(bg=g.COL['warn'])
+            self.seeing.config(bg=g.COL["warn"])
             status = False
 
         return status
@@ -1378,51 +1469,50 @@ class CountsFrame(tk.LabelFrame):
         g = get_root(self).globals
         expTime, deadTime, cycleTime, dutyCycle, frameRate = g.ipars.timing()
 
-        total, peak, peakSat, peakWarn, ston, ston3 = \
-            self.counts(expTime, cycleTime)
+        total, peak, peakSat, peakWarn, ston, ston3 = self.counts(expTime, cycleTime)
 
         if cycleTime < 0.01:
-            self.cadence.config(text='{0:7.5f} s'.format(cycleTime))
+            self.cadence.config(text="{0:7.5f} s".format(cycleTime))
         elif cycleTime < 0.1:
-            self.cadence.config(text='{0:6.4f} s'.format(cycleTime))
-        elif cycleTime < 1.:
-            self.cadence.config(text='{0:5.3f} s'.format(cycleTime))
-        elif cycleTime < 10.:
-            self.cadence.config(text='{0:4.2f} s'.format(cycleTime))
-        elif cycleTime < 100.:
-            self.cadence.config(text='{0:4.1f} s'.format(cycleTime))
-        elif cycleTime < 1000.:
-            self.cadence.config(text='{0:4.0f} s'.format(cycleTime))
+            self.cadence.config(text="{0:6.4f} s".format(cycleTime))
+        elif cycleTime < 1.0:
+            self.cadence.config(text="{0:5.3f} s".format(cycleTime))
+        elif cycleTime < 10.0:
+            self.cadence.config(text="{0:4.2f} s".format(cycleTime))
+        elif cycleTime < 100.0:
+            self.cadence.config(text="{0:4.1f} s".format(cycleTime))
+        elif cycleTime < 1000.0:
+            self.cadence.config(text="{0:4.0f} s".format(cycleTime))
         else:
-            self.cadence.config(text='{0:5.0f} s'.format(cycleTime))
+            self.cadence.config(text="{0:5.0f} s".format(cycleTime))
 
         if expTime < 0.01:
-            self.exposure.config(text='{0:7.5f} s'.format(expTime))
+            self.exposure.config(text="{0:7.5f} s".format(expTime))
         elif expTime < 0.1:
-            self.exposure.config(text='{0:6.4f} s'.format(expTime))
-        elif expTime < 1.:
-            self.exposure.config(text='{0:5.3f} s'.format(expTime))
-        elif expTime < 10.:
-            self.exposure.config(text='{0:4.2f} s'.format(expTime))
-        elif expTime < 100.:
-            self.exposure.config(text='{0:4.1f} s'.format(expTime))
-        elif expTime < 1000.:
-            self.exposure.config(text='{0:4.0f} s'.format(expTime))
+            self.exposure.config(text="{0:6.4f} s".format(expTime))
+        elif expTime < 1.0:
+            self.exposure.config(text="{0:5.3f} s".format(expTime))
+        elif expTime < 10.0:
+            self.exposure.config(text="{0:4.2f} s".format(expTime))
+        elif expTime < 100.0:
+            self.exposure.config(text="{0:4.1f} s".format(expTime))
+        elif expTime < 1000.0:
+            self.exposure.config(text="{0:4.0f} s".format(expTime))
         else:
-            self.exposure.config(text='{0:5.0f} s'.format(expTime))
+            self.exposure.config(text="{0:5.0f} s".format(expTime))
 
-        self.duty.config(text='{0:4.1f} %'.format(dutyCycle))
-        self.peak.config(text='{0:d} cts'.format(int(round(peak))))
+        self.duty.config(text="{0:4.1f} %".format(dutyCycle))
+        self.peak.config(text="{0:d} cts".format(int(round(peak))))
         if peakSat:
-            self.peak.config(bg=g.COL['error'])
+            self.peak.config(bg=g.COL["error"])
         elif peakWarn:
-            self.peak.config(bg=g.COL['warn'])
+            self.peak.config(bg=g.COL["warn"])
         else:
-            self.peak.config(bg=g.COL['main'])
+            self.peak.config(bg=g.COL["main"])
 
-        self.total.config(text='{0:d} cts'.format(int(round(total))))
-        self.ston.config(text='{0:.1f}'.format(ston))
-        self.ston3.config(text='{0:.1f}'.format(ston3))
+        self.total.config(text="{0:d} cts".format(int(round(total))))
+        self.ston.config(text="{0:.1f}".format(ston))
+        self.ston3.config(text="{0:.1f}".format(ston3))
 
     def counts(self, expTime, cycleTime, ap_scale=1.6, ndiv=5):
         """
@@ -1450,35 +1540,36 @@ class CountsFrame(tk.LabelFrame):
 
         # Set the readout speed
         readSpeed = g.ipars.readSpeed()
-        if readSpeed == 'Fast':
+        if readSpeed == "Fast":
             gain = GAIN_FAST
             read = RNO_FAST
-        elif readSpeed == 'Slow':
+        elif readSpeed == "Slow":
             gain = GAIN_SLOW
             read = RNO_SLOW
         else:
-            raise DriverError('CountsFrame.counts: readout speed = ' +
-                              readSpeed + ' not recognised.')
+            raise DriverError(
+                "CountsFrame.counts: readout speed = " + readSpeed + " not recognised."
+            )
 
         xbin, ybin = g.ipars.wframe.xbin.value(), g.ipars.wframe.ybin.value()
 
         # calculate SN info.
-        zero, sky, skyTot, darkTot = 0., 0., 0., 0.
-        total, peak, correct, signal, readTot, seeing = 0., 0., 0., 0., 0., 0.
-        noise, narcsec, npix, signalToNoise3 = 1., 0., 0., 0.
+        zero, sky, skyTot, darkTot = 0.0, 0.0, 0.0, 0.0
+        total, peak, correct, signal, readTot, seeing = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        noise, narcsec, npix, signalToNoise3 = 1.0, 0.0, 0.0, 0.0
 
-        tinfo = g.TINS[g.cpars['telins_name']]
+        tinfo = g.TINS[g.cpars["telins_name"]]
         filtnam = self.filter.value()
 
-        zero = tinfo['zerop'][filtnam]
+        zero = tinfo["zerop"][filtnam]
         mag = self.mag.value()
         seeing = self.seeing.value()
         sky = g.SKY[self.moon.value()][filtnam]
         airmass = self.airmass.value()
-        plateScale = tinfo['plateScale']
+        plateScale = tinfo["plateScale"]
 
         # calculate expected electrons
-        total = 10.**((zero-mag-airmass*g.EXTINCTION[filtnam])/2.5)*expTime
+        total = 10.0 ** ((zero - mag - airmass * g.EXTINCTION[filtnam]) / 2.5) * expTime
 
         # compute fraction that fall in central pixel
         # assuming target exactly at its centre. Do this
@@ -1486,39 +1577,39 @@ class CountsFrame(tk.LabelFrame):
         # binned) pixel into ndiv * ndiv points at
         # which the seeing profile is added. sigma is the
         # RMS seeing in terms of pixels.
-        sigma = seeing/g.EFAC/plateScale
+        sigma = seeing / g.EFAC / plateScale
 
-        sum = 0.
+        sum = 0.0
         for iyp in range(ybin):
-            yoff = -ybin/2.+iyp
+            yoff = -ybin / 2.0 + iyp
             for ixp in range(xbin):
-                xoff = -xbin/2.+ixp
+                xoff = -xbin / 2.0 + ixp
                 for iys in range(ndiv):
-                    y = (yoff + (iys+0.5)/ndiv)/sigma
+                    y = (yoff + (iys + 0.5) / ndiv) / sigma
                     for ixs in range(ndiv):
-                        x = (xoff + (ixs+0.5)/ndiv)/sigma
-                        sum += math.exp(-(x*x+y*y)/2.)
-        peak = total*sum/(2.*math.pi*sigma**2*ndiv**2)
+                        x = (xoff + (ixs + 0.5) / ndiv) / sigma
+                        sum += math.exp(-(x * x + y * y) / 2.0)
+        peak = total * sum / (2.0 * math.pi * sigma**2 * ndiv**2)
 
         # Work out fraction of flux in aperture with radius AP_SCALE*seeing
-        correct = 1. - math.exp(-(g.EFAC*ap_scale)**2/2.)
+        correct = 1.0 - math.exp(-((g.EFAC * ap_scale) ** 2) / 2.0)
 
         # expected sky e- per arcsec
-        skyPerArcsec = 10.**((zero-sky)/2.5)*expTime
+        skyPerArcsec = 10.0 ** ((zero - sky) / 2.5) * expTime
         # skyPerPixel = skyPerArcsec*plateScale**2*xbin*ybin
-        narcsec = math.pi*(ap_scale*seeing)**2
-        skyTot = skyPerArcsec*narcsec
-        npix = math.pi*(ap_scale*seeing/plateScale)**2/xbin/ybin
+        narcsec = math.pi * (ap_scale * seeing) ** 2
+        skyTot = skyPerArcsec * narcsec
+        npix = math.pi * (ap_scale * seeing / plateScale) ** 2 / xbin / ybin
 
-        signal = correct*total  # in electrons
-        darkTot = npix*DARK_E*expTime  # in electrons
-        readTot = npix*read**2  # in electrons
+        signal = correct * total  # in electrons
+        darkTot = npix * DARK_E * expTime  # in electrons
+        readTot = npix * read**2  # in electrons
 
         # noise, in electrons
         noise = math.sqrt(readTot + darkTot + skyTot + signal)
 
         # Now compute signal-to-noise in 3 hour seconds run
-        signalToNoise3 = signal/noise*math.sqrt(3*3600./cycleTime)
+        signalToNoise3 = signal / noise * math.sqrt(3 * 3600.0 / cycleTime)
 
         # convert from electrons to counts
         total /= gain
@@ -1530,7 +1621,7 @@ class CountsFrame(tk.LabelFrame):
         peakSat = peak > sat
         peakWarn = peak > warn
 
-        return (total, peak, peakSat, peakWarn, signal/noise, signalToNoise3)
+        return (total, peak, peakSat, peakWarn, signal / noise, signalToNoise3)
 
 
 class RunType(w.Select):
@@ -1539,8 +1630,9 @@ class RunType(w.Select):
 
     Start button should be disabled until an option is made from this dropdown.
     """
-    DTYPES = ('', 'data', 'acquire', 'bias', 'flat', 'dark', 'tech')
-    DVALS = ('', 'data', 'acquisition', 'bias', 'flat', 'dark', 'technical')
+
+    DTYPES = ("", "data", "acquire", "bias", "flat", "dark", "tech")
+    DVALS = ("", "data", "acquisition", "bias", "flat", "dark", "technical")
 
     def __init__(self, master, start_button, checker=None):
         w.Select.__init__(self, master, 0, RunType.DTYPES, self.check)
@@ -1559,7 +1651,7 @@ class RunType(w.Select):
     def check(self, *args):
         if self._checker is not None:
             self._checker()
-        if self.val.get() == '':
+        if self.val.get() == "":
             self.start_button.run_type_set = False
             self.start_button.disable()
         else:
@@ -1570,9 +1662,13 @@ class RunType(w.Select):
                 powered_on = yield isPoweredOn(g)
             except Exception as err:
                 g.clog.warn(str(err))
-            if (g.cpars['hcam_server_on'] and g.cpars['eso_server_online'] and
-                    g.observe.start['state'] == 'disabled' 
-                    and not run_active and powered_on):
+            if (
+                g.cpars["hcam_server_on"]
+                and g.cpars["eso_server_online"]
+                and g.observe.start["state"] == "disabled"
+                and not run_active
+                and powered_on
+            ):
                 self.start_button.enable()
             g.rpars.check()
 
@@ -1590,6 +1686,7 @@ class Start(w.ActButton):
     -- update the button status
     -- start the exposure timer
     """
+
     def __init__(self, master, width):
         """
         Parameters
@@ -1599,9 +1696,9 @@ class Start(w.ActButton):
         width : int
             width of button
         """
-        w.ActButton.__init__(self, master, width, text='Start')
+        w.ActButton.__init__(self, master, width, text="Start")
         g = get_root(self).globals
-        self.config(bg=g.COL['start'])
+        self.config(bg=g.COL["start"])
         self.target = None
         self.run_type_set = False
 
@@ -1612,7 +1709,7 @@ class Start(w.ActButton):
         if self.run_type_set:
             w.ActButton.enable(self)
             g = get_root(self).globals
-            self.config(bg=g.COL['start'])
+            self.config(bg=g.COL["start"])
 
     def disable(self):
         """
@@ -1621,9 +1718,9 @@ class Start(w.ActButton):
         w.ActButton.disable(self)
         g = get_root(self).globals
         if self._expert:
-            self.config(bg=g.COL['start'])
+            self.config(bg=g.COL["start"])
         else:
-            self.config(bg=g.COL['startD'])
+            self.config(bg=g.COL["startD"])
 
     def setExpert(self):
         """
@@ -1632,7 +1729,7 @@ class Start(w.ActButton):
         """
         w.ActButton.setExpert(self)
         g = get_root(self).globals
-        self.config(bg=g.COL['start'])
+        self.config(bg=g.COL["start"])
 
     def setNonExpert(self):
         """
@@ -1650,16 +1747,16 @@ class Start(w.ActButton):
         This is run every time a telemetry packet comes in from NGC.
 
         It is the responsibility of an implementing GUI to subscribe to the
-        NGC telemetry topic with this function as the callback. 
+        NGC telemetry topic with this function as the callback.
         """
         telemetry = pickle.loads(package)
         res = ReadNGCTelemetry(telemetry)
         if not res.ok:
-            raise DriverError('cannot read NGC telemetry: ' + str(res.err))
-        if res.clocks != 'enabled':
+            raise DriverError("cannot read NGC telemetry: " + str(res.err))
+        if res.clocks != "enabled":
             # NGC voltages are not powered on, cannot start runs
             self.disable()
-        elif res.state == 'active':
+        elif res.state == "active":
             # run is underway - cannot start runs
             self.disable()
         else:
@@ -1682,22 +1779,44 @@ class Start(w.ActButton):
         if g.ipars.oscan():
             xbin, ybin = g.ipars.wframe.xbin.value(), g.ipars.wframe.ybin.value()
             if xbin not in (1, 2, 5, 10) or ybin not in (1, 2, 5, 10):
-                if not messagebox.askokcancel('Binning alert', msg):
-                    return False
+                if not messagebox.askokcancel("Binning alert", msg):
+                    returnValue(False)
 
         # Check instrument pars are OK
         if not g.ipars.check():
-            g.clog.warn('Invalid instrument parameters; save failed.')
+            g.clog.warn("Invalid instrument parameters; start failed.")
             returnValue(False)
 
         # create JSON to post
         data = yield createJSON(g)
 
+        # check if COMPO is in position
+        # Do this regardless if enabled or not, as we might need to park
+        if not g.compo_hw.ok_to_start_run:
+            msg = """
+            COMPO is reporting that it is not ready to start a run.
+            Please check the state of COMPO.
+            
+            Click OK if you wish to continue anyway."""
+            if not messagebox.askokcancel("COMPO alert", msg):
+                returnValue(False)
+
+        # check autoguiding is started if we are guiding with COMPO
+        if g.ipars.compo() and g.compo_hw.setup_frame.injection_side.value() == "G":
+            msg = """
+            COMPO setup implies you will be guiding with COMPO.
+            Check that autoguiding is set up and running.
+            
+            Click OK when you wish to continue and start run.
+            Click Cancel to abort run."""
+            if not messagebox.askokcancel("Guiding alert", msg):
+                returnValue(False)
+
         # POST
         try:
             success = yield postJSON(g, data)
             if not success:
-                raise Exception('postJSON returned False')
+                raise Exception("postJSON returned False")
         except Exception as err:
             g.clog.warn("Failed to post data to servers")
             g.clog.warn(str(err))
@@ -1705,11 +1824,11 @@ class Start(w.ActButton):
 
         # START
         try:
-            success = yield execCommand(g, 'start')
+            success = yield execCommand(g, "start")
             if not success:
                 raise Exception("Start command failed: check server response")
         except Exception as err:
-            g.clog.warn('Failed to start run')
+            g.clog.warn("Failed to start run")
             g.clog.warn(str(err))
             returnValue(False)
 
@@ -1717,11 +1836,11 @@ class Start(w.ActButton):
         try:
             success = yield startNodding(g, data)
             if not success:
-                raise Exception('Failed to start dither: response was false')
+                raise Exception("Failed to start dither: response was false")
         except Exception as err:
             g.clog.warn("Failed to start GTC offsetter")
             g.clog.warn(str(err))
-            g.clog.warn('Run may be paused indefinitely')
+            g.clog.warn("Run may be paused indefinitely")
             g.clog.warn('use "ngcbCmd seq start" to fix')
             returnValue(False)
 
@@ -1749,7 +1868,7 @@ class Load(w.ActButton):
         master  : containing widget
         width   : width of button
         """
-        w.ActButton.__init__(self, master, width, text='Load')
+        w.ActButton.__init__(self, master, width, text="Load")
 
     def act(self):
         """
@@ -1757,15 +1876,16 @@ class Load(w.ActButton):
         """
         g = get_root(self).globals
         fname = filedialog.askopenfilename(
-            defaultextension='.json',
-            filetypes=[('json files', '.json'), ('fits files', '.fits')],
-            initialdir=g.cpars['app_directory'])
+            defaultextension=".json",
+            filetypes=[("json files", ".json"), ("fits files", ".fits")],
+            initialdir=g.cpars["app_directory"],
+        )
         if not fname:
-            g.clog.warn('Aborted load from disk')
+            g.clog.warn("Aborted load from disk")
             return False
 
         # load json
-        if fname.endswith('.json'):
+        if fname.endswith(".json"):
             with open(fname) as ifname:
                 json_string = ifname.read()
         else:
@@ -1777,6 +1897,9 @@ class Load(w.ActButton):
         # load up the run parameters
         g.rpars.loadJSON(json_string)
 
+        # load the COMPO setup
+        g.compo_hw.loadJSON(json_string)
+
         return True
 
 
@@ -1785,12 +1908,13 @@ class Save(w.ActButton):
     Class defining the 'Save' button's operation. This saves the
     current configuration to disk.
     """
+
     def __init__(self, master, width):
         """
         master  : containing widget
         width   : width of button
         """
-        w.ActButton.__init__(self, master, width, text='Save')
+        w.ActButton.__init__(self, master, width, text="Save")
 
     @inlineCallbacks
     def act(self):
@@ -1798,17 +1922,17 @@ class Save(w.ActButton):
         Carries out the action associated with the Save button
         """
         g = get_root(self).globals
-        g.clog.info('\nSaving current application to disk')
+        g.clog.info("\nSaving current application to disk")
 
         # check instrument parameters
         if not g.ipars.check():
-            g.clog.warn('Invalid instrument parameters; save failed.')
+            g.clog.warn("Invalid instrument parameters; save failed.")
             returnValue(False)
 
         # check run parameters
         rok, msg = g.rpars.check()
         if not rok:
-            g.clog.warn('Invalid run parameters; save failed.')
+            g.clog.warn("Invalid run parameters; save failed.")
             g.clog.warn(msg)
             returnValue(False)
 
@@ -1833,12 +1957,13 @@ class Unfreeze(w.ActButton):
     """
     Class defining the 'Unfreeze' button's operation.
     """
+
     def __init__(self, master, width):
         """
         master  : containing widget
         width   : width of button
         """
-        w.ActButton.__init__(self, master, width, text='Unfreeze')
+        w.ActButton.__init__(self, master, width, text="Unfreeze")
 
     def act(self):
         """
@@ -1855,6 +1980,7 @@ class Observe(tk.LabelFrame):
     """
     Observe widget. Collects together all the buttons needed for observing.
     """
+
     def __init__(self, master):
         tk.LabelFrame.__init__(self, master, padx=10, pady=10)
 
@@ -1881,9 +2007,7 @@ class Observe(tk.LabelFrame):
 
         # Implement expert level
         self.setExpertLevel()
-        self.telemetry_topics = [
-            ('hipercam.ngc.telemetry', self.on_telemetry)
-        ]
+        self.telemetry_topics = [("hipercam.ngc.telemetry", self.on_telemetry)]
 
     def on_telemetry(self, package):
         self.stop.on_telemetry(package)
@@ -1894,7 +2018,7 @@ class Observe(tk.LabelFrame):
         Set expert level
         """
         g = get_root(self).globals
-        level = g.cpars['expert_level']
+        level = g.cpars["expert_level"]
 
         # now set whether buttons are permanently enabled or not
         if level == 0 or level == 1:
