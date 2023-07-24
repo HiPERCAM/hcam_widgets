@@ -1,5 +1,5 @@
 from __future__ import print_function, unicode_literals, absolute_import, division
-import pkg_resources
+import importlib
 
 # non-standard imports
 from astropy import units as u
@@ -94,9 +94,10 @@ x_func = interp1d(THETA, X, kind="cubic", bounds_error=False, fill_value="extrap
 y_func = interp1d(THETA, Y, kind="cubic", bounds_error=False, fill_value="extrapolate")
 
 # interpolated functions for lens offset
-lens_data_file = pkg_resources.resource_filename(
-    "hcam_widgets", "data/compo_lens_offset.csv"
+lens_data_file = (
+    importlib.resources.files("hcam_widgets") / "data" / "compo_lens_offset.csv"
 )
+
 _, po_theta, lens_off = np.loadtxt(lens_data_file, delimiter=",", skiprows=1).T
 _g = interp1d(po_theta, lens_off, bounds_error=False, fill_value="extrapolate")
 
