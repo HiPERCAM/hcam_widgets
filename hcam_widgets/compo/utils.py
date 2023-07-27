@@ -22,6 +22,12 @@ try:
 except Exception:
     has_ginga = False
 
+try:
+    from importlib import resources as importlib_resources
+except Exception:
+    # backport for Python 3.6
+    import importlib_resources
+
 flip = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
 
 # COMPO is only available on GTC, so these values are well-known
@@ -95,7 +101,7 @@ y_func = interp1d(THETA, Y, kind="cubic", bounds_error=False, fill_value="extrap
 
 # interpolated functions for lens offset
 lens_data_file = (
-    importlib.resources.files("hcam_widgets") / "data" / "compo_lens_offset.csv"
+    importlib_resources.files("hcam_widgets") / "data" / "compo_lens_offset.csv"
 )
 
 _, po_theta, lens_off = np.loadtxt(lens_data_file, delimiter=",", skiprows=1).T
