@@ -674,7 +674,8 @@ class InstPars(tk.LabelFrame):
         if self.compo():
             compo_hw_widget = getattr(g, "compo_hw", None)
             if compo_hw_widget is not None:
-                compo_hw_widget.deiconify()
+                if compo_hw_widget.state() == "withdrawn":
+                    compo_hw_widget.deiconify()
 
         # clear errors on binning (may be set later if FF)
         xbinw, ybinw = self.wframe.xbin, self.wframe.ybin
