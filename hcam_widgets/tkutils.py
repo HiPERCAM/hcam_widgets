@@ -96,7 +96,6 @@ def place_at_edge(parent, win, padding=10):
     parent_y_upperleft = parent.winfo_rooty()
     titlebar_height = parent.winfo_rooty() - parent.winfo_y()
     parent_width = parent.winfo_width()
-    parent_height = parent.winfo_height()
 
     win.geometry(
         "{}x{}+{}+{}".format(
