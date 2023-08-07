@@ -13,7 +13,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 # internal imports
 from . import widgets as w
 from . import DriverError
-from .tkutils import get_root
+from .tkutils import get_root, place_at_edge
 from .misc import (
     createJSON,
     isPoweredOn,
@@ -668,13 +668,15 @@ class InstPars(tk.LabelFrame):
             True or False according to whether the settings are OK.
         """
         status = True
-        g = get_root(self).globals
+        root = get_root(self)
+        g = root.globals
 
         # if we've just enabled COMPO, then raise window if exists
         if self.compo():
             compo_hw_widget = getattr(g, "compo_hw", None)
             if compo_hw_widget is not None:
                 if compo_hw_widget.state() == "withdrawn":
+                    place_at_edge(root, compo_hw_widget)
                     compo_hw_widget.deiconify()
 
         # clear errors on binning (may be set later if FF)
