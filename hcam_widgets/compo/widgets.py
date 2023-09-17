@@ -532,7 +532,7 @@ class CompoWidget(tk.Toplevel):
             # no compo data in JSON, park arms
             data = dict(
                 injection_side="P",
-                pickoff_angle=PARK_POSITION.to_value(u.deg),
+                pickoff_angle=-PARK_POSITION.to_value(u.deg),
             )
         self.setup_frame.injection_side.set(data["injection_side"])
         self.setup_frame.pickoff_angle.set(data["pickoff_angle"])
