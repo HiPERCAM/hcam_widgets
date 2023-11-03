@@ -25,7 +25,7 @@ from hcam_devices.gtc.headers import create_gtc_header_table, add_gtc_header_tab
 from . import DriverError
 from .tkutils import get_root
 from .logs import Logger, GuiHandler
-from .astro import calc_riseset
+from .astro import calc_riseset, calc_time_to_rotator_limit
 from .misc import (
     execCommand,
     checkSimbad,
@@ -2866,6 +2866,7 @@ class InfoFrame(tk.LabelFrame):
         self.airmass = Ilabel(self, text="UNDEF")
         self.ha = Ilabel(self, text="UNDEF")
         self.pa = Ilabel(self, text="UNDEF")
+        self.rotlimit = Ilabel(self, text="UNDEF")
         self.focus = Ilabel(self, text="UNDEF")
         self.mdist = Ilabel(self, text="UNDEF")
         self.fpslide = Ilabel(self, text="UNDEF")
@@ -2910,17 +2911,20 @@ class InfoFrame(tk.LabelFrame):
         tk.Label(self, text="PA:").grid(row=0, column=6, padx=5, sticky=tk.W)
         self.pa.grid(row=0, column=7, padx=5, sticky=tk.W)
 
-        tk.Label(self, text="Focus:").grid(row=1, column=6, padx=5, sticky=tk.W)
-        self.focus.grid(row=1, column=7, padx=5, sticky=tk.W)
+        tk.Label(self, text="Rot Lim:").grid(row=1, column=6, padx=5, sticky=tk.W)
+        self.rotlimit.grid(row=1, column=7, padx=5, sticky=tk.W)
 
-        tk.Label(self, text="Mdist:").grid(row=2, column=6, padx=5, sticky=tk.W)
-        self.mdist.grid(row=2, column=7, padx=5, sticky=tk.W)
+        tk.Label(self, text="Focus:").grid(row=2, column=6, padx=5, sticky=tk.W)
+        self.focus.grid(row=2, column=7, padx=5, sticky=tk.W)
 
-        tk.Label(self, text="FP slide:").grid(row=3, column=6, padx=5, sticky=tk.W)
-        self.fpslide.grid(row=3, column=7, padx=5, sticky=tk.W)
+        tk.Label(self, text="Mdist:").grid(row=3, column=6, padx=5, sticky=tk.W)
+        self.mdist.grid(row=3, column=7, padx=5, sticky=tk.W)
 
-        tk.Label(self, text="CCD temps:").grid(row=4, column=6, padx=5, sticky=tk.W)
-        self.ccd_temps.grid(row=4, column=7, padx=5, sticky=tk.W)
+        tk.Label(self, text="FP slide:").grid(row=4, column=6, padx=5, sticky=tk.W)
+        self.fpslide.grid(row=4, column=7, padx=5, sticky=tk.W)
+
+        tk.Label(self, text="CCD temps:").grid(row=5, column=6, padx=5, sticky=tk.W)
+        self.ccd_temps.grid(row=5, column=7, padx=5, sticky=tk.W)
 
         # add a FITS table to record TCS info
         self.tcs_table = create_gtc_header_table()
@@ -3014,7 +3018,9 @@ class InfoFrame(tk.LabelFrame):
             ra = float(header["RADEG"])
             dec = float(header["DECDEG"])
             pa = float(header["INSTRPA"])
+            mechanical_angle = float(header["ROTATOR"])
             focus = float(header["M2UZ"])
+
             # format ra, dec as HMS
             coo = coord.SkyCoord(ra, dec, unit=(u.deg, u.deg))
             ratxt = coo.ra.to_string(sep=":", unit=u.hour, precision=0)
@@ -3024,9 +3030,13 @@ class InfoFrame(tk.LabelFrame):
             self.ra.configure(text=ratxt)
             self.dec.configure(text=dectxt)
 
+            # set angle units
+            mechanical_angle = mechanical_angle * u.deg
+            pa = pa * u.deg
+
             # wrap pa from 0 to 360
-            pa = coord.Longitude(pa * u.deg)
-            self.pa.configure(text="{0:6.2f}".format(pa.value))
+            wrapped_pa = coord.Longitude(pa)
+            self.pa.configure(text="{0:6.2f}".format(wrapped_pa.value))
 
             # set focus
             self.focus.configure(text="{0:+5.2f}".format(focus))
@@ -3046,6 +3056,25 @@ class InfoFrame(tk.LabelFrame):
             self.az.configure(text="{0:<5.1f}".format(altaz.az.value))
             # set airmass
             self.airmass.configure(text="{0:<4.2f}".format(altaz.secz))
+
+            # time to rotator limit
+            time_to_limit = calc_time_to_rotator_limit(
+                ha,
+                g.astro.obs.lat,
+                coo.dec,
+                pa,
+                mechanical_angle,
+                (240.0, -240) * u.deg,
+            )
+            if time_to_limit is None:
+                limit_txt = ">12:00"
+            else:
+                limit_txt = (
+                    coord.Longitude(time_to_limit)
+                    .wrap_at(12 * u.hourangle)
+                    .to_string(sep=":", precision=0)
+                )
+            self.rotlimit.configure(text=limit_txt)
 
             # distance to the moon. Warn if too close
             # (configurable) to it.
@@ -3223,8 +3252,7 @@ class AstroFrame(tk.LabelFrame):
 
         # parameters used to reduce re-calculation of sun rise etc, and
         # to provide info for other widgets
-        self.lastRiset = Time.now()
-        self.lastAstro = Time.now()
+        self.lastRiset = self.lastAstro = Time.now()
         self.counter = 0
 
         # start loop. Updates @ 10Hz to give smooth running clock
