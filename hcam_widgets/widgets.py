@@ -42,8 +42,10 @@ from .misc import (
 
 if not six.PY3:
     import Tkinter as tk
+    import tkMessageBox as messagebox
 else:
     import tkinter as tk
+    from tkinter import messagebox
 
 
 # GENERAL UI WIDGETS
@@ -2929,6 +2931,9 @@ class InfoFrame(tk.LabelFrame):
         # add a FITS table to record TCS info
         self.tcs_table = create_gtc_header_table()
 
+        # need to keep track of time to rotator limit
+        self.time_to_limit = None
+
         # start
         self.count = 0
         self.update()
@@ -3058,22 +3063,28 @@ class InfoFrame(tk.LabelFrame):
             self.airmass.configure(text="{0:<4.2f}".format(altaz.secz))
 
             # time to rotator limit
-            time_to_limit = calc_time_to_rotator_limit(
+            self.time_to_limit = calc_time_to_rotator_limit(
                 ha,
                 g.astro.obs.lat,
                 coo.dec,
                 pa,
                 mechanical_angle,
-                (240.0, -240) * u.deg,
+                (-240.0, 240) * u.deg,
             )
-            if time_to_limit is None:
+            if self.time_to_limit is None:
                 limit_txt = ">12:00"
             else:
                 limit_txt = (
-                    coord.Longitude(time_to_limit)
+                    coord.Longitude(self.time_to_limit)
                     .wrap_at(12 * u.hourangle)
                     .to_string(sep=":", precision=0)
                 )
+                # warn if too limit is near
+                if self.time_to_limit < 1 * u.hourangle:
+                    self.rotlimit.configure(bg=g.COL["warn"])
+                else:
+                    self.rotlimit.configure(bg=g.COL["main"])
+
             self.rotlimit.configure(text=limit_txt)
 
             # distance to the moon. Warn if too close
