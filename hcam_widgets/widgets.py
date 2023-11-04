@@ -3056,7 +3056,9 @@ class InfoFrame(tk.LabelFrame):
             lon = g.astro.obs.lon
             lst = now.sidereal_time(kind="mean", longitude=lon)
             ha = lst - coo.ra.hourangle * u.hourangle
-            hatxt = ha.wrap_at(12 * u.hourangle).to_string(sep=":", precision=0)
+            hatxt = ha.wrap_at(12 * u.hourangle).to_string(
+                sep=":", precision=0, fields=2
+            )
             self.ha.configure(text=hatxt)
 
             altaz_frame = coord.AltAz(obstime=now, location=g.astro.obs)
@@ -3081,7 +3083,7 @@ class InfoFrame(tk.LabelFrame):
                 limit_txt = (
                     coord.Longitude(self.time_to_limit)
                     .wrap_at(12 * u.hourangle)
-                    .to_string(sep=":", precision=0)
+                    .to_string(sep=":", precision=0, fields=2)
                 )
                 # warn if too limit is near
                 if self.time_to_limit < 1 * u.hourangle:
