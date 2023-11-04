@@ -2851,6 +2851,10 @@ class InfoFrame(tk.LabelFrame):
     Information frame: run number, exposure time, etc.
     """
 
+    # if time to rotator limit is less than this, there will be a
+    # warning before runs can be started
+    WARN_LIMIT = 1 * u.hourangle
+
     def __init__(self, master):
         tk.LabelFrame.__init__(
             self, master, text="Current run & telescope status", padx=4, pady=4
