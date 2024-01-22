@@ -15,7 +15,7 @@ requirements = [
     "astropy",
     "requests",
     "twisted",
-    "hcam_devices>=1.0.1",
+    "hcam_devices>=1.2.1",
     "matplotlib",
     "scipy",
     "autobahn",
