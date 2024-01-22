@@ -1824,6 +1824,20 @@ class Start(w.ActButton):
             if not messagebox.askokcancel("Guiding alert", msg):
                 returnValue(False)
 
+        # check time to limit for rotator
+        if (
+            g.info.time_to_limit is not None
+            and g.info.time_to_limit < g.info.WARN_LIMIT
+        ):
+            msg = f"""
+            The rotator limit will be reach in less than {g.info.WARN_LIMIT.value()} hour.
+
+            You may want to de-rotate before starting the run. 
+            Click OK when you wish to continue and start run.
+            Click Cancel to abort run."""
+            if not messagebox.askokcancel("Rotator alert", msg):
+                returnValue(False)
+
         # POST
         try:
             success = yield postJSON(g, data)

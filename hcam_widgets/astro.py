@@ -9,7 +9,103 @@ from astropy import coordinates as coord
 from astropy.time import Time
 from astropy import units as u
 
-MAGIC_TIME = Time(-999, format='jd')
+MAGIC_TIME = Time(-999, format="jd")
+
+
+@u.quantity_input(pa=u.deg)
+@u.quantity_input(mechanical_angle=u.deg)
+@u.quantity_input(hour_angle=u.hourangle)
+@u.quantity_input(latitude=u.deg)
+@u.quantity_input(declination=u.deg)
+@u.quantity_input(rotator_limit=u.deg)
+def calc_time_to_rotator_limit(
+    hour_angle,
+    latitude,
+    declination,
+    pa,
+    mechanical_angle,
+    rotator_limits,
+):
+    """
+    Calculate the time to rotator limit.
+
+    The parallactic angle is calculated using the formula:
+
+    :math:`\tan q = \frac{\sin h}{\cos \delta \tan \phi - \sin \delta \cos h`
+
+    where a star has hour angle :math:`h`, declination :math:`\delta`
+    and the observatory is at latitude :math:`\phi`.
+
+    For GTC we get two angles from the rotator, the mechanical angle ROTATOR
+    and the instrument position angle INSTRPA, which satisfies:
+
+    :math:`q + {\rm ROTATOR} - {\rm INSTRPA} = -180`.
+
+    From these equations, we find the time until the rotator hits the angles
+    set in `rotator_limits`.
+
+    Parameters
+    ----------
+    hour_angle : `~astropy.units.Quantity`
+        Hour angle of target
+    latitude : `~astropy.units.Quantity`
+        Latitude of observatory
+    declination : `~astropy.units.Quantity`
+        Declination of target
+    altitude : `~astropy.units.Quantity`
+        Altitude of target
+    azimuth : `~astropy.units.Quantity`
+        Azimuth of target
+    pa: `~astropy.units.Quantity`
+        Instrument position angle
+    mechanical_angle : `~astropy.units.Quantity`
+        Mechanical angle of rotator
+    rotator_limits : `~astropy.units.Quantity`
+        Limits on rotator angle, we assume two limits, one in each direction
+
+    Returns
+    -------
+    time_to_limit : `~astropy.units.Quantity`
+        Time until rotator hits appropriate limit
+    """
+    # first, we find the parallactic angles over the next 12 hours
+    dh = np.linspace(0, 12, 100) * u.hourangle
+    h = hour_angle + dh
+    q = (
+        np.arctan2(
+            np.sin(h),
+            np.cos(declination) * np.tan(latitude) - np.sin(declination) * np.cos(h),
+        )
+    ).to(u.deg)
+
+    # ensure parallactic angle is in the range -180 to 180 degrees without discontinuities
+    if declination > latitude:
+        q += 360 * u.deg
+        q %= 360 * u.deg
+        q -= 180 * u.deg
+
+    # find the corresponding rotator mechanical angles
+    rotator_values = -180 * u.deg + pa - q
+
+    # because of angle wrapping, the rotator values may not be in the
+    # same range as the rotator limits. We will fix this by forcing the
+    # first rotator_value to match the current rotator mechanical angle
+    # and using numpy's unwrap function to enforce a continuous change in
+    # angle without discontinuities.
+    delta = rotator_values[0] - mechanical_angle
+    rotator_values -= delta
+
+    # where are we outside limits?
+    bad_elements = np.where(
+        (rotator_values < rotator_limits[0]) | (rotator_values > rotator_limits[1])
+    )[0]
+
+    # we never exceed the limits
+    if len(bad_elements) == 0:
+        return None
+
+    # find first element where we exceed the limit
+    return dh[np.min(bad_elements)].to(u.hourangle)
 
 
 def _equation_of_time(t):
@@ -33,7 +129,7 @@ def _equation_of_time(t):
     # obliquity of ecliptic (Meeus 1998, eq 22.2)
     poly_pars = (84381.448, 46.8150, 0.00059, 0.001813)
     eps = u.Quantity(polyval(T, poly_pars), u.arcsec)
-    y = np.tan(eps/2)**2
+    y = np.tan(eps / 2) ** 2
 
     # Sun's mean longitude (Meeus 1998, eq 25.2)
     poly_pars = (280.46646, 36000.76983, 0.0003032)
@@ -48,8 +144,13 @@ def _equation_of_time(t):
     e = polyval(T, poly_pars)
 
     # equation of time, radians (Meeus 1998, eq 28.3)
-    eot = (y * np.sin(2*L0) - 2*e*np.sin(M) + 4*e*y*np.sin(M)*np.cos(2*L0) -
-           0.5*y**2 * np.sin(4*L0) - 5*e**2 * np.sin(2*M)/4) * u.rad
+    eot = (
+        y * np.sin(2 * L0)
+        - 2 * e * np.sin(M)
+        + 4 * e * y * np.sin(M) * np.cos(2 * L0)
+        - 0.5 * y**2 * np.sin(4 * L0)
+        - 5 * e**2 * np.sin(2 * M) / 4
+    ) * u.rad
     return eot.to(u.hourangle)
 
 
@@ -71,19 +172,18 @@ def _astropy_time_from_LST(t, LST, location, prev_next):
 
     # calculate Greenwich Apparent Solar Time, which we will use as ~UTC for now
     lon = location.lon
-    solarTime = LST - raSun + 12*u.hourangle - lon
+    solarTime = LST - raSun + 12 * u.hourangle - lon
 
     # assume this is on the same day as supplied time, and fix later
     first_guess = Time(
-        u.d*int(t.mjd) + u.hour*solarTime.wrap_at('360d').hour,
-        format='mjd'
+        u.d * int(t.mjd) + u.hour * solarTime.wrap_at("360d").hour, format="mjd"
     )
 
     # Equation of time is difference between GAST and UTC
     eot = _equation_of_time(first_guess)
     first_guess = first_guess - u.hour * eot.value
 
-    if prev_next == 'next':
+    if prev_next == "next":
         # if 'next', we want time to be greater than given time
         mask = first_guess < t
         rise_set_time = first_guess + mask * u.sday
@@ -132,11 +232,11 @@ def _rise_set_trig(t, target, location, prev_next, rise_set):
     """
     dec = target.transform_to(coord.ICRS).dec
     lat = location.lat
-    cosHA = -np.tan(dec)*np.tan(lat.radian)
+    cosHA = -np.tan(dec) * np.tan(lat.radian)
     # find the absolute value of the hour Angle
     HA = coord.Longitude(np.fabs(np.arccos(cosHA)))
     # if rise, HA is -ve and vice versa
-    if rise_set == 'rising':
+    if rise_set == "rising":
         HA = -HA
     # LST = HA + RA
     LST = HA + target.ra
@@ -183,17 +283,18 @@ def calc_riseset(t, target_name, location, prev_next, rise_set, horizon):
     """
     target = coord.get_body(target_name, t)
     t0 = _rise_set_trig(t, target, location, prev_next, rise_set)
-    grid = t0 + np.linspace(-4*u.hour, 4*u.hour, 10)
+    grid = t0 + np.linspace(-4 * u.hour, 4 * u.hour, 10)
     altaz_frame = coord.AltAz(obstime=grid, location=location)
     target = coord.get_body(target_name, grid)
     altaz = target.transform_to(altaz_frame)
-    time_limits, altitude_limits = _horiz_cross(altaz.obstime, altaz.alt,
-                                                rise_set, horizon)
+    time_limits, altitude_limits = _horiz_cross(
+        altaz.obstime, altaz.alt, rise_set, horizon
+    )
     return _two_point_interp(time_limits, altitude_limits, horizon)
 
 
 @u.quantity_input(horizon=u.deg)
-def _horiz_cross(t, alt, rise_set, horizon=0*u.degree):
+def _horiz_cross(t, alt, rise_set, horizon=0 * u.degree):
     """
     Find time ``t`` when values in array ``a`` go from
     negative to positive or positive to negative (exclude endpoints)
@@ -218,16 +319,18 @@ def _horiz_cross(t, alt, rise_set, horizon=0*u.degree):
     Returns the lower and upper limits on the time and altitudes
     of the horizon crossing.
     """
-    if rise_set == 'rising':
+    if rise_set == "rising":
         # Find index where altitude goes from below to above horizon
         condition = (alt[:-1] < horizon) * (alt[1:] > horizon)
-    elif rise_set == 'setting':
+    elif rise_set == "setting":
         # Find index where altitude goes from above to below horizon
         condition = (alt[:-1] > horizon) * (alt[1:] < horizon)
 
     if np.count_nonzero(condition) == 0:
-        warnmsg = ('Target does not cross horizon={} within '
-                   '8 hours of trigonometric estimate'.format(horizon))
+        warnmsg = (
+            "Target does not cross horizon={} within "
+            "8 hours of trigonometric estimate".format(horizon)
+        )
         warnings.warn(warnmsg)
 
         # Fill in missing time with MAGIC_TIME
@@ -236,14 +339,14 @@ def _horiz_cross(t, alt, rise_set, horizon=0*u.degree):
         altitudes = [np.nan, np.nan]
     else:
         time_inds = np.nonzero(condition)[0][0]
-        times = t[time_inds:time_inds+2]
-        altitudes = alt[time_inds:time_inds+2]
+        times = t[time_inds : time_inds + 2]
+        altitudes = alt[time_inds : time_inds + 2]
 
     return times, altitudes
 
 
 @u.quantity_input(horizon=u.deg)
-def _two_point_interp(times, altitudes, horizon=0*u.deg):
+def _two_point_interp(times, altitudes, horizon=0 * u.deg):
     """
     Do linear interpolation between two ``altitudes`` at
     two ``times`` to determine the time where the altitude
@@ -270,6 +373,5 @@ def _two_point_interp(times, altitudes, horizon=0*u.deg):
     if not isinstance(times, Time):
         return MAGIC_TIME
     else:
-        slope = (altitudes[1] - altitudes[0])/(times[1].jd - times[0].jd)
-        return Time(times[1].jd - ((altitudes[1] - horizon)/slope).value,
-                    format='jd')
+        slope = (altitudes[1] - altitudes[0]) / (times[1].jd - times[0].jd)
+        return Time(times[1].jd - ((altitudes[1] - horizon) / slope).value, format="jd")
