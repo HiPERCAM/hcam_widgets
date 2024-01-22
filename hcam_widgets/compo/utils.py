@@ -99,11 +99,18 @@ x_func = interp1d(THETA, X, kind="cubic", bounds_error=False, fill_value="extrap
 y_func = interp1d(THETA, Y, kind="cubic", bounds_error=False, fill_value="extrapolate")
 
 # interpolated functions for lens offset
-lens_data_file = (
-    importlib_resources.files("hcam_widgets") / "data" / "compo_lens_offset.csv"
-)
+try:
+    lens_data_file = (
+        importlib_resources.files("hcam_widgets") / "data" / "compo_lens_offset.csv"
+    )
+    _, po_theta, lens_off = np.loadtxt(lens_data_file, delimiter=",", skiprows=1).T
+except AttributeError:
+    # Python < P3.9 fall back to deprecated pkg_resources
+    from pkg_resources import resource_filename
 
-_, po_theta, lens_off = np.loadtxt(lens_data_file, delimiter=",", skiprows=1).T
+    fn = resource_filename("hcam_widgets", "data/compo_lens_offset.csv")
+    _, po_theta, lens_off = np.loadtxt(fn, delimiter=",", skiprows=1).T
+
 _g = interp1d(po_theta, lens_off, bounds_error=False, fill_value="extrapolate")
 
 
