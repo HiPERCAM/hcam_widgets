@@ -11,6 +11,7 @@ import re
 
 from astropy.io import fits
 from astropy.io import ascii
+from astropy.table import Table
 
 from . import DriverError
 
@@ -367,6 +368,23 @@ def insertFITSHDU(g):
         g.clog.warn("insertFITSHDU failed")
         msg = err.error_message() if hasattr(err, "error_message") else str(err)
         g.clog.warn(msg)
+
+    nod_pattern = g.ipars.nodPattern
+    if nod_pattern:
+        g.clog.info("Adding nod pattern to run{:04d}.fits".format(run_number))
+        try:
+            nod_table = Table(nod_pattern)
+            nod_table.rename_columns(["ra", "dec"], ["RAOFF", "DECOFF"])
+            for colname in nod_table.colnames:
+                nod_table[colname].unit = "arcsecond"
+            fd = StringIO()
+            ascii.write(nod_table, format="ecsv", output=fd)
+            yield session.call("hipercam.ngc.rpc.add_hdu", fd.getvalue(), run_number)
+        except Exception as err:
+            g.clog.warn("insertFITSHDU failed")
+            msg = err.error_message() if hasattr(err, "error_message") else str(err)
+            g.clog.warn(msg)
+
     returnValue(True)
 
 
