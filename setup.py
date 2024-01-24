@@ -34,13 +34,13 @@ scripts = [
 
 setup(
     name="hcam_widgets",
-    version="1.1.3",
+    version="1.2.0",
     description="Common Tkinter widgets for HiPerCAM",
     long_description=readme + "\n\n" + history,
     author="Stuart Littlefair",
     author_email="s.littlefair@shef.ac.uk",
     url="https://github.com/HiPERCAM/hcam_widgets",
-    download_url="https://github.com/HiPERCAM/hcam_widgets/archive/v1.1.3.tar.gz",
+    download_url="https://github.com/HiPERCAM/hcam_widgets/archive/v1.2.0.tar.gz",
     packages=["hcam_widgets", "hcam_widgets.compo", "hcam_widgets.hardware"],
     package_dir={"hcam_widgets": "hcam_widgets"},
     include_package_data=True,
