@@ -1,34 +1,35 @@
 # Specific widgets, widget groups and parameters for hipercam instrument
-from __future__ import print_function, unicode_literals, absolute_import, division
-import math
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import json
-import six
-from os.path import expanduser
+import math
 import pickle
+from os.path import expanduser
 
 # non-standard imports
 import numpy as np
+import six
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 # internal imports
-from . import widgets as w
 from . import DriverError
-from .tkutils import get_root, place_at_edge
+from . import widgets as w
 from .misc import (
+    ReadNGCTelemetry,
     createJSON,
-    isPoweredOn,
-    saveJSON,
-    postJSON,
-    startNodding,
     execCommand,
+    isPoweredOn,
     isRunActive,
     jsonFromFits,
-    ReadNGCTelemetry,
+    postJSON,
+    saveJSON,
+    startNodding,
 )
+from .tkutils import get_root, place_at_edge
 
 if not six.PY3:
-    import Tkinter as tk
     import tkFileDialog as filedialog
+    import Tkinter as tk
     import tkMessageBox as messagebox
 else:
     import tkinter as tk
@@ -1196,7 +1197,7 @@ class RunPars(tk.LabelFrame):
         def setField(widget, field):
             val = user.get(field)
             if val is not None:
-                widget.set(val)
+                widget.set(val.strip())
 
         setField(self.prog_ob.obid, "OB")
         setField(self.target, "target")
