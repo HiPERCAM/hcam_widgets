@@ -1831,7 +1831,7 @@ class Start(w.ActButton):
             and g.info.time_to_limit < g.info.WARN_LIMIT
         ):
             msg = f"""
-            The rotator limit will be reach in less than {g.info.WARN_LIMIT.value()} hour.
+            The rotator limit will be reach in less than {g.info.WARN_LIMIT.value} hour.
 
             You may want to de-rotate before starting the run. 
             Click OK when you wish to continue and start run.
