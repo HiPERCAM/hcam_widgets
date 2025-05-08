@@ -1,5 +1,6 @@
 from __future__ import print_function, division, unicode_literals, absolute_import
 from six.moves.queue import Queue
+
 """
 This module supplies a single class, the Container. The idea is
 that the root widget (the GUI mainwindow) has a single Container
@@ -58,86 +59,68 @@ class Container:
 
         # Colours
         self.COL = {
-            'main':     '#d0d0ff',  # Colour for the surrounds
-            'text':     '#000050',  # Text colour
-            'debug':    '#a0a0ff',  # Text background for debug messages
-            'warn':     '#f0c050',  # Text background for warnings
-            'error':    '#ffa0a0',  # Text background for errors
-            'critical': '#ff0000',  # Text background for disasters
-            'start':    '#00e000',  # Start / Success button colour when enabled
-            'stop':     '#ff5050',  # Stop / Failure button colour when enabled
-            'startD':   '#d0e0d0',  # Start / Success button colour when disabled
-            'stopD':    '#ffe0e0',  # Stop / Failure button colour when disabled
-            'log':      '#e0d4ff',  # Logger windows
-            }
+            "main": "#d0d0ff",  # Colour for the surrounds
+            "text": "#000050",  # Text colour
+            "debug": "#a0a0ff",  # Text background for debug messages
+            "warn": "#f0c050",  # Text background for warnings
+            "error": "#ffa0a0",  # Text background for errors
+            "critical": "#ff0000",  # Text background for disasters
+            "start": "#00e000",  # Start / Success button colour when enabled
+            "stop": "#ff5050",  # Stop / Failure button colour when enabled
+            "startD": "#d0e0d0",  # Start / Success button colour when disabled
+            "stopD": "#ffe0e0",  # Stop / Failure button colour when disabled
+            "log": "#e0d4ff",  # Logger windows
+        }
 
         # Telescope / instrument info. Most of this is do with estimating count rates
         self.TINS = {
-            'WHT': {
-                'latitude':   28.7598742,   # latitude degrees, North positive
-                'longitude': -17.8793802,   # longitude degrees, East positive
-                'elevation':  2327.,     # Elevation above sea level, metres
-                'plateScale': 0.3,     # Arcsecs/unbinned pixel
-                'zerop': {
-                    'u': 25.67,
-                    'g': 27.25,
-                    'r': 26.65,
-                    'i': 26.79,
-                    'z': 26.39
-                    }
+            "WHT": {
+                "latitude": 28.7598742,  # latitude degrees, North positive
+                "longitude": -17.8793802,  # longitude degrees, East positive
+                "elevation": 2327.0,  # Elevation above sea level, metres
+                "plateScale": 0.3,  # Arcsecs/unbinned pixel
+                "zerop": {"u": 25.67, "g": 27.25, "r": 26.65, "i": 26.79, "z": 26.39},
+            },
+            "GTC": {
+                "latitude": 28.762,  # latitude degrees, North positive
+                "longitude": -17.87764,  # longitude degrees, East positive
+                "elevation": 2300.0,  # Elevation above sea level, metres
+                "plateScale": 0.081,  # Arcsecs/unbinned pixel (WHT Collimator)
+                "zerop": {
+                    "u": 27.47,
+                    "g": 29.06,
+                    "r": 28.45,
+                    "i": 28.20,
+                    "z": 27.86,
                 },
-            'GTC': {
-                'latitude':   28.762,   # latitude degrees, North positive
-                'longitude': -17.87764,   # longitude degrees, East positive
-                'elevation':  2300.,     # Elevation above sea level, metres
-                'plateScale': 0.081,     # Arcsecs/unbinned pixel (WHT Collimator)
-                'zerop': {
-                    'u': 27.47,
-                    'g': 29.06,
-                    'r': 28.45,
-                    'i': 28.60,
-                    'z': 28.20
-                    }
-                },
-            'TNT': {
-                'latitude':   18.574,   # latitude degrees, North positive
-                'longitude':  98.482,   # longitude degrees, East positive
-                'elevation':  2449.,     # Elevation above sea level, metres
-                'plateScale': 0.456,     # Arcsecs/unbinned pixel (WHT Collimator)
-                'zerop': {
-                    'u': 22.71,
-                    'g': 25.25,
-                    'r': 25.01,
-                    'i': 24.69,
-                    'z': 23.81
-                    }
-                },
-            'NTT_CUBE': {
-                'latitude': -29.256,   # latitude degrees, North positive
-                'longitude': -70.73,   # longitude degrees, East positive
-                'elevation': 2347.,     # Elevation above sea level, metres
-                'plateScale': 0.354,     # Arcsecs/unbinned pixel (WHT Collimator)
-                'zerop': {
-                    'u': 24.62,
-                    'g': 26.43,
-                    'r': 25.77,
-                    'i': 25.63,
-                    'z': 24.79
-                    }
-                },
-            }
+            },
+            "TNT": {
+                "latitude": 18.574,  # latitude degrees, North positive
+                "longitude": 98.482,  # longitude degrees, East positive
+                "elevation": 2449.0,  # Elevation above sea level, metres
+                "plateScale": 0.456,  # Arcsecs/unbinned pixel (WHT Collimator)
+                "zerop": {"u": 22.71, "g": 25.25, "r": 25.01, "i": 24.69, "z": 23.81},
+            },
+            "NTT_CUBE": {
+                "latitude": -29.256,  # latitude degrees, North positive
+                "longitude": -70.73,  # longitude degrees, East positive
+                "elevation": 2347.0,  # Elevation above sea level, metres
+                "plateScale": 0.354,  # Arcsecs/unbinned pixel (WHT Collimator)
+                "zerop": {"u": 24.62, "g": 26.43, "r": 25.77, "i": 25.63, "z": 24.79},
+            },
+        }
         if telescope_names is not None:
             self.TINS = {k: self.TINS[k] for k in telescope_names}
 
         # Sky brightness, mags/sq-arsec
         self.SKY = {
-            'd': {'u': 22.4, 'g': 22.2, 'r': 21.4, 'i': 20.7, 'z': 20.3},
-            'g': {'u': 21.4, 'g': 21.2, 'r': 20.4, 'i': 20.1, 'z': 19.9},
-            'b': {'u': 18.4, 'g': 18.2, 'r': 17.4, 'i': 17.9, 'z': 18.3},
-            }
+            "d": {"u": 22.4, "g": 22.2, "r": 21.4, "i": 20.7, "z": 20.3},
+            "g": {"u": 21.4, "g": 21.2, "r": 20.4, "i": 20.1, "z": 19.9},
+            "b": {"u": 18.4, "g": 18.2, "r": 17.4, "i": 17.9, "z": 18.3},
+        }
 
         # Extinction per unit airmass
-        self.EXTINCTION = {'u': 0.5, 'g': 0.19, 'r': 0.09, 'i': 0.05, 'z': 0.04}
+        self.EXTINCTION = {"u": 0.5, "g": 0.19, "r": 0.09, "i": 0.05, "z": 0.04}
 
         # Fonts set by drivers.add_style later
         # Default font, e.g. used for fixed labels
