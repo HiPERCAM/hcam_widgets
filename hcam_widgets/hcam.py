@@ -470,7 +470,7 @@ class InstPars(tk.LabelFrame):
         Encodes current parameters to JSON compatible dictionary
         """
         numexp = self.number.get()
-        expTime, _, _, _, _ = self.timing()
+        expTime, _, cadence, _, _ = self.timing()
         if numexp == 0:
             numexp = -1
 
@@ -483,6 +483,7 @@ class InstPars(tk.LabelFrame):
             readout=self.readSpeed(),
             dwell=self.expose.value(),
             exptime=expTime,
+            cadence=cadence,
             oscan=self.oscan(),
             oscany=self.oscany(),
             xbin=self.wframe.xbin.value(),
