@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from setuptools import setup
 import glob
 import os
+
+from setuptools import setup
 
 with open("README.rst") as readme_file:
     readme = readme_file.read()
@@ -34,6 +35,7 @@ scripts = [
 
 setup(
     name="hcam_widgets",
+    python_requires=">=3.6",
     version="1.2.1",
     description="Common Tkinter widgets for HiPerCAM",
     long_description=readme + "\n\n" + history,
