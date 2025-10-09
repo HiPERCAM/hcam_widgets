@@ -1,44 +1,44 @@
 # general purpose widgets
-from __future__ import print_function, unicode_literals, absolute_import, division
-from six.moves import urllib
-from functools import partial
-import time
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import pickle
 import socket
-from functools import reduce
+import subprocess
+import time
+from functools import partial, reduce
+
 import numpy as np
 import six
-import pickle
-import subprocess
 
 # astropy utilities
 from astropy import coordinates as coord
 from astropy import units as u
 from astropy.time import Time
+from hcam_devices.gtc.headers import add_gtc_header_table_row, create_gtc_header_table
+from six.moves import urllib
 
 # twisted and async support
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.task import LoopingCall
 
-from hcam_devices.gtc.headers import create_gtc_header_table, add_gtc_header_table_row
-
 # internal
 from . import DriverError
-from .tkutils import get_root
-from .logs import Logger, GuiHandler
 from .astro import calc_riseset, calc_time_to_rotator_limit
+from .logs import GuiHandler, Logger
 from .misc import (
-    execCommand,
-    checkSimbad,
-    isOnline,
-    isRunActive,
-    stopNodding,
-    getRunNumber,
-    postJSON,
-    insertFITSHDU,
-    isPoweredOn,
     ReadNGCTelemetry,
     async_sleep,
+    checkSimbad,
+    execCommand,
+    getRunNumber,
+    insertFITSHDU,
+    isOnline,
+    isPoweredOn,
+    isRunActive,
+    postJSON,
+    stopNodding,
 )
+from .tkutils import get_root
 
 if not six.PY3:
     import Tkinter as tk
@@ -65,7 +65,7 @@ class Boolean(tk.IntVar):
         g = get_root(master).globals
 
         self.set(g.cpars[flag])
-        self.trace("w", self._update)
+        self.trace_add("write", self._update)
         self.flag = flag
         self.callback = callback
 
@@ -112,7 +112,7 @@ class IntegerEntry(tk.Entry):
         self._variable = tk.StringVar()
         self._value = str(int(ival))
         self._variable.set(self._value)
-        self._variable.trace("w", self._callback)
+        self._variable.trace_add("write", self._callback)
         self.config(textvariable=self._variable)
         self.checker = checker
         self.blank = blank
@@ -820,7 +820,7 @@ class FloatEntry(tk.Entry):
         self.nplaces = np
         self._value = str(round(float(fval), self.nplaces))
         self._variable.set(self._value)
-        self._variable.trace("w", self._callback)
+        self._variable.trace_add("write", self._callback)
         self.config(textvariable=self._variable)
         self.checker = checker
         self.blank = blank
@@ -1089,7 +1089,7 @@ class TextEntry(tk.Entry):
         """  # Define a StringVar, connect it to the callback, if there is one
         self.val = tk.StringVar()
         if callback is not None:
-            self.val.trace("w", callback)
+            self.val.trace_add("write", callback)
         tk.Entry.__init__(self, master, textvariable=self.val, width=width)
         # get globals
         g = get_root(self).globals
@@ -1142,7 +1142,7 @@ class Choice(tk.OptionMenu):
         self.config(width=width, font=g.ENTRY_FONT)
         self.checker = checker
         if self.checker is not None:
-            self.val.trace("w", self.checker)
+            self.val.trace_add("write", self.checker)
         self.options = options
 
     def update(self, new_options):
@@ -1310,7 +1310,7 @@ class Radio(tk.Frame):
 
         self.checker = checker
         if self.checker is not None:
-            self.val.trace("w", self.checker)
+            self.val.trace_add("write", self.checker)
         self.options = options
 
     def value(self):
@@ -1571,7 +1571,7 @@ class Sexagesimal(tk.Entry):
         # value is the thing that tracks the value, and has a unit
         self._value = coord.Angle(ival, unit=u.deg)
         self._variable.set(self.as_string())
-        self._variable.trace("w", self._callback)
+        self._variable.trace_add("write", self._callback)
         self.config(textvariable=self._variable)
         self.checker = callback
         self.set_unbind()
@@ -1923,7 +1923,7 @@ class Target(tk.Frame):
         # Entry field, linked to a StringVar which is traced for
         # any modification
         self.val = tk.StringVar()
-        self.val.trace("w", self.modver)
+        self.val.trace_add("write", self.modver)
         self.entry = tk.Entry(
             self, textvariable=self.val, fg=g.COL["text"], bg=g.COL["main"], width=25
         )
@@ -2598,7 +2598,7 @@ class Switch(tk.Frame):
 
         self.val = tk.StringVar()
         self.val.set("Setup")
-        self.val.trace("w", self._changed)
+        self.val.trace_add("write", self._changed)
 
         g = get_root(self).globals
         tk.Radiobutton(
@@ -2692,7 +2692,7 @@ class TelChooser(tk.Menu):
         self.val = tk.StringVar()
         tel = g.cpars.get("telins_name", list(g.TINS)[0])
         self.val.set(tel)
-        self.val.trace("w", self._change)
+        self.val.trace_add("write", self._change)
         for tel_name in g.TINS.keys():
             self.add_radiobutton(label=tel_name, value=tel_name, variable=self.val)
         self.args = args
@@ -2726,7 +2726,7 @@ class ExpertMenu(tk.Menu):
 
         self.val = tk.IntVar()
         self.val.set(g.cpars["expert_level"])
-        self.val.trace("w", self._change)
+        self.val.trace_add("write", self._change)
         self.add_radiobutton(label="Level 0", value=0, variable=self.val)
         self.add_radiobutton(label="Level 1", value=1, variable=self.val)
         self.add_radiobutton(label="Level 2", value=2, variable=self.val)
