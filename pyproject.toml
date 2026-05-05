@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hcam_widgets"
-version = "1.2.2"
+version = "2.0.0"
 description = "Common Tkinter widgets for HiPERCAM, ULTRACAM and ULTRASPEC"
 readme = "README.rst"
 license = { text = "MIT" }
