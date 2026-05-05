@@ -1,42 +1,36 @@
 #!/usr/bin/env python
 """
-ucam provides classes and data specific to ULTRACAM
+ULTRACAM instrument-specific widgets and parameters
 """
 from __future__ import print_function, absolute_import, unicode_literals, division
 import six
 import math
 
 # internal imports
-from . import widgets as w
-from .tkutils import get_root
+from ... import widgets as w
+from ...tkutils import get_root
+from .params import (
+    CDS_TIME_CDD,
+    CDS_TIME_FBB,
+    CDS_TIME_FDD,
+    DARK_COUNT,
+    GAIN_FAST,
+    GAIN_SLOW,
+    GAIN_TURBO,
+    HCLOCK,
+    INVERSION_DELAY,
+    READ_NOISE_FAST,
+    READ_NOISE_SLOW,
+    READ_NOISE_TURBO,
+    SWITCH_TIME,
+    VCLOCK_FRAME,
+    VCLOCK_STORAGE,
+)
 
 if not six.PY3:
     import Tkinter as tk
 else:
     import tkinter as tk
-
-
-# Timing, gain, noise parameters
-# gains in electrons per count
-GAIN_FAST = 1.4
-GAIN_SLOW = 1.3
-GAIN_TURBO = 1.5
-
-# readout noise in electrons for 1x1, 2x2, 4x4, 8x8
-READ_NOISE_TURBO = [7.0, 7.0, 7.0, 7.0]
-READ_NOISE_FAST = [4.9, 4.9, 5.1, 6.4]
-READ_NOISE_SLOW = [3.6, 3.6, 4.0, 5.4]
-DARK_COUNT = 0.1  # counts/sec/pixel
-
-# timing parameters in microseconds
-INVERSION_DELAY = 110.
-VCLOCK_FRAME = 23.3
-VCLOCK_STORAGE = 23.3
-HCLOCK = 0.48
-CDS_TIME_FDD = 1.84
-CDS_TIME_FBB = 4.4
-CDS_TIME_CDD = 10.
-SWITCH_TIME = 1.2
 
 
 class InstPars(tk.LabelFrame):

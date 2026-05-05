@@ -1,4 +1,4 @@
-# Specific widgets, widget groups and parameters for hipercam instrument
+# HiPERCAM-specific widgets and widget groups
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
@@ -12,9 +12,10 @@ import six
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 # internal imports
-from . import DriverError
-from . import widgets as w
-from .misc import (
+from ... import DriverError
+from ... import widgets as w
+from ...tkutils import get_root, place_at_edge
+from .tools import (
     ReadNGCTelemetry,
     createJSON,
     execCommand,
@@ -25,7 +26,7 @@ from .misc import (
     saveJSON,
     startNodding,
 )
-from .tkutils import get_root, place_at_edge
+from . import params as pars
 
 if not six.PY3:
     import tkFileDialog as filedialog
@@ -34,31 +35,6 @@ if not six.PY3:
 else:
     import tkinter as tk
     from tkinter import filedialog, messagebox
-
-
-# Timing, Gain, Noise parameters
-# Times in seconds
-VCLOCK_FRAME_SLOW = 15e-6  # vertical clocking time in image area
-VCLOCK_STORAGE_SLOW = 20e-6  # vertical clocking time in storage area
-HCLOCK_SLOW = 0.24e-6  # horizontal clocking time
-VCLOCK_FAST = 13e-6  # faster mode with poorer CTE
-HCLOCK_FAST = 0.12e-6  # faster mode with poorer CTE
-SETUP_READ = 9.0e-7  # time required for Naidu's setup_read SR
-DUMP_TIME_SLOW = 18e-6  # time to dump extra pixels, slow clocking
-DUMP_TIME_FAST = 3.6e-6  # time to dump extra pixels, fast clocking
-VIDEO_SLOW_SE = 8.72e-6  # ~113 kHz, Naidu's clock speed for single output mode
-VIDEO_SLOW = 5.2e-6  # ~192 kHz, same clock speed as fast, but 4 samples
-VIDEO_FAST = 1.9e-6  # ~520 kHz
-GAIN_FAST = 1.1  # electrons/ADU
-GAIN_SLOW = 1.1
-RNO_FAST = 5.0  # e- / pixel
-RNO_SLOW = 4.5
-DARK_E = 0.02  # e/pix/s
-
-
-FFX = 1024  # X pixels per output
-FFY = 520  # Y pixels per output
-PRSCX = 50  # number of pre-scan pixels
 
 
 class ExposureMultiplier(tk.LabelFrame):
@@ -912,26 +888,26 @@ class InstPars(tk.LabelFrame):
         readSpeed = self.readSpeed()
 
         if readSpeed == "Fast" and self.dummy():
-            video = VIDEO_FAST
+            video = pars.VIDEO_FAST
         elif readSpeed == "Slow" and self.dummy():
-            video = VIDEO_SLOW
+            video = pars.VIDEO_SLOW
         elif not self.dummy():
-            video = VIDEO_SLOW_SE
+            video = pars.VIDEO_SLOW_SE
         else:
             raise DriverError(
                 "InstPars.timing: readout speed = " + readSpeed + " not recognised."
             )
 
         if self.fastClk():
-            DUMP_TIME = DUMP_TIME_FAST
-            VCLOCK_FRAME = VCLOCK_FAST
-            VCLOCK_STORAGE = VCLOCK_FAST
-            HCLOCK = HCLOCK_FAST
+            DUMP_TIME = pars.DUMP_TIME_FAST
+            VCLOCK_FRAME = pars.VCLOCK_FAST
+            VCLOCK_STORAGE = pars.VCLOCK_FAST
+            HCLOCK = pars.HCLOCK_FAST
         else:
-            DUMP_TIME = DUMP_TIME_SLOW
-            VCLOCK_FRAME = VCLOCK_FRAME_SLOW
-            VCLOCK_STORAGE = VCLOCK_STORAGE_SLOW
-            HCLOCK = HCLOCK_SLOW
+            DUMP_TIME = pars.DUMP_TIME_SLOW
+            VCLOCK_FRAME = pars.VCLOCK_FRAME_SLOW
+            VCLOCK_STORAGE = pars.VCLOCK_STORAGE_SLOW
+            HCLOCK = pars.HCLOCK_SLOW
 
         # clear chip on/off?
         lclear = not isDriftMode and self.clear()
@@ -955,7 +931,7 @@ class InstPars(tk.LabelFrame):
             dxsr = self.wframe.xsr[0].value()
             # differential shift needed to line both
             # windows up with the edge of the chip
-            diffshift = abs(dxsl - 1 - (2 * FFX - dxsr - dnx + 1))
+            diffshift = abs(dxsl - 1 - (2 * pars.FFX - dxsr - dnx + 1))
         elif isFF:
             nwin = 1
             ys, nx, ny = [0], [1024], [512]
@@ -977,14 +953,14 @@ class InstPars(tk.LabelFrame):
 
         # clear chip by VCLOCK-ing the image and area and dumping storage area (x5)
         if lclear:
-            clear_time = 5 * (FFY * VCLOCK_FRAME + FFY * DUMP_TIME)
+            clear_time = 5 * (pars.FFY * VCLOCK_FRAME + pars.FFY * DUMP_TIME)
         else:
             clear_time = 0.0
 
         if isDriftMode:
             # for drift mode, we need the number of windows in the pipeline
             # and the pipeshift
-            nrows = FFY  # number of rows in storage area
+            nrows = pars.FFY  # number of rows in storage area
             pnwin = int(((nrows / dny) + 1) / 2)
             pshift = nrows - (2 * pnwin - 1) * dny
             frame_transfer = (dny + dys) * VCLOCK_FRAME
@@ -1005,18 +981,18 @@ class InstPars(tk.LabelFrame):
             numhclocks = 2 * diffshift
             # now add the amount of clocks needed to get
             # both windows to edge of chip
-            if dxsl - 1 > 2 * FFX - dxsr - dnx + 1:
+            if dxsl - 1 > 2 * pars.FFX - dxsr - dnx + 1:
                 # it was the left window that got the diff shift,
                 # so the number of hclocks increases by the amount
                 # needed to get the RH window to the edge
-                numhclocks += 2 * FFX - dxsr - dnx + 1
+                numhclocks += 2 * pars.FFX - dxsr - dnx + 1
             else:
                 # vice versa
                 numhclocks += dxsl - 1
             # now we actually clock the windows themselves
             numhclocks += dnx
             # finally, we need to hclock the additional pre-scan pixels
-            numhclocks += 2 * PRSCX
+            numhclocks += 2 * pars.PRSCX
 
             # here is the total time to read the whole line
             line_read = [
@@ -1024,32 +1000,32 @@ class InstPars(tk.LabelFrame):
                 + numhclocks * HCLOCK
                 + video * dnx / xbin
                 + DUMP_TIME
-                + 2 * SETUP_READ
+                + 2 * pars.SETUP_READ
             ]
 
             readout = [(dny / ybin) * line_read[0]]
         elif isFF:
             # move entire image into storage area
-            frame_transfer = FFY * VCLOCK_FRAME + DUMP_TIME
+            frame_transfer = pars.FFY * VCLOCK_FRAME + DUMP_TIME
 
             yshift = [0]
             line_clear = [0]
 
-            numhclocks = FFX + PRSCX
+            numhclocks = pars.FFX + pars.PRSCX
             line_read = [
                 VCLOCK_STORAGE * ybin
                 + numhclocks * HCLOCK
                 + video * nx[0] / xbin
-                + SETUP_READ
+                + pars.SETUP_READ
             ]
             if oscan:
-                line_read[0] += video * PRSCX / xbin
+                line_read[0] += video * pars.PRSCX / xbin
             nlines = ny[0] / ybin if not oscany else (ny[0] + 8 / ybin)
             readout = [nlines * line_read[0]]
         else:
             # windowed mode
             # move entire image into storage area
-            frame_transfer = FFY * VCLOCK_FRAME + DUMP_TIME
+            frame_transfer = pars.FFY * VCLOCK_FRAME + DUMP_TIME
 
             # dump rows in storage area up to start of the window without changing the
             # image area.
@@ -1074,7 +1050,7 @@ class InstPars(tk.LabelFrame):
                 diffshifts = sum(
                     (xs - common_shift for xs in (xse[nw], xsf[nw], xsg[nw], xsh[nw]))
                 )
-                numhclocks[nw] = 2 * PRSCX + common_shift + diffshifts + nx[nw]
+                numhclocks[nw] = 2 * pars.PRSCX + common_shift + diffshifts + nx[nw]
 
             line_read = nwin * [0.0]
             # line read includes vclocking a row, all the hclocks, digitising pixels and dumping serial register
@@ -1084,11 +1060,11 @@ class InstPars(tk.LabelFrame):
                     VCLOCK_STORAGE * ybin
                     + numhclocks[nw] * HCLOCK
                     + video * nx[nw] / xbin
-                    + 2 * SETUP_READ
+                    + 2 * pars.SETUP_READ
                     + DUMP_TIME
                 )
                 if oscan:
-                    line_read[nw] += video * PRSCX / xbin
+                    line_read[nw] += video * pars.PRSCX / xbin
 
             # multiply time to shift one row into serial register by
             # number of rows for total readout time
@@ -1555,11 +1531,11 @@ class CountsFrame(tk.LabelFrame):
         # Set the readout speed
         readSpeed = g.ipars.readSpeed()
         if readSpeed == "Fast":
-            gain = GAIN_FAST
-            read = RNO_FAST
+            gain = pars.GAIN_FAST
+            read = pars.RNO_FAST
         elif readSpeed == "Slow":
-            gain = GAIN_SLOW
-            read = RNO_SLOW
+            gain = pars.GAIN_SLOW
+            read = pars.RNO_SLOW
         else:
             raise DriverError(
                 "CountsFrame.counts: readout speed = " + readSpeed + " not recognised."
@@ -1616,7 +1592,7 @@ class CountsFrame(tk.LabelFrame):
         npix = math.pi * (ap_scale * seeing / plateScale) ** 2 / xbin / ybin
 
         signal = correct * total  # in electrons
-        darkTot = npix * DARK_E * expTime  # in electrons
+        darkTot = npix * pars.DARK_E * expTime  # in electrons
         readTot = npix * read**2  # in electrons
 
         # noise, in electrons

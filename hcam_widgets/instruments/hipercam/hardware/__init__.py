@@ -13,8 +13,8 @@ import numpy as np
 import pickle
 
 from hcam_devices.devices.meerstetter import TEC_CURRENT_LIMIT
-from hcam_widgets import widgets as w
-from hcam_widgets.tkutils import get_root, addStyle
+from .... import widgets as w
+from ....tkutils import get_root, addStyle
 from .alarms import NoAlarmState
 
 if not six.PY3:

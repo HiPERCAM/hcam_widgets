@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hcam_widgets"
+version = "1.2.2"
+description = "Common Tkinter widgets for HiPERCAM, ULTRACAM and ULTRASPEC"
+readme = "README.rst"
+license = { text = "MIT" }
+authors = [{ name = "Stuart Littlefair", email = "s.littlefair@shef.ac.uk" }]
+requires-python = ">=3.6"
+keywords = ["hcam_widgets", "hipercam", "ultracam", "ultraspec"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "astropy",
+    "requests",
+    "twisted",
+    "hcam_devices>=1.2.2",
+    "matplotlib",
+    "scipy",
+    "autobahn",
+]
+
+[project.urls]
+Homepage = "https://github.com/HiPERCAM/hcam_widgets"
+Repository = "https://github.com/HiPERCAM/hcam_widgets"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hcam_widgets*"]
+
+[tool.setuptools.package-data]
+"hcam_widgets" = ["data/*"]
+
+[tool.flake8]
+exclude = ["docs"]

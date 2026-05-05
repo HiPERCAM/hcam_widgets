@@ -1,63 +1,51 @@
 # -*- coding: utf-8 -*-
 """
-uspec provides classes and data specific to ULTRASPEC
+ULTRASPEC instrument-specific widgets and parameters
 """
 from __future__ import print_function, absolute_import, unicode_literals, division
 import six
 import math
 
 # internal imports
-from .tkutils import get_root
-from . import widgets as w
+from ...tkutils import get_root
+from ... import widgets as w
+from .params import (
+    AVALANCHE_GAIN_9,
+    AVALANCHE_PIXELS,
+    AVALANCHE_SATURATE,
+    CIC,
+    DARK_E,
+    FFX,
+    FFY,
+    GAIN_AV_FAST,
+    GAIN_AV_MED,
+    GAIN_AV_SLOW,
+    GAIN_NORM_FAST,
+    GAIN_NORM_MED,
+    GAIN_NORM_SLOW,
+    HCLOCK_AV,
+    HCLOCK_NORM,
+    IFX,
+    IFY,
+    RNO_AV_FAST,
+    RNO_AV_MED,
+    RNO_AV_SLOW,
+    RNO_NORM_FAST,
+    RNO_NORM_MED,
+    RNO_NORM_SLOW,
+    VCLOCK,
+    VIDEO_AV_FAST,
+    VIDEO_AV_MED,
+    VIDEO_AV_SLOW,
+    VIDEO_NORM_FAST,
+    VIDEO_NORM_MED,
+    VIDEO_NORM_SLOW,
+)
 
 if not six.PY3:
     import Tkinter as tk
 else:
     import tkinter as tk
-
-# Timing, gain, noise parameters lifted from java usdriver
-VCLOCK = 14.4e-6  # vertical clocking time
-HCLOCK_NORM = 0.48e-6  # normal mode horizontal clock
-HCLOCK_AV = 0.96e-6  # avalanche mode horizontal clock
-VIDEO_NORM_SLOW = 11.20e-6
-VIDEO_NORM_MED = 6.24e-6
-VIDEO_NORM_FAST = 3.20e-6
-VIDEO_AV_SLOW = 11.20e-6
-VIDEO_AV_MED = 6.24e-6
-VIDEO_AV_FAST = 3.20e-6
-FFX = 1072
-FFY = 1072
-IFY = 1072
-IFX = 1072
-AVALANCHE_PIXELS = 1072
-AVALANCHE_GAIN_9 = 1200.0  # dimensionless gain, hvgain=9
-AVALANCHE_SATURATE = 80000   # electrons
-
-# avalanche gains assume HVGain = 9. We can adapt this later when we decide
-# how gain should be set at TNO. Might be better to make gain a function if
-# we allow 0 < HVgain < 9 (SL)
-
-GAIN_NORM_FAST = 0.8   # electrons per count
-GAIN_NORM_MED = 0.7    # electrons per count
-GAIN_NORM_SLOW = 0.8   # electrons per count
-GAIN_AV_FAST = 0.0034  # electrons per count
-GAIN_AV_MED = 0.0013   # electrons per count
-GAIN_AV_SLOW = 0.0016  # electrons per count
-
-# Note - avalanche RNO assume HVGain = 9. We can adapt this later when we
-# decide how gain should be set at TNO. Might be better to make RNO a function
-# if we allow 0 < HVgain < 9 (SL)
-
-RNO_NORM_FAST = 4.8  # electrons per pixel
-RNO_NORM_MED = 2.8   # electrons per pixel
-RNO_NORM_SLOW = 2.2  # electrons per pixel
-RNO_AV_FAST = 6.5    # electrons per pixel
-RNO_AV_MED = 7.8     # electrons per pixel
-RNO_AV_SLOW = 5.6    # electrons per pixel
-
-# other noise sources
-DARK_E = 0.001  # electrons/pix/sec
-CIC = 0.010     # Clock induced charge, electrons/pix
 
 
 class InstPars(tk.LabelFrame):
