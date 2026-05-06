@@ -10,11 +10,11 @@ import numpy as np
 
 from autobahn.wamp.exception import SerializationError
 
-from ....tkutils import get_root
-from ....widgets import IntegerEntry
-from ....mimic import Mimic
+from ...tkutils import get_root
+from ...widgets import IntegerEntry
+from ...mimic import Mimic
 from hcam_devices.models.slide import BLOCK_POS, UNBLOCK_POS
-from ....misc import async_sleep
+from ...misc import async_sleep
 
 from twisted.internet.defer import inlineCallbacks
 

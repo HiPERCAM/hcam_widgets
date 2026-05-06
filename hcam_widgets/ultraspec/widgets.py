@@ -7,8 +7,8 @@ import six
 import math
 
 # internal imports
-from ...tkutils import get_root
-from ... import widgets as w
+from ..tkutils import get_root
+from .. import widgets as w
 from .params import (
     AVALANCHE_GAIN_9,
     AVALANCHE_PIXELS,

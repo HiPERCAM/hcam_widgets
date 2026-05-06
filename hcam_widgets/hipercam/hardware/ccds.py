@@ -4,8 +4,8 @@ import six
 import pickle
 
 # GUI imports
-from ....widgets import RangedInt
-from ....tkutils import get_root, addStyle
+from ...widgets import RangedInt
+from ...tkutils import get_root, addStyle
 
 from twisted.internet.defer import inlineCallbacks
 

@@ -10,9 +10,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from twisted.internet.defer import inlineCallbacks
 
 # internal imports
-from ....misc import async_sleep
-from ....mimic import Mimic
-from ....tkutils import addStyle, get_root
+from ...misc import async_sleep
+from ...mimic import Mimic
+from ...tkutils import addStyle, get_root
 from .utils import (
     plot_compo,
     INJECTOR_THETA,
@@ -23,7 +23,7 @@ from .utils import (
     GUIDE_THETA,
     MAX_ANGLE,
 )
-from .... import widgets as w
+from ... import widgets as w
 
 
 if not six.PY3:

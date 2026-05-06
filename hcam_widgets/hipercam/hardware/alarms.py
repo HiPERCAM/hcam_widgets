@@ -4,7 +4,7 @@ import six
 import subprocess
 import sys
 import time
-from ....tkutils import addStyle, get_root
+from ...tkutils import addStyle, get_root
 
 if not six.PY3:
     import Tkinter as tk

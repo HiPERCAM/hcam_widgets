@@ -20,10 +20,10 @@ from astropy.time import Time
 
 
 # internal imports
-from ...astro import calc_time_to_rotator_limit
-from ... import DriverError
-from ... import widgets as w
-from ...tkutils import get_root, place_at_edge
+from ..astro import calc_time_to_rotator_limit
+from .. import DriverError
+from .. import widgets as w
+from ..tkutils import get_root, place_at_edge
 from . import tools
 from . import params as pars
 

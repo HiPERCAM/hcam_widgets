@@ -12,7 +12,7 @@ from astropy.io import fits
 from astropy.io import ascii
 from astropy.table import Table
 
-from ... import DriverError
+from .. import DriverError
 
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet import reactor

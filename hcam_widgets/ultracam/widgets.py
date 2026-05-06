@@ -7,8 +7,8 @@ import six
 import math
 
 # internal imports
-from ... import widgets as w
-from ...tkutils import get_root
+from .. import widgets as w
+from ..tkutils import get_root
 from .params import (
     CDS_TIME_CDD,
     CDS_TIME_FBB,
