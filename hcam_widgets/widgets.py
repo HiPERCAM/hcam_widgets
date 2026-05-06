@@ -14,7 +14,7 @@ from astropy.time import Time
 from six.moves import urllib
 
 # twisted and async support
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks
 
 # internal
 from . import DriverError

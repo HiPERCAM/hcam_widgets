@@ -6,7 +6,6 @@ import threading
 import traceback
 
 from six.moves import urllib
-import six
 
 from twisted.internet import reactor
 from twisted.internet.task import deferLater
