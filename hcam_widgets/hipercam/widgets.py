@@ -18,7 +18,6 @@ from astropy import units as u
 from astropy import coordinates as coord
 from astropy.time import Time
 
-
 # internal imports
 from ..astro import calc_time_to_rotator_limit
 from .. import DriverError
@@ -3160,7 +3159,7 @@ class InfoFrame(tk.LabelFrame):
 
             # distance to the moon. Warn if too close
             # (configurable) to it.
-            md = coord.get_moon(now, g.astro.obs).separation(coo)
+            md = coord.get_body("moon", now, g.astro.obs).separation(coo)
             self.mdist.configure(text="{0:<7.2f}".format(md.value))
             if md < g.cpars["mdist_warn"] * u.deg:
                 self.mdist.configure(bg=g.COL["warn"])

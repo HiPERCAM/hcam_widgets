@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import socket
 from functools import partial, reduce
+import warnings
 
 import numpy as np
 import six
@@ -2056,9 +2057,13 @@ class AstroFrame(tk.LabelFrame):
                 altaz_frame = coord.AltAz(obstime=now, location=self.obs)
                 sun = coord.get_sun(now)
                 sun_aa = sun.transform_to(altaz_frame)
-                moon = coord.get_moon(now, self.obs)
-                moon_aa = moon.transform_to(altaz_frame)
-                elongation = sun.separation(moon)
+                moon = coord.get_body("moon", now, self.obs)
+                # ignore warnings about transformation of moon coordinates
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    moon_aa = moon.transform_to(altaz_frame)
+                    elongation = sun.separation(moon)
+
                 moon_phase_angle = np.arctan2(
                     sun.distance * np.sin(elongation),
                     moon.distance - sun.distance * np.cos(elongation),
@@ -2281,7 +2286,7 @@ class WinPairs(tk.Frame):
         tk.Label(bottom, text="ny").grid(row=row, column=5, ipady=5, sticky=tk.S)
 
         row += 1
-        (self.label, self.xsl, self.xsr, self.ys, self.nx, self.ny) = (
+        self.label, self.xsl, self.xsr, self.ys, self.nx, self.ny = (
             [],
             [],
             [],

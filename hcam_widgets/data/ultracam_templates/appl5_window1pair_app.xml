@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+
+<!-- Application File for appl5 - window 1 pair
+
+     Authors: David Atkinson
+  -->
+
+<configure id="appl5_window1pair_app" user="Vik Dhillon" datetime="02-Mar-2010" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+   <description>Set parameters for appl5 window1pair application.</description>
+
+
+   <!-- No configure_telescope element -->
+
+   <!-- No configure_temperature element -->
+
+   <!-- The configure_camera element configures the camera control software.
+       If the execute_application attribute is set the application is executed once
+       it has been downloaded and the parameters set.
+    -->
+
+   <configure_camera>
+
+      <!-- A URI pointing to the XML document (based on the executable_application.xml template)
+           containing the executable DSP code required by this reconfiguration.
+
+           The force_download attribute is "yes" if the source is to be downloaded every time,
+           otherwise the source is not downloaded if this application is already found to be
+           loaded.
+        -->
+
+      <executablecode force_download="no" xlink:href="appl5_window1pair_cfg.xml"/>
+
+      <!-- There can now be zero or more set_parameter elements which define parameter values to
+           be set once the application has been downloaded.
+
+           The parameter names must match those which are declared in the "executable_application.xml"
+           document.
+
+           Note that the application XML document described in the code_location element above
+           contains a series of condition checks that will be made before and after the application
+           is executed.
+        -->
+
+      <!-- One exposure -->
+      <set_parameter ref="NO_EXPOSURES" value="-1"/>
+
+      <!-- Fast readout -->
+      <set_parameter ref="GAIN_SPEED" value="0xcdd"/>
+
+      <!-- 1000 milliseconds = 1 seconds exposure time -->
+      <set_parameter ref="EXPOSE_TIME"  value="1"/>
+
+      <!-- Set binning factors   -->
+      <set_parameter ref="X_BIN_FAC"    value="2"/>
+      <set_parameter ref="Y_BIN_FAC"    value="2"/>
+
+
+     <!-- NBLUE on-chip co-adds -->
+      <set_parameter ref="NBLUE" value="1"/>
+
+
+      <!-- V clock frame transfer speed -->
+      <set_parameter ref="V_FT_CLK" value="0x8C0000"/>
+
+
+      <!-- Default first pair of windows -->
+      <set_parameter ref="X1L_START"    value="1"/>
+      <set_parameter ref="X1R_START"    value="957"/>
+      <set_parameter ref="Y1_START"     value="1"/>
+      <set_parameter ref="X1_SIZE"      value="68"/>
+      <set_parameter ref="Y1_SIZE"      value="68"/>
+
+      <!-- The name of the command to be executed or a URI pointing to the XML document
+           (based on the command.xml template) containing the command to be executed for
+           this reconfiguration.
+
+           Both of these attributes are optional. If omitted the application will be started
+           with the "GO" command.
+
+           DO NOT EXECUTE THE APPLICATION AUTOMATICALLY.
+        -->
+
+   </configure_camera>
+
+
+   <!-- No configure_datahandler element -->
+
+</configure>
+
