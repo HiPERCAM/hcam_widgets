@@ -269,15 +269,34 @@ class InstPars(tk.LabelFrame):
             g.clog.error("create_xml: {}".format(exc))
             return None
 
-        tdir = g.cpars.get("template_dir", _TEMPLATES_DIR)
-        template_path = os.path.join(tdir, app_file)
-        try:
-            tree = ET.parse(template_path)
-        except Exception as exc:
-            g.clog.error(
-                "create_xml: cannot read template {}: {}".format(template_path, exc)
-            )
-            return None
+        if g.cpars.get("templates_from_server", False):
+            xml_string = tools.fetchApp(g, app_file)
+            if xml_string is None:
+                g.clog.error(
+                    "create_xml: failed to fetch template {} from server".format(
+                        app_file
+                    )
+                )
+                return None
+            try:
+                tree = ET.ElementTree(ET.fromstring(xml_string))
+            except Exception as exc:
+                g.clog.error(
+                    "create_xml: cannot parse template {} from server: {}".format(
+                        app_file, exc
+                    )
+                )
+                return None
+        else:
+            tdir = g.cpars.get("template_dir", _TEMPLATES_DIR)
+            template_path = os.path.join(tdir, app_file)
+            try:
+                tree = ET.parse(template_path)
+            except Exception as exc:
+                g.clog.error(
+                    "create_xml: cannot read template {}: {}".format(template_path, exc)
+                )
+                return None
 
         root_elem = tree.getroot()
 

@@ -279,3 +279,49 @@ def postApp(g, xml_string):
     g.rlog.info("postApp: data server response OK")
     g.clog.info("Application posted to both servers")
     return True
+
+
+@inlineCallbacks
+def fetchApp(g, name):
+    """
+    Fetches a named XML application from the ULTRACAM camera server.
+
+    Equivalent to the Java ``_fetchApp`` method.  Sends a GET request to
+    ``HTTP_CAMERA_SERVER/HTTP_PATH_GET?HTTP_SEARCH_ATTR_NAME=<name>`` and
+    returns the raw XML string.
+
+    Parameters
+    ----------
+    g : hcam_widgets.globals.Container
+        Container with globals.  Required ``cpars`` keys:
+        ``ucam_server_on``, ``http_camera_server``.
+        Optional keys: ``http_path_get`` (default ``"get"``),
+        ``http_search_attr_name`` (default ``"filename"``).
+    name : str
+        The application filename to retrieve, e.g.
+        ``"appl3_fullframe_app.xml"``.
+
+    Returns
+    -------
+    str or None
+        The raw XML string returned by the server, or ``None`` on failure.
+    """
+    if not g.cpars.get("ucam_server_on", False):
+        g.clog.warn("fetchApp: ULTRACAM servers are not active")
+        return None
+
+    camera_server = g.cpars["http_camera_server"].rstrip("/") + "/"
+    path_get = g.cpars.get("http_path_get", "get")
+    attr_name = g.cpars.get("http_search_attr_name", "filename")
+    url = camera_server + path_get + "?" + attr_name + "=" + name
+
+    g.clog.info("Fetching application '{}' from server".format(name))
+    try:
+        response = yield deferToThread(requests.get, url, timeout=10)
+        xml_string = response.text.strip()
+    except Exception as err:
+        g.clog.warn("fetchApp: connection error fetching '{}': {}".format(name, err))
+        return None
+
+    g.rlog.info("Application '{}' fetched from server".format(name))
+    return xml_string
