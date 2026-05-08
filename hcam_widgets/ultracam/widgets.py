@@ -625,6 +625,40 @@ class InstPars(tk.LabelFrame):
         # check windows
         return self.wframe.check() and status
 
+    def getRtplotWins(self):
+        """
+        Returns a string suitable to sending off to rtplot when
+        it asks for window parameters. Returns null string '' if
+        the windows are not OK. This operates on the basis of
+        trying to send something back, even if it might not be
+        OK as a window setup. Note that we have to take care
+        here not to update any GUI components because this is
+        called outside of the main thread.
+        """
+        try:
+            xbin = self.wframe.xbin.value()
+            ybin = self.wframe.ybin.value()
+            if self.app.value() == 'Windows':
+                nwin = 2 * self.wframe.npair.value()
+                ret = str(xbin) + ' ' + str(ybin) + ' ' + str(nwin) + '\r\n'
+                for xsl, xsr, ys, nx, ny in self.wframe:
+                    ret += (str(xsl) + ' ' + str(ys) + ' ' + str(nx) + ' ' +
+                            str(ny) + '\r\n')
+                    ret += (str(xsr) + ' ' + str(ys) + ' ' + str(nx) + ' ' +
+                            str(ny) + '\r\n')
+            elif self.app.value() == 'Drift':
+                ret = str(xbin) + ' ' + str(ybin) + ' 2\r\n'
+                for xsl, xsr, ys, nx, ny in self.wframe:
+                    ret += (str(xsl) + ' ' + str(ys) + ' ' + str(nx) + ' ' +
+                            str(ny) + '\r\n')
+                    ret += (str(xsr) + ' ' + str(ys) + ' ' + str(nx) + ' ' +
+                            str(ny) + '\r\n')
+            else:
+                return ''
+            return ret
+        except Exception:
+            return ''
+
     def timing(self):
         """
         Estimates timing information for the current setup. You should
